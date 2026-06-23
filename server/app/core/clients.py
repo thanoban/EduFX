@@ -8,7 +8,7 @@ from app.core.config import Settings
 @dataclass(slots=True)
 class ExternalClients:
     supabase: Client | None = None
-    gemini_api_key: str | None = None
+    vertex_model: str | None = None
 
 
 def build_external_clients(settings: Settings) -> ExternalClients:
@@ -18,4 +18,13 @@ def build_external_clients(settings: Settings) -> ExternalClients:
     if settings.supabase_url and supabase_key:
         supabase_client = create_client(settings.supabase_url, supabase_key)
 
-    return ExternalClients(supabase=supabase_client, gemini_api_key=settings.gemini_api_key)
+    vertex_model: str | None = None
+    if settings.google_cloud_project:
+        import vertexai
+        vertexai.init(
+            project=settings.google_cloud_project,
+            location=settings.google_cloud_location,
+        )
+        vertex_model = settings.vertex_model
+
+    return ExternalClients(supabase=supabase_client, vertex_model=vertex_model)

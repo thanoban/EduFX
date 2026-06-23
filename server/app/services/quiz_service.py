@@ -18,15 +18,13 @@ class QuizService:
         content_repository: ContentRepositoryContract | ContentRepository,
         results_repository: ResultsRepositoryContract | ResultsRepository,
         rag_repository: RagRepository | None = None,
-        gemini_api_key: str | None = None,
-        gemini_model: str = "gemini-2.0-flash",
+        vertex_model: str | None = None,
     ) -> None:
         self.repository = repository
         self.content_repository = content_repository
         self.results_repository = results_repository
         self.rag_repository = rag_repository
-        self.gemini_api_key = gemini_api_key
-        self.gemini_model = gemini_model
+        self.vertex_model = vertex_model
 
     def get_quiz(self, student_id: int, subtopic_id: int) -> QuizPayloadDTO:
         progress = self.repository.get_progress(student_id, subtopic_id)
@@ -45,7 +43,7 @@ class QuizService:
         return self._to_payload(session.id, subtopic_id, "personalized", questions)
 
     def _build_personalized(self, student_id: int, subtopic_id: int, level: str) -> list[Question]:
-        if self.gemini_api_key:
+        if self.vertex_model:
             ai_questions = self._generate_ai_questions(student_id, subtopic_id, level)
             if ai_questions:
                 return ai_questions
@@ -65,8 +63,7 @@ class QuizService:
             chunks = self.rag_repository.retrieve(subtopic.title, subtopic_id, top_k=5)
 
         raw_questions = generate_quiz_questions(
-            api_key=self.gemini_api_key,  # type: ignore[arg-type]
-            model=self.gemini_model,
+            vertex_model=self.vertex_model,  # type: ignore[arg-type]
             subtopic_title=subtopic.title,
             group_name=subtopic.group_name,
             level=level,

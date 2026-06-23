@@ -1,44 +1,35 @@
-"""Gemini API helpers for quiz generation and explanation."""
+"""Vertex AI (Gemini) helpers for quiz generation and explanation."""
 from __future__ import annotations
 
 import json
 from typing import Any
 
-import httpx
-
-
-def _gemini_post(api_key: str, model: str, prompt: str, max_tokens: int = 4096, temperature: float = 0.4) -> str:
-    model_name = model.replace("models/", "")
-    response = httpx.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent",
-        params={"key": api_key},
-        json={
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
-        },
-        timeout=60.0,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    candidates = payload.get("candidates") or []
-    if not candidates:
-        return ""
-    parts = candidates[0].get("content", {}).get("parts", [])
-    return " ".join(p.get("text", "") for p in parts).strip()
-
 
 def _strip_fences(text: str) -> str:
     if text.startswith("```"):
         lines = text.splitlines()
-        end = next((i for i, l in enumerate(lines[1:], 1) if l.strip() == "```"), len(lines))
+        end = next((i for i, ln in enumerate(lines[1:], 1) if ln.strip() == "```"), len(lines))
         return "\n".join(lines[1:end]).strip()
     return text
 
 
+def _call_vertex(model_name: str, prompt: str, temperature: float, max_tokens: int) -> str:
+    from vertexai.generative_models import GenerationConfig, GenerativeModel
+
+    model = GenerativeModel(model_name)
+    response = model.generate_content(
+        prompt,
+        generation_config=GenerationConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+        ),
+    )
+    return response.text or ""
+
+
 def generate_quiz_questions(
     *,
-    api_key: str,
-    model: str,
+    vertex_model: str,
     subtopic_title: str,
     group_name: str,
     level: str,
@@ -46,7 +37,7 @@ def generate_quiz_questions(
     context_chunks: list[str] | None = None,
     count: int = 15,
 ) -> list[dict[str, Any]]:
-    """Call Gemini to generate MCQ questions. Returns [] on parse failure."""
+    """Generate MCQ questions via Vertex AI. Returns [] on any failure."""
     rag_section = ""
     if context_chunks:
         rag_section = "Additional relevant context:\n" + "\n---\n".join(context_chunks) + "\n\n"
@@ -64,11 +55,48 @@ def generate_quiz_questions(
     )
 
     try:
-        raw = _gemini_post(api_key, model, prompt, max_tokens=4096, temperature=0.4)
+        raw = _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096)
         cleaned = _strip_fences(raw)
         questions = json.loads(cleaned)
         if isinstance(questions, list):
             return questions[:count]
         return []
-    except (httpx.HTTPError, json.JSONDecodeError, KeyError):
+    except Exception:
         return []
+
+
+def generate_explanation(
+    *,
+    vertex_model: str,
+    level: str,
+    question_text: str,
+    option_a: str,
+    option_b: str,
+    option_c: str,
+    option_d: str,
+    student_answer: str,
+    correct_answer: str,
+    context_chunks: list[str] | None = None,
+) -> str | None:
+    """Generate a wrong-answer explanation. Returns None on failure."""
+    rag_section = ""
+    if context_chunks:
+        rag_section = "Relevant notes:\n" + "\n---\n".join(context_chunks) + "\n\n"
+
+    prompt = (
+        "You are an A-Level Chemistry teacher explaining a wrong answer.\n"
+        f"Student level: {level}\n"
+        f"{rag_section}"
+        f"Question: {question_text}\n"
+        f"Options: A={option_a}; B={option_b}; C={option_c}; D={option_d}\n"
+        f"Student answered: {student_answer}\n"
+        f"Correct answer: {correct_answer}\n"
+        "Explain why the correct answer is right and why the student's choice is wrong. "
+        "Use plain text only. Maximum 3 sentences."
+    )
+
+    try:
+        text = _call_vertex(vertex_model, prompt, temperature=0.2, max_tokens=180)
+        return text.strip() or None
+    except Exception:
+        return None

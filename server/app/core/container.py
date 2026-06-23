@@ -55,8 +55,7 @@ def get_container() -> AppContainer:
         repositories.content_repository,
         repositories.results_repository,
         rag_repository=rag_repository,
-        gemini_api_key=clients.gemini_api_key,
-        gemini_model=settings.gemini_model,
+        vertex_model=clients.vertex_model,
     )
     results_service = ResultsService(
         repositories.results_repository,
@@ -66,6 +65,7 @@ def get_container() -> AppContainer:
     explanation_service = ExplanationService(
         repositories.results_repository,
         rag_repository=rag_repository,
+        vertex_model=clients.vertex_model,
     )
     progress_service = ProgressService(repositories.progress_repository)
     behaviour_service = BehaviourService(repositories.behaviour_repository)

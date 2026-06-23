@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     supabase_key: str | None = None
     supabase_service_role_key: str | None = None
     supabase_jwt_secret: str | None = None
-    gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
+    google_cloud_project: str | None = None
+    google_cloud_location: str = "global"
+    vertex_model: str = "gemini-2.5-flash"
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")
