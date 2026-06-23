@@ -5,6 +5,8 @@ import { use, useEffect, useState } from "react";
 import { ResultsScreen } from "@/features/results/results-screen";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import { resultsApi } from "@/lib/api";
+import { STORAGE_KEYS } from "@/lib/constants";
+import { readStorage } from "@/lib/storage";
 import type { SessionResults } from "@/types/contracts";
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +14,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const { student } = useAuthGuard();
   const [results, setResults] = useState<SessionResults | null>(null);
   const [explanations, setExplanations] = useState<Array<{ attempt_id: number; explanation: string }>>([]);
+  const lastQuizResult = readStorage(STORAGE_KEYS.lastQuizResult, null);
 
   useEffect(() => {
     async function load() {
@@ -29,5 +32,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     return null;
   }
 
-  return <ResultsScreen results={results} explanations={explanations} />;
+  return (
+    <ResultsScreen
+      results={results}
+      explanations={explanations}
+      lastQuizResult={lastQuizResult}
+    />
+  );
 }

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from app.core.errors import EduFXError
 from app.core.store import DemoDataStore
-from app.models.domain import BehaviourLog, SessionSummary
+from app.models.domain import BehaviourLog, SessionSummary, Subtopic
 
 
 class BehaviourRepository:
@@ -26,6 +26,9 @@ class BehaviourRepository:
     def list_student_sessions(self, student_id: int) -> list[SessionSummary]:
         sessions = [session for session in self.store.session_summaries.values() if session.student_id == student_id]
         return sorted(sessions, key=lambda item: item.created_at, reverse=True)
+
+    def get_subtopic(self, subtopic_id: int) -> Subtopic | None:
+        return self.store.subtopics.get(subtopic_id)
 
     def now(self) -> datetime:
         return datetime.now(UTC)

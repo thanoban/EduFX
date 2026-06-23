@@ -8,17 +8,22 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
-import type { SessionResults } from "@/types/contracts";
+import type { QuizResultPayload, SessionResults } from "@/types/contracts";
 
 export function ResultsScreen({
   results,
-  explanations
+  explanations,
+  lastQuizResult
 }: {
   results: SessionResults;
   explanations: Array<{ attempt_id: number; explanation: string }>;
+  lastQuizResult: QuizResultPayload | null;
 }) {
   useAuthGuard();
   const explanationMap = new Map(explanations.map((item) => [item.attempt_id, item.explanation]));
+  const levelShiftLabel = lastQuizResult?.level_changed
+    ? `${lastQuizResult.previous_level} -> ${lastQuizResult.new_level}`
+    : `Stayed at ${lastQuizResult?.new_level ?? "current level"}`;
 
   return (
     <AppShell
@@ -30,6 +35,31 @@ export function ResultsScreen({
         </Link>
       }
     >
+      <section className="hero-strip hero-strip--success">
+        <div className="hero-strip__copy">
+          <span className="pill success">Adaptive review ready</span>
+          <h3>{results.quiz_score >= 70 ? "Strong session" : "Recovery session"}</h3>
+          <p className="muted">
+            EduFX combined quiz performance, focus behaviour, and wrong-answer review into one feedback
+            loop so the next plan can adapt with context.
+          </p>
+        </div>
+        <div className="hero-strip__metrics">
+          <div className="metric-box">
+            <strong>{results.quiz_score}%</strong>
+            <span>quiz score</span>
+          </div>
+          <div className="metric-box">
+            <strong>{results.focus_score ?? 0}%</strong>
+            <span>focus score</span>
+          </div>
+          <div className="metric-box">
+            <strong>{levelShiftLabel}</strong>
+            <span>level outcome</span>
+          </div>
+        </div>
+      </section>
+
       <div className="grid-4">
         <StatCard label="Quiz score" value={`${results.quiz_score}%`} hint={`${results.correct_answers}/${results.total_questions} correct`} />
         <StatCard label="Focus score" value={`${results.focus_score ?? 0}%`} hint={results.webcam_enabled ? "Webcam summary enabled" : "Tracking skipped"} />
@@ -58,7 +88,7 @@ export function ResultsScreen({
         <SectionCard title="Question review" eyebrow="Adaptive feedback">
           <div className="list">
             {results.attempts.map((attempt) => (
-              <div key={attempt.id} className="list-item stack">
+              <div key={attempt.id} className={`list-item stack review-card ${attempt.is_correct ? "review-card--correct" : "review-card--warning"}`.trim()}>
                 <div className="cluster" style={{ justifyContent: "space-between" }}>
                   <strong>{attempt.question.question_text}</strong>
                   <StatusPill label={attempt.is_correct ? "Correct" : "Needs review"} tone={attempt.is_correct ? "success" : "warning"} />

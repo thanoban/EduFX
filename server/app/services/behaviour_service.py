@@ -72,7 +72,7 @@ class BehaviourService:
         sessions = self.repository.list_student_sessions(student_id)
         payload: list[BehaviourHistoryItemDTO] = []
         for session in sessions:
-            subtopic = self.repository.store.subtopics.get(session.subtopic_id)
+            subtopic = self.repository.get_subtopic(session.subtopic_id)
             payload.append(
                 BehaviourHistoryItemDTO(
                     id=session.id,

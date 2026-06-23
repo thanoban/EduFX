@@ -16,11 +16,18 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
   const { student, refreshStatus } = useAuthGuard();
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const activeQuestion = questions[activeIndex];
 
   const completed = useMemo(
     () => questions.filter((question) => answers[question.id]).length,
     [answers, questions]
   );
+  const remaining = questions.length - completed;
+  const currentGroupLabel = activeQuestion
+    ? `Subtopic ${activeQuestion.subtopic_id}`
+    : "Diagnostic";
 
   async function handleSubmit() {
     if (!student) {
@@ -54,6 +61,20 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
             This first-run diagnostic assigns a starting difficulty level for each of the ten chemistry
             subtopics in the S-block unit.
           </p>
+          <div className="hero-metrics">
+            <div className="hero-metric">
+              <strong>{completed}</strong>
+              <span>answered</span>
+            </div>
+            <div className="hero-metric">
+              <strong>{remaining}</strong>
+              <span>remaining</span>
+            </div>
+            <div className="hero-metric">
+              <strong>{activeIndex + 1}</strong>
+              <span>current</span>
+            </div>
+          </div>
           <div className="progress-bar">
             <span style={{ width: `${(completed / Math.max(questions.length, 1)) * 100}%` }} />
           </div>
@@ -64,40 +85,110 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
       }
     >
       <div className="stack">
-        {questions.map((question, index) => (
-          <article key={question.id} className="quiz-card stack">
-            <div className="muted">Question {index + 1}</div>
-            <strong>{question.question_text}</strong>
-            <div className="grid-2">
-              {(["A", "B", "C", "D"] as const).map((option) => {
-                const label = {
-                  A: question.option_a,
-                  B: question.option_b,
-                  C: question.option_c,
-                  D: question.option_d
-                }[option];
-                return (
-                  <button
-                    key={option}
-                    className={`option-card ${answers[question.id] === option ? "active" : ""}`.trim()}
+        <div className="grid-2 diagnostic-layout">
+          <aside className="section-card stack sticky-column">
+            <div className="cluster" style={{ justifyContent: "space-between" }}>
+              <div>
+                <h3>Question map</h3>
+                <div className="muted">{currentGroupLabel}</div>
+              </div>
+              <span className="pill">{completed}/{questions.length}</span>
+            </div>
+            <div className="navigator-grid">
+              {questions.map((question, index) => (
+                <button
+                  key={question.id}
+                  className={`nav-dot ${
+                    activeIndex === index
+                      ? "active"
+                      : answers[question.id]
+                        ? "done"
+                        : ""
+                  }`.trim()}
+                  onClick={() => setActiveIndex(index)}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+            <div className="stack">
+              <div className="list-item">
+                EduFX checks four diagnostic questions per subtopic before assigning a level.
+              </div>
+              <div className="list-item">
+                All 40 answers are required before the adaptive study plan unlocks.
+              </div>
+            </div>
+          </aside>
+
+          {activeQuestion ? (
+            <article className="quiz-card stack">
+              <div className="cluster" style={{ justifyContent: "space-between" }}>
+                <div className="stack" style={{ gap: 6 }}>
+                  <span className="pill">Question {activeIndex + 1}</span>
+                  <strong>{activeQuestion.question_text}</strong>
+                </div>
+                <StatusBadge answered={Boolean(answers[activeQuestion.id])} />
+              </div>
+              <div className="grid-2">
+                {(["A", "B", "C", "D"] as const).map((option) => {
+                  const label = {
+                    A: activeQuestion.option_a,
+                    B: activeQuestion.option_b,
+                    C: activeQuestion.option_c,
+                    D: activeQuestion.option_d
+                  }[option];
+                  return (
+                    <button
+                      key={option}
+                      className={`option-card ${answers[activeQuestion.id] === option ? "active" : ""}`.trim()}
+                      onClick={() =>
+                        setAnswers((current) => ({
+                          ...current,
+                          [activeQuestion.id]: option
+                        }))
+                      }
+                    >
+                      {option}. {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="cluster" style={{ justifyContent: "space-between" }}>
+                <div className="cluster">
+                  <Button
+                    variant="secondary"
+                    disabled={activeIndex === 0}
+                    onClick={() => setActiveIndex((index) => Math.max(index - 1, 0))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={activeIndex === questions.length - 1}
                     onClick={() =>
-                      setAnswers((current) => ({
-                        ...current,
-                        [question.id]: option
-                      }))
+                      setActiveIndex((index) => Math.min(index + 1, questions.length - 1))
                     }
                   >
-                    {option}. {label}
-                  </button>
-                );
-              })}
-            </div>
-          </article>
-        ))}
-        <Button onClick={handleSubmit} disabled={busy}>
-          Submit diagnostic
-        </Button>
+                    Next
+                  </Button>
+                </div>
+                <Button onClick={handleSubmit} disabled={busy || completed !== questions.length}>
+                  Submit diagnostic
+                </Button>
+              </div>
+            </article>
+          ) : null}
+        </div>
       </div>
     </AuthShell>
+  );
+}
+
+function StatusBadge({ answered }: { answered: boolean }) {
+  return (
+    <span className={`pill ${answered ? "success" : "warning"}`.trim()}>
+      {answered ? "Answered" : "Pending"}
+    </span>
   );
 }

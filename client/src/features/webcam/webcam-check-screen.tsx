@@ -17,6 +17,12 @@ export function WebcamCheckScreen() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [cameraReady, setCameraReady] = useState(false);
+  const readinessChecks = [
+    { label: "Single learner in frame", ok: cameraReady && enabled },
+    { label: "Permission granted", ok: cameraReady && enabled },
+    { label: "Privacy-safe local analysis", ok: true },
+    { label: "Tracking optional", ok: true }
+  ];
 
   useEffect(() => {
     async function setupCamera() {
@@ -54,12 +60,24 @@ export function WebcamCheckScreen() {
             <StatusPill label={cameraReady ? "Camera ready" : "No live feed"} tone={cameraReady ? "success" : "warning"} />
             <StatusPill label={enabled ? "Tracking enabled" : "Tracking skipped"} />
           </div>
+          <div className="checklist">
+            {readinessChecks.map((item) => (
+              <div key={item.label} className="checklist-row">
+                <span className={`check-indicator ${item.ok ? "ok" : ""}`.trim()} />
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </SectionCard>
         <SectionCard title="What will be tracked" eyebrow="Demo tracker">
           <div className="stack">
             <div className="list-item">Eye openness and drowsiness signals</div>
             <div className="list-item">Looking away and presence checks</div>
             <div className="list-item">Phone, talking, and multi-person indicators</div>
+            <div className="callout">
+              Video never leaves the browser in this demo flow. Only derived behaviour flags are posted to
+              the backend summary endpoints.
+            </div>
             <div className="cluster">
               <Button variant={enabled ? "secondary" : "primary"} onClick={() => setEnabled(false)}>
                 Skip tracking

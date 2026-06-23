@@ -12,9 +12,12 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
     supabase_url: str | None = None
     supabase_key: str | None = None
+    supabase_service_role_key: str | None = None
     supabase_jwt_secret: str | None = None
     groq_api_key: str | None = None
     groq_model: str = "llama-3.3-70b-versatile"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")
@@ -30,4 +33,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

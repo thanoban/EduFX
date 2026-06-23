@@ -5,5 +5,6 @@ export const STORAGE_KEYS = {
   student: "edufx.mvc.student",
   token: "edufx.mvc.token",
   lastDiagnostic: "edufx.mvc.diagnostic",
-  lastSession: "edufx.mvc.last-session"
+  lastSession: "edufx.mvc.last-session",
+  lastQuizResult: "edufx.mvc.last-quiz-result"
 } as const;

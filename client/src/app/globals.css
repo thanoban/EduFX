@@ -361,13 +361,225 @@ textarea {
   background: linear-gradient(90deg, var(--brand) 0%, #6ba8ff 100%);
 }
 
+.hero-metrics,
+.hero-strip__metrics,
+.metric-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.hero-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hero-metric,
+.metric-box {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hero-metric strong,
+.metric-box strong {
+  display: block;
+  font-size: 1.6rem;
+}
+
+.hero-metric span,
+.metric-box span {
+  color: var(--muted);
+}
+
+.hero-strip {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 28px;
+  margin-bottom: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(47, 108, 242, 0.12), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(236, 244, 255, 0.95));
+  border: 1px solid rgba(178, 207, 255, 0.55);
+}
+
+.hero-strip--success {
+  background:
+    radial-gradient(circle at top right, rgba(30, 169, 90, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(240, 251, 245, 0.95));
+}
+
+.hero-strip__copy {
+  display: grid;
+  gap: 12px;
+}
+
+.hero-strip__copy h3 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.hero-strip__metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metric-box {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.metric-inline {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.metric-inline:last-child {
+  border-bottom: none;
+}
+
+.diagnostic-layout {
+  align-items: start;
+}
+
+.sticky-column {
+  position: sticky;
+  top: 24px;
+}
+
+.navigator-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nav-dot {
+  border: 1px solid var(--line);
+  background: #f8fbff;
+  border-radius: 14px;
+  padding: 12px 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav-dot.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+
+.nav-dot.done {
+  background: rgba(30, 169, 90, 0.12);
+  border-color: rgba(30, 169, 90, 0.22);
+  color: var(--success);
+}
+
+.focus-card {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(239, 246, 255, 0.98));
+}
+
+.focus-bar {
+  width: min(220px, 100%);
+  height: 10px;
+  border-radius: 999px;
+  background: #e8eff8;
+  overflow: hidden;
+}
+
+.focus-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b7cff 0%, #72d2ff 100%);
+}
+
+.focus-bar--compact {
+  width: 180px;
+}
+
+.topic-summary {
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff, #eef5ff);
+  border: 1px solid var(--line);
+}
+
+.callout {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #f7fbff;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.success-callout {
+  background: rgba(30, 169, 90, 0.08);
+  border-color: rgba(30, 169, 90, 0.18);
+}
+
+.checklist {
+  display: grid;
+  gap: 10px;
+}
+
+.checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checklist-row:last-child {
+  border-bottom: none;
+}
+
+.check-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--warning);
+  box-shadow: 0 0 0 4px rgba(229, 154, 24, 0.18);
+}
+
+.check-indicator.ok {
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgba(30, 169, 90, 0.16);
+}
+
+.review-card {
+  border-left: 4px solid transparent;
+}
+
+.review-card--correct {
+  border-left-color: rgba(30, 169, 90, 0.7);
+}
+
+.review-card--warning {
+  border-left-color: rgba(229, 154, 24, 0.8);
+}
+
 @media (max-width: 1100px) {
   .app-shell,
   .hero-layout,
+  .hero-strip,
   .grid-4,
   .grid-3,
   .grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  .hero-metrics,
+  .hero-strip__metrics,
+  .navigator-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sticky-column {
+    position: static;
   }
 
   .sidebar {

@@ -27,6 +27,18 @@ type AuthContextValue = {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function getSessionWithTimeout(timeoutMs: number) {
+  if (!supabase) {
+    return null;
+  }
+  return Promise.race([
+    supabase.auth.getSession(),
+    new Promise<null>((_, reject) => {
+      window.setTimeout(() => reject(new Error("Supabase session bootstrap timed out")), timeoutMs);
+    })
+  ]);
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -47,16 +59,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setLoading(false);
         return;
       }
-      const { data } = await supabase.auth.getSession();
-      const accessToken = data.session?.access_token;
-      if (accessToken) {
-        const profile = await authApi.login(accessToken);
-        setStudent(profile);
-        setToken(accessToken);
-        writeStorage(STORAGE_KEYS.student, profile);
-        writeStorage(STORAGE_KEYS.token, accessToken);
+      try {
+        const sessionResult = await getSessionWithTimeout(4000);
+        if (!sessionResult) {
+          return;
+        }
+        const { data } = sessionResult;
+        const accessToken = data.session?.access_token;
+        if (accessToken) {
+          const profile = await authApi.login(accessToken);
+          setStudent(profile);
+          setToken(accessToken);
+          writeStorage(STORAGE_KEYS.student, profile);
+          writeStorage(STORAGE_KEYS.token, accessToken);
+        }
+      } catch (error) {
+        console.error("Supabase session bootstrap failed", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     void syncSupabase();

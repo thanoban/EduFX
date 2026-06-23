@@ -32,9 +32,20 @@ export function StudyScreen({ content }: { content: ContentRecord }) {
         <SectionCard title="Session checklist" eyebrow="Before quiz">
           <div className="stack">
             <StatusPill label={`Current level: ${content.level}`} />
+            <div className="topic-summary">
+              <strong>Learning target</strong>
+              <p className="muted">
+                Focus on the key trend, one memorable example, and one contrast you can explain in your
+                own words before starting the quiz.
+              </p>
+            </div>
             <div className="list-item">Read the full note and keep the key trends in mind.</div>
             <div className="list-item">Choose whether to enable webcam tracking for focus metrics.</div>
             <div className="list-item">The first attempt uses manual questions; repeats switch to personalized generation.</div>
+            <div className="callout success-callout">
+              The quiz unlocks a focus summary and AI explanations after submission, so the goal is not
+              only accuracy but also a clean study routine.
+            </div>
           </div>
         </SectionCard>
       </div>

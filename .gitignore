@@ -11,3 +11,9 @@ client/.next/
 # Local env
 .env
 *.local
+
+# Local runtime logs
+client/*.log
+client/*.err.log
+server/*.log
+server/*.err.log

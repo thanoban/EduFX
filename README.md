@@ -16,10 +16,12 @@ EduFX MVC is a clean-room rebuild of the Adaptive Education Platform as a CV-fri
 - Uses a seeded in-memory fallback so the demo runs locally without blocking on Supabase data
 - Keeps Supabase and Groq integration seams in place for live credentials
 - Defines explicit repository and service contracts for MVC-friendly dependency boundaries
+- Supports `memory` and `supabase` backends through the same repository contracts
 
 ## Architecture notes
 
 - `server/app/repositories/contracts.py` defines repository-facing interfaces.
+- `server/app/core/repository_factory.py` selects the active backend implementation.
 - `server/app/services/contracts.py` defines business-service interfaces.
 - `server/app/controllers` stays thin and only orchestrates service calls plus response presenters.
 - `shared/contracts/index.ts` holds DTO shapes consumed by the client and aligned to the API envelope.
@@ -66,6 +68,19 @@ npm run build
 
 - Backend example: [infra/.env.server.example](D:/PROJECTS/2ndYearProject/EduFX_MVC/infra/.env.server.example)
 - Frontend example: [infra/.env.client.example](D:/PROJECTS/2ndYearProject/EduFX_MVC/infra/.env.client.example)
+
+### Supabase mode
+
+Set the backend env like this when you want live persistence instead of the seeded in-memory demo store:
+
+```powershell
+DATA_BACKEND=supabase
+SUPABASE_URL=...
+SUPABASE_KEY=...
+SUPABASE_JWT_SECRET=...
+```
+
+If `DATA_BACKEND=supabase` is set without valid credentials, the app safely falls back to the in-memory backend.
 
 ## Notes
 

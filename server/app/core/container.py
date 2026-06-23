@@ -12,15 +12,7 @@ from app.controllers.results_controller import ResultsController
 from app.controllers.scheduler_controller import SchedulerController
 from app.core.clients import build_external_clients
 from app.core.config import get_settings
-from app.core.store import demo_store
-from app.repositories.auth_repository import AuthRepository
-from app.repositories.behaviour_repository import BehaviourRepository
-from app.repositories.content_repository import ContentRepository
-from app.repositories.diagnostic_repository import DiagnosticRepository
-from app.repositories.progress_repository import ProgressRepository
-from app.repositories.quiz_repository import QuizRepository
-from app.repositories.results_repository import ResultsRepository
-from app.repositories.scheduler_repository import SchedulerRepository
+from app.core.repository_factory import build_repository_bundle
 from app.services.auth_service import AuthService
 from app.services.behaviour_service import BehaviourService
 from app.services.content_service import ContentService
@@ -49,25 +41,25 @@ class AppContainer:
 def get_container() -> AppContainer:
     settings = get_settings()
     clients = build_external_clients(settings)
+    repositories = build_repository_bundle(settings, clients)
 
-    auth_repository = AuthRepository(demo_store)
-    diagnostic_repository = DiagnosticRepository(demo_store)
-    scheduler_repository = SchedulerRepository(demo_store)
-    content_repository = ContentRepository(demo_store)
-    quiz_repository = QuizRepository(demo_store)
-    results_repository = ResultsRepository(demo_store)
-    progress_repository = ProgressRepository(demo_store)
-    behaviour_repository = BehaviourRepository(demo_store)
-
-    auth_service = AuthService(auth_repository)
-    diagnostic_service = DiagnosticService(diagnostic_repository)
-    scheduler_service = SchedulerService(scheduler_repository)
-    content_service = ContentService(content_repository)
-    quiz_service = QuizService(quiz_repository, content_repository, results_repository)
-    results_service = ResultsService(results_repository, quiz_repository, behaviour_repository)
-    explanation_service = ExplanationService(results_repository, clients.groq)
-    progress_service = ProgressService(progress_repository)
-    behaviour_service = BehaviourService(behaviour_repository)
+    auth_service = AuthService(repositories.auth_repository)
+    diagnostic_service = DiagnosticService(repositories.diagnostic_repository)
+    scheduler_service = SchedulerService(repositories.scheduler_repository)
+    content_service = ContentService(repositories.content_repository)
+    quiz_service = QuizService(
+        repositories.quiz_repository,
+        repositories.content_repository,
+        repositories.results_repository,
+    )
+    results_service = ResultsService(
+        repositories.results_repository,
+        repositories.quiz_repository,
+        repositories.behaviour_repository,
+    )
+    explanation_service = ExplanationService(repositories.results_repository, clients.groq)
+    progress_service = ProgressService(repositories.progress_repository)
+    behaviour_service = BehaviourService(repositories.behaviour_repository)
 
     return AppContainer(
         auth_controller=AuthController(auth_service),
@@ -80,4 +72,3 @@ def get_container() -> AppContainer:
         progress_controller=ProgressController(progress_service),
         behaviour_controller=BehaviourController(behaviour_service),
     )
-
