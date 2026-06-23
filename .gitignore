@@ -1,0 +1,13 @@
+# Python
+server/.venv/
+server/.pytest_cache/
+server/**/__pycache__/
+server/**/*.pyc
+
+# Next.js
+client/node_modules/
+client/.next/
+
+# Local env
+.env
+*.local
