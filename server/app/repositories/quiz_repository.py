@@ -63,3 +63,8 @@ class QuizRepository:
     def get_generated_questions(self, student_id: int, subtopic_id: int) -> list[Question]:
         ids = self.store.generated_questions_by_student.get((student_id, subtopic_id), [])
         return [self.store.questions[item_id] for item_id in ids]
+
+    def store_ai_questions(self, student_id: int, subtopic_id: int, questions: list[Question]) -> list[Question]:
+        stored = [self.store.clone_question(q, student_id, "personalized") for q in questions]
+        self.store.generated_questions_by_student[(student_id, subtopic_id)] = [q.id for q in stored]
+        return stored

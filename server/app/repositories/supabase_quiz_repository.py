@@ -105,6 +105,27 @@ class SupabaseQuizRepository:
         rows = self.client.table("subtopics").select("title").eq("id", subtopic_id).limit(1).execute().data
         return str(self.mapper.ensure_one(rows, "Subtopic not found")["title"])
 
+    def store_ai_questions(self, student_id: int, subtopic_id: int, questions: list[Question]) -> list[Question]:
+        insert_rows = [
+            {
+                "subtopic_id": q.subtopic_id,
+                "question_text": q.question_text,
+                "option_a": q.option_a,
+                "option_b": q.option_b,
+                "option_c": q.option_c,
+                "option_d": q.option_d,
+                "correct_answer": q.correct_answer,
+                "difficulty": q.difficulty,
+                "source": "gemini-ai",
+                "stage": "personalized",
+                "student_id": student_id,
+                "is_diagnostic": False,
+            }
+            for q in questions
+        ]
+        rows = self.client.table("questions").insert(insert_rows).execute().data or []
+        return [self.mapper.question_from_row(row) for row in rows]
+
     def get_generated_questions(self, student_id: int, subtopic_id: int) -> list[Question]:
         rows = (
             self.client.table("questions")

@@ -1,3 +1,7 @@
+/* Tailwind utilities — base/preflight intentionally skipped to preserve existing CSS */
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --bg: #f2f6fb;
   --surface: #ffffff;

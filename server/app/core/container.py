@@ -13,6 +13,7 @@ from app.controllers.scheduler_controller import SchedulerController
 from app.core.clients import build_external_clients
 from app.core.config import get_settings
 from app.core.repository_factory import build_repository_bundle
+from app.repositories.rag_repository import RagRepository
 from app.services.auth_service import AuthService
 from app.services.behaviour_service import BehaviourService
 from app.services.content_service import ContentService
@@ -43,6 +44,8 @@ def get_container() -> AppContainer:
     clients = build_external_clients(settings)
     repositories = build_repository_bundle(settings, clients)
 
+    rag_repository = RagRepository(clients.supabase)
+
     auth_service = AuthService(repositories.auth_repository)
     diagnostic_service = DiagnosticService(repositories.diagnostic_repository)
     scheduler_service = SchedulerService(repositories.scheduler_repository)
@@ -51,13 +54,19 @@ def get_container() -> AppContainer:
         repositories.quiz_repository,
         repositories.content_repository,
         repositories.results_repository,
+        rag_repository=rag_repository,
+        gemini_api_key=clients.gemini_api_key,
+        gemini_model=settings.gemini_model,
     )
     results_service = ResultsService(
         repositories.results_repository,
         repositories.quiz_repository,
         repositories.behaviour_repository,
     )
-    explanation_service = ExplanationService(repositories.results_repository, clients.groq)
+    explanation_service = ExplanationService(
+        repositories.results_repository,
+        rag_repository=rag_repository,
+    )
     progress_service = ProgressService(repositories.progress_repository)
     behaviour_service = BehaviourService(repositories.behaviour_repository)
 

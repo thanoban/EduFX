@@ -93,3 +93,37 @@ create table if not exists quiz_attempts (
   explanation text null,
   created_at timestamp default now()
 );
+
+-- RAG: vector store for content chunks --
+
+create extension if not exists vector;
+
+create table if not exists content_chunks (
+  id          bigint generated always as identity primary key,
+  subtopic_id bigint references subtopics(id),
+  source      text,
+  chunk_text  text not null,
+  embedding   vector(384)
+);
+
+create index if not exists content_chunks_embedding_idx
+  on content_chunks using ivfflat (embedding vector_cosine_ops)
+  with (lists = 50);
+
+create or replace function match_content_chunks(
+  query_embedding    vector(384),
+  match_subtopic_id  bigint,
+  match_count        int default 5
+)
+returns table (id bigint, chunk_text text, similarity float)
+language sql stable as $$
+  select
+    id,
+    chunk_text,
+    1 - (embedding <=> query_embedding) as similarity
+  from content_chunks
+  where subtopic_id = match_subtopic_id
+    and embedding is not null
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;
