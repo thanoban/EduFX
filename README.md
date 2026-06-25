@@ -14,7 +14,7 @@ EduFX MVC is a clean-room rebuild of the Adaptive Education Platform as a CV-fri
 - Preserves the original endpoint contract from the project brief
 - Keeps Google auth support in the frontend flow
 - Uses a seeded in-memory fallback so the demo runs locally without blocking on Supabase data
-- Keeps Supabase and Groq integration seams in place for live credentials
+- Uses Supabase for live persistence and Vertex AI for quiz/explanation generation
 - Defines explicit repository and service contracts for MVC-friendly dependency boundaries
 - Supports `memory` and `supabase` backends through the same repository contracts
 
@@ -76,11 +76,38 @@ Set the backend env like this when you want live persistence instead of the seed
 ```powershell
 DATA_BACKEND=supabase
 SUPABASE_URL=...
-SUPABASE_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_JWT_SECRET=...
+GOOGLE_CLOUD_PROJECT=...
+GOOGLE_CLOUD_LOCATION=global
+VERTEX_MODEL=gemini-2.5-flash
 ```
 
 If `DATA_BACKEND=supabase` is set without valid credentials, the app safely falls back to the in-memory backend.
+
+### Seed Supabase
+
+Run the SQL bootstrap first from the Supabase SQL editor, then seed the baseline curriculum rows:
+
+```powershell
+cd D:\PROJECTS\2ndYearProject\EduFX_MVC\server
+python -m app.tools.seed_supabase --dry-run
+python -m app.tools.seed_supabase
+```
+
+The seed command is idempotent. It adds missing subtopics, level-aware content, diagnostic questions, and first-attempt quiz questions without deleting existing rows.
+
+### Ingest RAG Notes
+
+After filling `data/notes/s_block_notes.csv`, authenticate Vertex AI once and ingest the notes:
+
+```powershell
+gcloud auth application-default login
+cd D:\PROJECTS\2ndYearProject\EduFX_MVC\server
+python -m app.rag.ingest
+```
+
+The ingest command chunks the CSV notes, embeds them with Vertex AI `text-embedding-004`, and stores the vectors in Supabase `content_chunks`.
 
 ## Notes
 

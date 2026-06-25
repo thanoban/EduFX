@@ -75,8 +75,9 @@ def main() -> None:
         print("ERROR: Supabase client not configured. Set SUPABASE_URL and SUPABASE_KEY in .env")
         sys.exit(1)
 
-    if not settings.gemini_api_key:
-        print("ERROR: gemini_api_key not set. Cannot embed text.")
+    if not settings.google_cloud_project:
+        print("ERROR: GOOGLE_CLOUD_PROJECT not set. Cannot initialize Vertex AI embeddings.")
+        print("Run: gcloud auth application-default login")
         sys.exit(1)
 
     notes_dir = Path(__file__).resolve().parents[4] / "data" / "notes"

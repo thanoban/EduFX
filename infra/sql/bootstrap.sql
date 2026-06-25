@@ -13,12 +13,18 @@ create table if not exists subtopics (
   order_index int not null
 );
 
+create unique index if not exists subtopics_order_index_idx
+  on subtopics (order_index);
+
 create table if not exists content (
   id bigint generated always as identity primary key,
   subtopic_id bigint references subtopics(id),
   level text not null,
   body text not null
 );
+
+create unique index if not exists content_subtopic_level_idx
+  on content (subtopic_id, level);
 
 create table if not exists questions (
   id bigint generated always as identity primary key,

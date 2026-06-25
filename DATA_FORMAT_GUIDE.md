@@ -16,7 +16,7 @@ Just write your notes per topic — one set per subtopic — and the system hand
 
 | Purpose | What you make | Where it goes |
 |---|---|---|
-| **RAG** | One text block per topic → CSV | Supabase `content` table |
+| **RAG** | One text block per topic -> CSV | Supabase `content_chunks` table through the ingest script |
 | **Fine-tuning** | JSONL with instruction/output pairs | Google Colab for training |
 
 ---
@@ -105,12 +105,17 @@ subtopic_id,body
 - Keep each row on one line — no actual line breaks inside a cell
 - Save as UTF-8
 
-Import via: **Supabase Dashboard → Table Editor → content → Import CSV**
+Ingest via the project CLI:
+
+```powershell
+cd D:\PROJECTS\2ndYearProject\EduFX_MVC\server
+python -m app.rag.ingest
+```
 
 The ingest script then:
-1. Reads every row from `content`
+1. Reads every row from `data/notes/*.csv`
 2. Splits body into ~250-word chunks with 30-word overlap
-3. Embeds each chunk with MiniLM (384-dim vector)
+3. Embeds each chunk with Vertex AI `text-embedding-004` (384-dim vector)
 4. Stores in `content_chunks` for similarity search
 
 ---
@@ -189,7 +194,7 @@ output = "[...5 questions as JSON array...]"
 **Where does the output come from?**
 Two options:
 1. Write the questions yourself (best quality, catches errors)
-2. Generate with Gemini/Groq, review each question, then use as output
+2. Generate with Vertex AI Gemini, review each question, then use as output
 
 ---
 

@@ -142,6 +142,7 @@ Run tests: `cd server && python -m pytest tests/unit/ -v`
 | `data/notes/s_block_notes.csv` | ✅ 3 sample subtopic bodies to show the format |
 | `data/finetune/.gitkeep` | ✅ Folder exists for JSONL training data |
 | `server/notebooks/export_training_data.py` | ✅ CLI script to export Task B JSONL from Supabase |
+| `server/app/tools/seed_supabase.py` | ✅ Idempotent Supabase curriculum seed CLI |
 
 ---
 
@@ -167,6 +168,14 @@ Subtopic IDs (from DemoDataStore seed):
 ### 2. Supabase DB setup
 Run `infra/sql/bootstrap.sql` in the Supabase SQL editor once if you haven't already.
 This creates the `content_chunks` table and the `match_content_chunks` function.
+
+Then seed the baseline curriculum data:
+
+```powershell
+cd D:\PROJECTS\2ndYearProject\EduFX_MVC\server
+python -m app.tools.seed_supabase --dry-run
+python -m app.tools.seed_supabase
+```
 
 ### 3. Vertex AI authentication (local dev)
 Run once: `gcloud auth application-default login`
