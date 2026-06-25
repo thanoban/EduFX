@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 import { AuthShell } from "@/components/layout/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export function DiagnosticResultsScreen({ results }: { results: DiagnosticResult
     <AuthShell
       hero={
         <div className="stack">
-          <span className="pill success">Diagnostic complete</span>
+          <span className="pill success"><CheckCircle2 size={15} /> Diagnostic complete</span>
           <h1>Your adaptive study map is ready.</h1>
           <p>Each subtopic now carries its own level, so the daily plan can target weak areas without slowing stronger ones down.</p>
         </div>
@@ -41,7 +42,7 @@ export function DiagnosticResultsScreen({ results }: { results: DiagnosticResult
             </div>
           </div>
         ))}
-        <Button onClick={() => router.push("/dashboard")}>Start learning</Button>
+        <Button icon={<ArrowRight size={17} />} onClick={() => router.push("/dashboard")}>Start learning</Button>
       </div>
     </AuthShell>
   );

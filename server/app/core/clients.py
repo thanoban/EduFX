@@ -20,11 +20,6 @@ def build_external_clients(settings: Settings) -> ExternalClients:
 
     vertex_model: str | None = None
     if settings.google_cloud_project:
-        import vertexai
-        vertexai.init(
-            project=settings.google_cloud_project,
-            location=settings.google_cloud_location,
-        )
         vertex_model = settings.vertex_model
 
     return ExternalClients(supabase=supabase_client, vertex_model=vertex_model)

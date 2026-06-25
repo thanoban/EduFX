@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import type { ProgressRecord } from "@/types/contracts";
+import { BarChart3, BookOpenCheck, Target } from "lucide-react";
 
 export function ProgressScreen({ progress }: { progress: ProgressRecord[] }) {
   useAuthGuard();
@@ -19,17 +20,17 @@ export function ProgressScreen({ progress }: { progress: ProgressRecord[] }) {
     >
       <div className="grid-3" style={{ marginBottom: 20 }}>
         <article className="stat-card">
-          <div className="muted">Advanced topics</div>
+          <div className="stat-card__top"><div className="muted">Advanced topics</div><span className="icon-tile"><BookOpenCheck size={18} /></span></div>
           <strong>{advancedCount}</strong>
           <div className="muted">Ready for reinforcement</div>
         </article>
         <article className="stat-card">
-          <div className="muted">Beginner topics</div>
+          <div className="stat-card__top"><div className="muted">Beginner topics</div><span className="icon-tile"><Target size={18} /></span></div>
           <strong>{beginnerCount}</strong>
           <div className="muted">Need guided practice</div>
         </article>
         <article className="stat-card">
-          <div className="muted">Total sessions</div>
+          <div className="stat-card__top"><div className="muted">Total sessions</div><span className="icon-tile"><BarChart3 size={18} /></span></div>
           <strong>{sessionTotal}</strong>
           <div className="muted">Recorded across all subtopics</div>
         </article>

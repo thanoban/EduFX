@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import type { BehaviourHistoryItem } from "@/types/contracts";
+import { Activity } from "lucide-react";
 
 export function BehaviourLogsScreen({ sessions }: { sessions: BehaviourHistoryItem[] }) {
   useAuthGuard();
@@ -14,7 +15,7 @@ export function BehaviourLogsScreen({ sessions }: { sessions: BehaviourHistoryIt
       title="Behaviour logs"
       subtitle="Snapshot-driven focus records captured during quiz sessions."
     >
-      <SectionCard title="Recent sessions" eyebrow="Value-add page">
+      <SectionCard title="Recent sessions" eyebrow="Focus history" action={<Activity size={18} />}>
         <div className="list">
           {sessions.map((session) => (
             <div key={session.id} className="list-item cluster" style={{ justifyContent: "space-between" }}>

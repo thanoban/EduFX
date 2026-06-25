@@ -93,11 +93,11 @@ For Vertex AI to work locally: run `gcloud auth application-default login` once.
 | `services/explanation_service.py` | ✅ RAG + Vertex AI explanation per wrong answer |
 | All demo repositories | ✅ Memory-backed for all domains |
 | All Supabase repositories | ✅ Real DB queries for all domains |
-| `app/rag/embedder.py` | ✅ text-embedding-004, 384-dim |
+| `app/rag/embedder.py` | ✅ gemini-embedding-001, 384-dim via Google Gen AI SDK |
 | `app/rag/retriever.py` | ✅ Calls `match_content_chunks` Supabase RPC |
 | `app/rag/ingest.py` | ✅ CSV → chunk → embed → store. Run: `python -m app.rag.ingest` |
 | `repositories/rag_repository.py` | ✅ Wraps retriever, returns [] gracefully when no Supabase |
-| `requirements.txt` | ✅ `google-cloud-aiplatform>=1.60.0`, no groq |
+| `requirements.txt` | ✅ `google-genai`, Vertex AI auth, no groq |
 
 ### Backend Tests (`server/tests/`)
 | File | Tests | Status |

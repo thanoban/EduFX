@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     google_cloud_project: str | None = None
     google_cloud_location: str = "global"
     vertex_model: str = "gemini-2.5-flash"
+    embedding_model: str = "gemini-embedding-001"
+    embedding_dimensions: int = 384
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")

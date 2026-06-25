@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { ArrowRight, BookOpen, CheckCircle2 } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -19,17 +20,17 @@ export function StudyScreen({ content }: { content: ContentRecord }) {
       subtitle={`Content tuned for ${content.level} level in ${content.group_name}.`}
       action={
         <Link href={`/webcam-check?subtopic=${content.subtopic_id}`}>
-          <Button>Finish reading</Button>
+          <Button icon={<ArrowRight size={17} />}>Finish reading</Button>
         </Link>
       }
     >
       <div className="grid-2">
-        <SectionCard title="Study notes" eyebrow="Level-aware content">
+        <SectionCard title="Study notes" eyebrow="Level-aware content" action={<BookOpen size={18} />}>
           <div className="markdown">
             <ReactMarkdown>{content.body}</ReactMarkdown>
           </div>
         </SectionCard>
-        <SectionCard title="Session checklist" eyebrow="Before quiz">
+        <SectionCard title="Session checklist" eyebrow="Before quiz" action={<CheckCircle2 size={18} />}>
           <div className="stack">
             <StatusPill label={`Current level: ${content.level}`} />
             <div className="topic-summary">

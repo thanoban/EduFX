@@ -14,12 +14,24 @@ def _strip_fences(text: str) -> str:
 
 
 def _call_vertex(model_name: str, prompt: str, temperature: float, max_tokens: int) -> str:
-    from vertexai.generative_models import GenerationConfig, GenerativeModel
+    from google import genai
+    from google.genai import types
 
-    model = GenerativeModel(model_name)
-    response = model.generate_content(
-        prompt,
-        generation_config=GenerationConfig(
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.google_cloud_project:
+        return ""
+
+    client = genai.Client(
+        vertexai=True,
+        project=settings.google_cloud_project,
+        location=settings.google_cloud_location,
+    )
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
             temperature=temperature,
             max_output_tokens=max_tokens,
         ),

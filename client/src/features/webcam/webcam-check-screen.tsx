@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Eye, Video, VideoOff } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ export function WebcamCheckScreen() {
       title="Before you begin"
       subtitle={`Prepare the session environment for ${student?.name ?? "your"} quiz run.`}
       action={
-        <Button onClick={() => router.push(`/quiz/${subtopic}?webcam=${enabled ? "1" : "0"}`)}>
+        <Button icon={<Video size={17} />} onClick={() => router.push(`/quiz/${subtopic}?webcam=${enabled ? "1" : "0"}`)}>
           Start quiz now
         </Button>
       }
@@ -54,7 +55,7 @@ export function WebcamCheckScreen() {
       <div className="grid-2">
         <SectionCard title="Camera preview" eyebrow="Client-side only">
           <div className="camera-preview">
-            {enabled ? <video ref={videoRef} muted playsInline style={{ maxWidth: "100%", borderRadius: 18 }} /> : <div>Webcam disabled</div>}
+            {enabled ? <video ref={videoRef} muted playsInline /> : <div className="stack" style={{ textAlign: "center" }}><VideoOff size={34} />Webcam disabled</div>}
           </div>
           <div className="cluster">
             <StatusPill label={cameraReady ? "Camera ready" : "No live feed"} tone={cameraReady ? "success" : "warning"} />
@@ -75,14 +76,13 @@ export function WebcamCheckScreen() {
             <div className="list-item">Looking away and presence checks</div>
             <div className="list-item">Phone, talking, and multi-person indicators</div>
             <div className="callout">
-              Video never leaves the browser in this demo flow. Only derived behaviour flags are posted to
-              the backend summary endpoints.
+              Video stays local. EduFX stores only derived focus flags and session summary percentages.
             </div>
             <div className="cluster">
-              <Button variant={enabled ? "secondary" : "primary"} onClick={() => setEnabled(false)}>
+              <Button icon={<VideoOff size={16} />} variant={enabled ? "secondary" : "primary"} onClick={() => setEnabled(false)}>
                 Skip tracking
               </Button>
-              <Button variant={enabled ? "primary" : "secondary"} onClick={() => setEnabled(true)}>
+              <Button icon={<Eye size={16} />} variant={enabled ? "primary" : "secondary"} onClick={() => setEnabled(true)}>
                 Enable tracking
               </Button>
             </div>

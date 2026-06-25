@@ -81,6 +81,8 @@ SUPABASE_JWT_SECRET=...
 GOOGLE_CLOUD_PROJECT=...
 GOOGLE_CLOUD_LOCATION=global
 VERTEX_MODEL=gemini-2.5-flash
+EMBEDDING_MODEL=gemini-embedding-001
+EMBEDDING_DIMENSIONS=384
 ```
 
 If `DATA_BACKEND=supabase` is set without valid credentials, the app safely falls back to the in-memory backend.
@@ -107,7 +109,7 @@ cd D:\PROJECTS\2ndYearProject\EduFX_MVC\server
 python -m app.rag.ingest
 ```
 
-The ingest command chunks the CSV notes, embeds them with Vertex AI `text-embedding-004`, and stores the vectors in Supabase `content_chunks`.
+The ingest command chunks the CSV notes, embeds them with Vertex AI `gemini-embedding-001`, and stores the vectors in Supabase `content_chunks`.
 
 ## Notes
 

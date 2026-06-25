@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, ClipboardCheck, Send } from "lucide-react";
 
 import { AuthShell } from "@/components/layout/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -55,11 +56,10 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
     <AuthShell
       hero={
         <div className="stack">
-          <span className="pill">Step 1</span>
+          <span className="pill"><ClipboardCheck size={15} /> Step 1</span>
           <h1>Diagnostic assessment</h1>
           <p>
-            This first-run diagnostic assigns a starting difficulty level for each of the ten chemistry
-            subtopics in the S-block unit.
+            Answer 40 short checks to set your starting level for each S-block subtopic.
           </p>
           <div className="hero-metrics">
             <div className="hero-metric">
@@ -125,7 +125,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
             <article className="quiz-card stack">
               <div className="cluster" style={{ justifyContent: "space-between" }}>
                 <div className="stack" style={{ gap: 6 }}>
-                  <span className="pill">Question {activeIndex + 1}</span>
+                  <span className="eyebrow">Question {activeIndex + 1}</span>
                   <strong>{activeQuestion.question_text}</strong>
                 </div>
                 <StatusBadge answered={Boolean(answers[activeQuestion.id])} />
@@ -158,6 +158,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
                 <div className="cluster">
                   <Button
                     variant="secondary"
+                    icon={<ArrowLeft size={16} />}
                     disabled={activeIndex === 0}
                     onClick={() => setActiveIndex((index) => Math.max(index - 1, 0))}
                   >
@@ -165,6 +166,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
                   </Button>
                   <Button
                     variant="ghost"
+                    icon={<ArrowRight size={16} />}
                     disabled={activeIndex === questions.length - 1}
                     onClick={() =>
                       setActiveIndex((index) => Math.min(index + 1, questions.length - 1))
@@ -173,7 +175,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
                     Next
                   </Button>
                 </div>
-                <Button onClick={handleSubmit} disabled={busy || completed !== questions.length}>
+                <Button icon={<Send size={16} />} onClick={handleSubmit} disabled={busy || completed !== questions.length}>
                   Submit diagnostic
                 </Button>
               </div>

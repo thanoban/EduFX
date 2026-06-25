@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Send, Video } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
                 {quiz.stage === "first" ? "Manual quality baseline" : "Repeat personalized run"}
               </div>
             </div>
-            <span className="pill">{completionPercent}%</span>
+            <span className="pill"><CheckCircle2 size={14} /> {completionPercent}%</span>
           </div>
           <div className="progress-bar">
             <span style={{ width: `${completionPercent}%` }} />
@@ -109,7 +110,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
             </div>
             <div className="metric-inline">
               <span>Webcam</span>
-              <strong>{webcamEnabled ? "Enabled" : "Skipped"}</strong>
+              <strong className="cluster" style={{ gap: 6 }}><Video size={15} /> {webcamEnabled ? "Enabled" : "Skipped"}</strong>
             </div>
             <div className="metric-inline">
               <span>Difficulty lane</span>
@@ -122,7 +123,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
           <article className="quiz-card stack">
             <div className="cluster" style={{ justifyContent: "space-between" }}>
               <div className="stack" style={{ gap: 6 }}>
-                <span className="pill">Question {activeIndex + 1}</span>
+                <span className="eyebrow">Question {activeIndex + 1}</span>
                 <strong>{activeQuestion.question_text}</strong>
               </div>
               <StatusPill label={activeQuestion.difficulty} />
@@ -159,6 +160,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
               <div className="cluster">
                 <Button
                   variant="secondary"
+                  icon={<ArrowLeft size={16} />}
                   disabled={activeIndex === 0}
                   onClick={() => setActiveIndex((index) => Math.max(index - 1, 0))}
                 >
@@ -166,6 +168,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
                 </Button>
                 <Button
                   variant="ghost"
+                  icon={<ArrowRight size={16} />}
                   disabled={activeIndex === quiz.questions.length - 1}
                   onClick={() =>
                     setActiveIndex((index) => Math.min(index + 1, quiz.questions.length - 1))
@@ -174,7 +177,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
                   Next
                 </Button>
               </div>
-              <Button onClick={handleSubmit} disabled={busy || answered !== quiz.questions.length}>
+              <Button icon={<Send size={16} />} onClick={handleSubmit} disabled={busy || answered !== quiz.questions.length}>
                 Submit quiz
               </Button>
             </div>

@@ -115,7 +115,7 @@ python -m app.rag.ingest
 The ingest script then:
 1. Reads every row from `data/notes/*.csv`
 2. Splits body into ~250-word chunks with 30-word overlap
-3. Embeds each chunk with Vertex AI `text-embedding-004` (384-dim vector)
+3. Embeds each chunk with Vertex AI `gemini-embedding-001` (384-dim vector)
 4. Stores in `content_chunks` for similarity search
 
 ---

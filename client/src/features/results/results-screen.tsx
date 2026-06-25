@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft, Award, Gauge, Smartphone, Target } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -31,13 +32,13 @@ export function ResultsScreen({
       subtitle="Review score, focus outcome, and AI explanations for any mistakes."
       action={
         <Link href="/dashboard">
-          <Button>Back to dashboard</Button>
+          <Button icon={<ArrowLeft size={17} />}>Back to dashboard</Button>
         </Link>
       }
     >
       <section className="hero-strip hero-strip--success">
         <div className="hero-strip__copy">
-          <span className="pill success">Adaptive review ready</span>
+          <span className="pill success"><Award size={15} /> Session review</span>
           <h3>{results.quiz_score >= 70 ? "Strong session" : "Recovery session"}</h3>
           <p className="muted">
             EduFX combined quiz performance, focus behaviour, and wrong-answer review into one feedback
@@ -61,10 +62,10 @@ export function ResultsScreen({
       </section>
 
       <div className="grid-4">
-        <StatCard label="Quiz score" value={`${results.quiz_score}%`} hint={`${results.correct_answers}/${results.total_questions} correct`} />
-        <StatCard label="Focus score" value={`${results.focus_score ?? 0}%`} hint={results.webcam_enabled ? "Webcam summary enabled" : "Tracking skipped"} />
-        <StatCard label="Phone alerts" value={`${results.phone_percent}%`} hint="Snapshot share" />
-        <StatCard label="Away alerts" value={`${results.away_percent}%`} hint="Attention drift" />
+        <StatCard icon={<Award size={18} />} label="Quiz score" value={`${results.quiz_score}%`} hint={`${results.correct_answers}/${results.total_questions} correct`} />
+        <StatCard icon={<Gauge size={18} />} label="Focus score" value={`${results.focus_score ?? 0}%`} hint={results.webcam_enabled ? "Webcam summary enabled" : "Tracking skipped"} />
+        <StatCard icon={<Smartphone size={18} />} label="Phone alerts" value={`${results.phone_percent}%`} hint="Snapshot share" />
+        <StatCard icon={<Target size={18} />} label="Away alerts" value={`${results.away_percent}%`} hint="Attention drift" />
       </div>
 
       <div className="grid-2" style={{ marginTop: 24 }}>

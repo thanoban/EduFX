@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArrowRight, FlaskConical, GraduationCap, ShieldCheck } from "lucide-react";
 
 import { AuthShell } from "@/components/layout/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -40,36 +41,35 @@ export function LoginScreen() {
     <AuthShell
       hero={
         <div className="stack">
-          <span className="pill">MVC rebuild</span>
-          <h1>Adaptive chemistry learning that feels intentional, measurable, and personal.</h1>
+          <span className="pill"><FlaskConical size={15} /> A-Level chemistry</span>
+          <h1>EduFX</h1>
           <p>
-            EduFX guides students from diagnostic assessment to daily study plans, webcam-ready quiz
-            sessions, and progress loops shaped by performance and focus signals.
+            Adaptive study planning, focused quiz sessions, and behaviour-aware feedback for the
+            S-block chemistry unit.
           </p>
           <div className="grid-2">
             <div className="section-card">
-              <h3>Preserved contract</h3>
-              <p className="muted">FastAPI routes and response envelope stay aligned with the brief.</p>
+              <h3>10 subtopics</h3>
+              <p className="muted">Diagnostic levels and daily plans across Group 1 and Group 2.</p>
             </div>
             <div className="section-card">
-              <h3>CV-ready structure</h3>
-              <p className="muted">Repositories, services, controllers, routes, shared contracts, and feature UI.</p>
+              <h3>Focus reports</h3>
+              <p className="muted">Optional webcam summaries support better study routines.</p>
             </div>
           </div>
         </div>
       }
     >
       <div className="stack">
-        <span className="pill">Welcome back</span>
+        <span className="pill"><ShieldCheck size={15} /> Secure access</span>
         <h2>Sign in to EduFX</h2>
         <p className="muted">
-          Use Google auth when Supabase keys are configured, or continue with the seeded demo profile for
-          a full local walkthrough.
+          Continue with your Google account, or use the local student profile for a fast walkthrough.
         </p>
-        <Button onClick={handleGoogle} disabled={busy || loading}>
+        <Button icon={<GraduationCap size={17} />} onClick={handleGoogle} disabled={busy || loading}>
           Continue with Google
         </Button>
-        <Button variant="secondary" onClick={handleDemo} disabled={busy || loading}>
+        <Button variant="secondary" icon={<ArrowRight size={17} />} onClick={handleDemo} disabled={busy || loading}>
           Use demo student
         </Button>
       </div>
