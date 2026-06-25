@@ -27,6 +27,12 @@ type AuthContextValue = {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+const AUTO_BOOTSTRAP_DEMO = process.env.NEXT_PUBLIC_SKIP_LOGIN !== "false";
+const DEFAULT_DEMO_PROFILE = {
+  name: "Ali Hassan",
+  email: "ali.hassan@edufx.demo"
+};
+
 async function getSessionWithTimeout(timeoutMs: number) {
   if (!supabase) {
     return null;
@@ -44,37 +50,49 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function bootstrapDemoStudent(profile?: { name?: string; email?: string }) {
+    const name = profile?.name ?? DEFAULT_DEMO_PROFILE.name;
+    const email = profile?.email ?? DEFAULT_DEMO_PROFILE.email;
+    const demoToken = `demo:${name}:${email}`;
+    const authProfile = await authApi.login(demoToken);
+    setStudent(authProfile);
+    setToken(demoToken);
+    writeStorage(STORAGE_KEYS.student, authProfile);
+    writeStorage(STORAGE_KEYS.token, demoToken);
+  }
+
   useEffect(() => {
     const storedStudent = readStorage<StudentProfile | null>(STORAGE_KEYS.student, null);
     const storedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
-    if (storedStudent) {
+    if (storedStudent && storedToken) {
       setStudent(storedStudent);
-    }
-    if (storedToken) {
       setToken(storedToken);
+      setLoading(false);
+      return;
     }
 
     async function syncSupabase() {
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
       try {
-        const sessionResult = await getSessionWithTimeout(4000);
-        if (!sessionResult) {
-          return;
+        if (supabase) {
+          const sessionResult = await getSessionWithTimeout(4000);
+          if (sessionResult) {
+            const { data } = sessionResult;
+            const accessToken = data.session?.access_token;
+            if (accessToken) {
+              const profile = await authApi.login(accessToken);
+              setStudent(profile);
+              setToken(accessToken);
+              writeStorage(STORAGE_KEYS.student, profile);
+              writeStorage(STORAGE_KEYS.token, accessToken);
+              return;
+            }
+          }
         }
-        const { data } = sessionResult;
-        const accessToken = data.session?.access_token;
-        if (accessToken) {
-          const profile = await authApi.login(accessToken);
-          setStudent(profile);
-          setToken(accessToken);
-          writeStorage(STORAGE_KEYS.student, profile);
-          writeStorage(STORAGE_KEYS.token, accessToken);
+        if (AUTO_BOOTSTRAP_DEMO) {
+          await bootstrapDemoStudent();
         }
       } catch (error) {
-        console.error("Supabase session bootstrap failed", error);
+        console.error("Auth bootstrap failed", error);
       } finally {
         setLoading(false);
       }
@@ -84,14 +102,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   async function signInDemo(profile?: { name?: string; email?: string }) {
-    const name = profile?.name ?? "Ali Hassan";
-    const email = profile?.email ?? "ali.hassan@edufx.demo";
-    const demoToken = `demo:${name}:${email}`;
-    const authProfile = await authApi.login(demoToken);
-    setStudent(authProfile);
-    setToken(demoToken);
-    writeStorage(STORAGE_KEYS.student, authProfile);
-    writeStorage(STORAGE_KEYS.token, demoToken);
+    await bootstrapDemoStudent(profile);
   }
 
   async function signInWithGoogle() {
@@ -123,7 +134,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     removeStorage(STORAGE_KEYS.lastDiagnostic);
     removeStorage(STORAGE_KEYS.lastSession);
     void supabase?.auth.signOut();
-    window.location.href = "/login";
+    window.location.href = "/dashboard";
   }
 
   const value = useMemo(

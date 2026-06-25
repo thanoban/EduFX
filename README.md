@@ -46,6 +46,8 @@ npm install
 npm run dev
 ```
 
+The development frontend bypasses the visible login screen by default and opens the post-login EduFX workspace with the demo student. Set `NEXT_PUBLIC_SKIP_LOGIN=false` when the Google login phase is ready to test again.
+
 ## Verification
 
 ### Backend
@@ -114,4 +116,5 @@ The ingest command chunks the CSV notes, embeds them with Vertex AI `gemini-embe
 ## Notes
 
 - Existing project at `D:\PROJECTS\2ndYearProject\Edu_FX` is intentionally untouched.
+- The login screen and Google auth client remain in the codebase, but `/` and `/login` currently route into `/dashboard` for post-login development.
 - Behaviour tracking is wired as a client-side demo tracker with API persistence hooks so it can be swapped for MediaPipe and YOLO implementations later.

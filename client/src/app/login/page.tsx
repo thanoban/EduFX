@@ -1,5 +1,5 @@
-import { LoginScreen } from "@/features/auth/login-screen";
+import { redirect } from "next/navigation";
 
 export default function LoginPage() {
-  return <LoginScreen />;
+  redirect("/dashboard");
 }
