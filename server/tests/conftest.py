@@ -1,9 +1,18 @@
 from pathlib import Path
+import os
 import sys
 
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Tests must never inherit local live credentials from .env. Keep them fast,
+# repeatable, and isolated from the developer's Supabase/Vertex projects.
+os.environ["DATA_BACKEND"] = "memory"
+os.environ["SUPABASE_URL"] = ""
+os.environ["SUPABASE_KEY"] = ""
+os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
+os.environ["GOOGLE_CLOUD_PROJECT"] = ""
 
 from app.main import app
 

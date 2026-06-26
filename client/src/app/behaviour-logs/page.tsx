@@ -1,25 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { PageState } from "@/components/ui/page-state";
 import { BehaviourLogsScreen } from "@/features/behaviour/behaviour-logs-screen";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import { behaviourApi } from "@/lib/api";
-import type { BehaviourHistoryItem } from "@/types/contracts";
+import { useAsyncResource } from "@/lib/use-async-resource";
 
 export default function BehaviourLogsPage() {
-  const { student } = useAuthGuard();
-  const [sessions, setSessions] = useState<BehaviourHistoryItem[]>([]);
-
-  useEffect(() => {
-    async function load() {
+  const { student, loading: authLoading } = useAuthGuard();
+  const { data: sessions, error, loading } = useAsyncResource(async () => {
       if (!student) {
-        return;
+        return null;
       }
-      setSessions(await behaviourApi.getHistory(student.student_id));
-    }
-    void load();
-  }, [student]);
+      return behaviourApi.getHistory(student.student_id);
+    },
+    [student?.student_id]
+  );
 
-  return <BehaviourLogsScreen sessions={sessions} />;
+  if (authLoading || loading) {
+    return <PageState title="Loading behaviour history" message="EduFX is collecting recent session summaries." />;
+  }
+
+  if (error) {
+    return <PageState tone="error" title="Behaviour logs could not load" message={error} />;
+  }
+
+  return <BehaviourLogsScreen sessions={sessions ?? []} />;
 }

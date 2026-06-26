@@ -818,6 +818,51 @@ h3 {
   font-weight: 800;
 }
 
+.state-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.state-card {
+  width: min(520px, 100%);
+  padding: 28px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+}
+
+.state-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--brand);
+  background: #eaf1fd;
+}
+
+.state-card--loading .state-icon svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.state-card--error .state-icon,
+.state-card--empty .state-icon {
+  color: var(--amber);
+  background: #fff5de;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 1100px) {
   .app-shell,
   .hero-layout,

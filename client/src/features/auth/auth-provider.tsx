@@ -73,6 +73,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     async function syncSupabase() {
       try {
+        if (AUTO_BOOTSTRAP_DEMO) {
+          await bootstrapDemoStudent();
+          return;
+        }
         if (supabase) {
           const sessionResult = await getSessionWithTimeout(4000);
           if (sessionResult) {
@@ -87,9 +91,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
               return;
             }
           }
-        }
-        if (AUTO_BOOTSTRAP_DEMO) {
-          await bootstrapDemoStudent();
         }
       } catch (error) {
         console.error("Auth bootstrap failed", error);

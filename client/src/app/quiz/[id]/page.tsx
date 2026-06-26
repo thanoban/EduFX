@@ -1,29 +1,35 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use } from "react";
 
+import { PageState } from "@/components/ui/page-state";
 import { QuizScreen } from "@/features/quiz/quiz-screen";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import { quizApi } from "@/lib/api";
-import type { QuizPayload } from "@/types/contracts";
+import { useAsyncResource } from "@/lib/use-async-resource";
 
 export default function QuizPage({ params }: { params: Promise<{ id: string }> }) {
   const resolved = use(params);
-  const { student } = useAuthGuard();
-  const [quiz, setQuiz] = useState<QuizPayload | null>(null);
-
-  useEffect(() => {
-    async function load() {
+  const { student, loading: authLoading } = useAuthGuard();
+  const { data: quiz, error, loading } = useAsyncResource(async () => {
       if (!student) {
-        return;
+        return null;
       }
-      setQuiz(await quizApi.getQuiz(Number(resolved.id), student.student_id));
-    }
-    void load();
-  }, [resolved.id, student]);
+      return quizApi.getQuiz(Number(resolved.id), student.student_id);
+    },
+    [resolved.id, student?.student_id]
+  );
+
+  if (authLoading || loading) {
+    return <PageState title="Preparing quiz" message="EduFX is building the next question set." />;
+  }
+
+  if (error) {
+    return <PageState tone="error" title="Quiz could not load" message={error} />;
+  }
 
   if (!quiz) {
-    return null;
+    return <PageState tone="empty" title="No quiz found" message="Return to the dashboard and choose a topic again." />;
   }
 
   return <QuizScreen quiz={quiz} />;
