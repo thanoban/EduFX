@@ -38,10 +38,14 @@ create table if not exists questions (
   difficulty text not null,
   source text not null,
   stage text not null,
+  concept text null,
   student_id bigint null,
   is_diagnostic boolean default false,
   created_at timestamp default now()
 );
+
+-- Migration for existing databases (safe to re-run):
+--   alter table questions add column if not exists concept text;
 
 create table if not exists student_progress (
   id bigint generated always as identity primary key,
@@ -112,9 +116,10 @@ create table if not exists content_chunks (
   embedding   vector(384)
 );
 
-create index if not exists content_chunks_embedding_idx
-  on content_chunks using ivfflat (embedding vector_cosine_ops)
-  with (lists = 50);
+-- Full table scan is faster and more accurate at small row counts (<1000 chunks).
+-- Add an ivfflat/hnsw index here only when content_chunks exceeds ~1000 rows.
+-- create index if not exists content_chunks_embedding_idx
+--   on content_chunks using hnsw (embedding vector_cosine_ops);
 
 create or replace function match_content_chunks(
   query_embedding    vector(384),

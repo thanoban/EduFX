@@ -44,6 +44,9 @@ def _option_set(correct: str) -> tuple[str, str, str, str]:
 
 def _make_question(question_id: int, subtopic_id: int, stage: str, index: int, title: str, correct: str) -> Question:
     answer_letters = _option_set(correct)
+    # Group questions under a few repeating concepts per subtopic so concept-level
+    # mastery (weak vs mastered) is meaningful in demo/test mode.
+    concept = f"{title.lower()} concept {((index - 1) % 3) + 1}"
     return Question(
         id=question_id,
         subtopic_id=subtopic_id,
@@ -58,6 +61,7 @@ def _make_question(question_id: int, subtopic_id: int, stage: str, index: int, t
         stage=stage,
         student_id=None,
         is_diagnostic=stage == "diagnostic",
+        concept=concept,
     )
 
 

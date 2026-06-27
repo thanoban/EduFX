@@ -44,6 +44,7 @@ class Question:
     stage: str
     student_id: int | None
     is_diagnostic: bool
+    concept: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

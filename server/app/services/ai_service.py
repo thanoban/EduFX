@@ -47,22 +47,53 @@ def generate_quiz_questions(
     level: str,
     content_body: str,
     context_chunks: list[str] | None = None,
+    weak_concepts: list[dict[str, Any]] | None = None,
     count: int = 15,
 ) -> list[dict[str, Any]]:
-    """Generate MCQ questions via Vertex AI. Returns [] on any failure."""
+    """Generate MCQ questions via Vertex AI. Returns [] on any failure.
+
+    Difficulty is matched to the student's `level` and, when `weak_concepts` are
+    supplied, the bulk of the quiz reinforces the concepts the student got wrong
+    (reworded — not repeats) so generation is personalized rather than generic.
+    """
+    from app.core.rules import level_difficulty_spread
+
     rag_section = ""
     if context_chunks:
         rag_section = "Additional relevant context:\n" + "\n---\n".join(context_chunks) + "\n\n"
+
+    spread = level_difficulty_spread(level, total=count)
+
+    weak_section = ""
+    if weak_concepts:
+        focus_count = round(count * 0.65)
+        lines = []
+        for item in weak_concepts[:6]:
+            sample = item.get("sample_question")
+            sample_text = f" (e.g. missed: \"{sample}\")" if sample else ""
+            lines.append(f"- {item['concept']}{sample_text}")
+        weak_section = (
+            f"This student previously answered questions on these concepts incorrectly:\n"
+            + "\n".join(lines)
+            + f"\n\nMake about {focus_count} of the {count} questions reinforce these weak concepts "
+            "with NEW wording and different angles (do not copy the missed questions). "
+            "Use the remaining questions for broader topic coverage.\n\n"
+        )
 
     prompt = (
         f"You are an A-Level Chemistry examiner.\n"
         f"Topic: {subtopic_title}. Block: {group_name}. Student level: {level}.\n\n"
         f"Notes:\n{content_body}\n\n"
         f"{rag_section}"
+        f"{weak_section}"
         f"Generate exactly {count} multiple-choice A-Level chemistry questions as a JSON array.\n"
+        f"The {count} questions must include exactly {spread['easy']} easy, {spread['medium']} medium, "
+        f"and {spread['hard']} hard questions, in any order.\n"
         "Each object must have exactly these keys: "
         "question_text, option_a, option_b, option_c, option_d, "
-        "correct_answer (value: A, B, C, or D), difficulty (value: easy, medium, or hard).\n"
+        "correct_answer (value: A, B, C, or D), difficulty (value: easy, medium, or hard), "
+        "concept (a short 2-4 word lowercase tag for the specific idea the question tests, "
+        "e.g. 'ionisation energy trend').\n"
         "Output raw JSON array only. No markdown, no explanation, no extra text."
     )
 

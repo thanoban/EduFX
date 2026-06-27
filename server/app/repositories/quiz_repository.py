@@ -17,6 +17,25 @@ class QuizRepository:
             if question.subtopic_id == subtopic_id and question.stage == "first"
         ]
 
+    def get_weak_attempts(self, student_id: int, subtopic_id: int, recent_limit: int = 60) -> list[dict]:
+        attempts: list[dict] = []
+        for session_attempts in self.store.quiz_attempts.values():
+            for attempt in session_attempts:
+                if attempt.student_id != student_id or attempt.subtopic_id != subtopic_id:
+                    continue
+                question = self.store.questions.get(attempt.question_id)
+                attempts.append(
+                    {
+                        "concept": question.concept if question else None,
+                        "is_correct": attempt.is_correct,
+                        "question_text": question.question_text if question else None,
+                        "correct_answer": attempt.correct_answer,
+                        "created_at": attempt.created_at,
+                    }
+                )
+        attempts.sort(key=lambda item: item["created_at"], reverse=True)
+        return [{k: v for k, v in item.items() if k != "created_at"} for item in attempts[:recent_limit]]
+
     def create_personalized_questions(self, student_id: int, subtopic_id: int, level: str) -> list[Question]:
         manual = self.get_manual_questions(subtopic_id)
         prioritized: list[Question] = []

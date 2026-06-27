@@ -85,6 +85,7 @@ class QuizQuestionDTO(BaseModel):
     source: str
     stage: str
     student_id: int | None
+    concept: str | None = None
 
 
 class QuizPayloadDTO(BaseModel):

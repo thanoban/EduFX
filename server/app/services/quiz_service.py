@@ -50,6 +50,7 @@ class QuizService:
         return self.repository.create_personalized_questions(student_id, subtopic_id, level)
 
     def _generate_ai_questions(self, student_id: int, subtopic_id: int, level: str) -> list[Question]:
+        from app.core.rules import select_weak_concepts
         from app.services.ai_service import generate_quiz_questions
 
         try:
@@ -62,6 +63,8 @@ class QuizService:
         if self.rag_repository:
             chunks = self.rag_repository.retrieve(subtopic.title, subtopic_id, top_k=5)
 
+        weak_concepts = select_weak_concepts(self.repository.get_weak_attempts(student_id, subtopic_id))
+
         raw_questions = generate_quiz_questions(
             vertex_model=self.vertex_model,  # type: ignore[arg-type]
             subtopic_title=subtopic.title,
@@ -69,6 +72,7 @@ class QuizService:
             level=level,
             content_body=content.body,
             context_chunks=chunks if chunks else None,
+            weak_concepts=weak_concepts if weak_concepts else None,
             count=15,
         )
         if not raw_questions:
@@ -76,6 +80,7 @@ class QuizService:
 
         questions: list[Question] = []
         for i, q in enumerate(raw_questions):
+            concept = str(q.get("concept", "")).strip() or None
             questions.append(
                 Question(
                     id=-(i + 1),
@@ -91,6 +96,7 @@ class QuizService:
                     stage="personalized",
                     student_id=student_id,
                     is_diagnostic=False,
+                    concept=concept,
                     created_at=datetime.now(UTC),
                 )
             )
@@ -124,6 +130,7 @@ class QuizService:
                     source=item.source,
                     stage=item.stage,
                     student_id=item.student_id,
+                    concept=item.concept,
                 )
                 for item in questions
             ],

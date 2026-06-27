@@ -122,6 +122,7 @@ class SupabaseMapper:
             difficulty=str(row["difficulty"]),
             source=str(row["source"]),
             stage=str(row["stage"]),
+            concept=str(row["concept"]) if row.get("concept") is not None else None,
             student_id=int(row["student_id"]) if row.get("student_id") is not None else None,
             is_diagnostic=bool(row.get("is_diagnostic", False)),
             created_at=_parse_datetime(row.get("created_at")),

@@ -24,6 +24,36 @@ class SupabaseQuizRepository:
         )
         return self.mapper.progress_from_row(self.mapper.ensure_one(rows, "Progress not found"))
 
+    def get_weak_attempts(self, student_id: int, subtopic_id: int, recent_limit: int = 60) -> list[dict]:
+        """Recent attempts for a student+subtopic, each carrying the question's concept.
+
+        Joins quiz_attempts to questions so concept-level mastery can be derived.
+        Ordered most-recent-first and capped at `recent_limit` so the analysis
+        reflects current performance rather than the entire history.
+        """
+        rows = (
+            self.client.table("quiz_attempts")
+            .select("is_correct, created_at, questions(concept, question_text, correct_answer)")
+            .eq("student_id", student_id)
+            .eq("subtopic_id", subtopic_id)
+            .order("created_at", desc=True)
+            .limit(recent_limit)
+            .execute()
+            .data
+        ) or []
+        attempts: list[dict] = []
+        for row in rows:
+            question = row.get("questions") or {}
+            attempts.append(
+                {
+                    "concept": question.get("concept"),
+                    "is_correct": bool(row.get("is_correct")),
+                    "question_text": question.get("question_text"),
+                    "correct_answer": question.get("correct_answer"),
+                }
+            )
+        return attempts
+
     def get_manual_questions(self, subtopic_id: int) -> list[Question]:
         rows = (
             self.client.table("questions")
@@ -83,6 +113,7 @@ class SupabaseQuizRepository:
                 "difficulty": question.difficulty,
                 "source": "live-gen",
                 "stage": "personalized",
+                "concept": question.concept,
                 "student_id": student_id,
                 "is_diagnostic": False,
             }
@@ -118,6 +149,7 @@ class SupabaseQuizRepository:
                 "difficulty": q.difficulty,
                 "source": "gemini-ai",
                 "stage": "personalized",
+                "concept": q.concept,
                 "student_id": student_id,
                 "is_diagnostic": False,
             }

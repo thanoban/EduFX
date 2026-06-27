@@ -1,11 +1,22 @@
 from collections import Counter
 from datetime import date
+from typing import Any
 
 from app.models.domain import BehaviourLog, StudentProgress
 
 LEVEL_ORDER = ("beginner", "intermediate", "advanced")
 LEVEL_MULTIPLIERS = {"beginner": 3.0, "intermediate": 2.0, "advanced": 0.5}
 LEVEL_DEADLINES = {"beginner": 3, "intermediate": 7, "advanced": 14}
+
+# A concept counts as mastered once the student's most recent MASTERY_STREAK
+# attempts on it are all correct.
+MASTERY_STREAK = 2
+
+LEVEL_DIFFICULTY_SPREAD = {
+    "beginner": {"easy": 8, "medium": 5, "hard": 2},
+    "intermediate": {"easy": 4, "medium": 7, "hard": 4},
+    "advanced": {"easy": 2, "medium": 5, "hard": 8},
+}
 
 
 def score_to_level(score_percent: int) -> str:
@@ -53,6 +64,66 @@ def calculate_focus_score(log: BehaviourLog) -> int:
     score -= 20 if log.multiple_persons else 0
     score -= 10 if log.talking else 0
     return max(score, 0)
+
+
+def level_difficulty_spread(level: str, total: int = 15) -> dict[str, int]:
+    """Easy/medium/hard counts for a level, scaled to `total` questions.
+
+    Replaces the old hardcoded 5/5/5 so a beginner gets mostly easy questions and
+    an advanced student gets mostly hard ones.
+    """
+    base = LEVEL_DIFFICULTY_SPREAD.get(level, {"easy": 5, "medium": 5, "hard": 5})
+    base_total = sum(base.values()) or 1
+    scaled = {key: round(value * total / base_total) for key, value in base.items()}
+    # Fix any rounding drift so the parts always sum to `total`.
+    drift = total - sum(scaled.values())
+    if drift:
+        dominant = max(scaled, key=lambda key: base[key])
+        scaled[dominant] += drift
+    return scaled
+
+
+def select_weak_concepts(attempts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Reduce raw quiz attempts to the concepts a student is still struggling with.
+
+    `attempts` is ordered most-recent-first and each item carries at least
+    ``concept`` and ``is_correct`` (optionally ``question_text`` and
+    ``correct_answer`` for prompt context). A concept is *weak* when it has at
+    least one wrong attempt and is not currently mastered (its most recent
+    MASTERY_STREAK attempts are not all correct). Returned weak concepts are
+    ordered by severity — lowest accuracy first, then most-attempted.
+    """
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for attempt in attempts:
+        concept = attempt.get("concept")
+        if not concept:
+            continue
+        grouped.setdefault(str(concept), []).append(attempt)
+
+    weak: list[dict[str, Any]] = []
+    for concept, items in grouped.items():
+        total = len(items)
+        correct = sum(1 for item in items if item.get("is_correct"))
+        if total - correct == 0:
+            continue  # no wrong answers — not a struggle
+        recent = items[:MASTERY_STREAK]
+        mastered = len(recent) >= MASTERY_STREAK and all(item.get("is_correct") for item in recent)
+        if mastered:
+            continue
+        sample = next((item for item in items if not item.get("is_correct")), items[0])
+        weak.append(
+            {
+                "concept": concept,
+                "attempts": total,
+                "correct": correct,
+                "accuracy": round(correct / total, 3),
+                "sample_question": sample.get("question_text"),
+                "sample_answer": sample.get("correct_answer"),
+            }
+        )
+
+    weak.sort(key=lambda concept: (concept["accuracy"], -concept["attempts"]))
+    return weak
 
 
 def aggregate_behaviour(logs: list[BehaviourLog]) -> dict[str, int]:

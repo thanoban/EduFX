@@ -102,6 +102,7 @@ class ResultsService:
                     source=item.question.source,
                     stage=item.question.stage,
                     student_id=item.question.student_id,
+                    concept=item.question.concept,
                 ),
             )
             for item in answers
