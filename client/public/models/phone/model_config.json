@@ -1,0 +1,43 @@
+{
+  "model_name": "mobile_phone_usage_detector",
+  "version": "1.0.0",
+  "description": "A deep learning model to detect mobile phone usage in images",
+  "task": "binary_classification",
+  "classes": {
+    "negative": 0,
+    "positive": 1
+  },
+  "input_shape": [
+    224,
+    224,
+    3
+  ],
+  "output_shape": [
+    1
+  ],
+  "architecture": "MobileNetV2_with_custom_classifier",
+  "training_parameters": {
+    "batch_size": 32,
+    "image_size": [
+      224,
+      224
+    ],
+    "learning_rate": 0.001,
+    "optimizer": "Adam",
+    "loss_function": "binary_crossentropy"
+  },
+  "performance_metrics": {
+    "final_accuracy": 0.8418079018592834,
+    "final_loss": 0.3918597102165222,
+    "final_precision": 0.8508771657943726,
+    "final_recall": 0.8981481194496155
+  },
+  "dataset_info": {
+    "total_training_samples": 711,
+    "total_validation_samples": 177,
+    "dataset_source": "Kaggle - Mobile Phone Usage Dataset IITR"
+  },
+  "created_date": "2025-10-06T12:31:55.915981",
+  "author": "Your Name",
+  "license": "MIT"
+}

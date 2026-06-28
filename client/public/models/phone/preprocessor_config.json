@@ -1,0 +1,45 @@
+{
+  "do_resize": true,
+  "size": 224,
+  "do_center_crop": true,
+  "crop_size": 224,
+  "do_normalize": true,
+  "image_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "image_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "do_rescale": true,
+  "rescale_factor": 0.00392156862745098,
+  "do_convert_rgb": true,
+  "class_names": [
+    "negative",
+    "positive"
+  ],
+  "num_classes": 2,
+  "model_type": "image_classification",
+  "framework": "tensorflow",
+  "dataset_info": {
+    "dataset_name": "mobilephoneusagedatasetiitr",
+    "training_samples": 711,
+    "validation_samples": 177,
+    "classes": {
+      "negative": 0,
+      "positive": 1
+    }
+  },
+  "data_augmentation": {
+    "rotation_range": 20,
+    "width_shift_range": 0.2,
+    "height_shift_range": 0.2,
+    "horizontal_flip": true,
+    "zoom_range": 0.2,
+    "shear_range": 0.2,
+    "fill_mode": "nearest"
+  }
+}
