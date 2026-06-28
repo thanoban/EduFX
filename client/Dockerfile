@@ -23,7 +23,15 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SKIP_LOGIN=$NEXT_PUBLIC_SKIP_LOGIN
 
-RUN if echo "$NEXT_PUBLIC_SUPABASE_ANON_KEY" | grep -q '^sb_secret_'; then \
+RUN if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then \
+      echo "NEXT_PUBLIC_SUPABASE_URL is required for the frontend build." >&2; \
+      exit 1; \
+    fi \
+    && if [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then \
+      echo "NEXT_PUBLIC_SUPABASE_ANON_KEY is required for the frontend build. Set GitHub secret SUPABASE_ANON_KEY." >&2; \
+      exit 1; \
+    fi \
+    && if echo "$NEXT_PUBLIC_SUPABASE_ANON_KEY" | grep -q '^sb_secret_'; then \
       echo "Refusing to build frontend with a secret Supabase key. Use the anon public key for NEXT_PUBLIC_SUPABASE_ANON_KEY." >&2; \
       exit 1; \
     fi \
