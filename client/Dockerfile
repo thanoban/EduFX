@@ -2,15 +2,21 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY client/package*.json ./client/
+
+WORKDIR /app/client
 RUN npm ci
 
-COPY . .
+WORKDIR /app
+COPY client ./client
+COPY shared ./shared
 
 ARG NEXT_PUBLIC_API_BASE_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SKIP_LOGIN
+
+WORKDIR /app/client
 
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
@@ -24,9 +30,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/client/public ./public
+COPY --from=builder /app/client/.next/standalone ./
+COPY --from=builder /app/client/.next/static ./.next/static
 
 EXPOSE 3000
 
