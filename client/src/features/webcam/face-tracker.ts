@@ -1,7 +1,5 @@
 "use client";
 
-import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
-
 import { FACE_LANDMARKER_MODEL_URL, FACE_LANDMARKER_WASM_URL } from "@/lib/constants";
 
 const LEFT_EYE = { top: 159, bottom: 145, left: 33, right: 133 };
@@ -14,6 +12,12 @@ const FOREHEAD = 10;
 const CHIN = 152;
 
 type Landmark = { x: number; y: number; z: number };
+type FaceLandmarkerLike = {
+  detectForVideo: (video: HTMLVideoElement, startTimeMs: number) => {
+    faceLandmarks?: Landmark[][];
+  };
+  close: () => void;
+};
 
 export type FaceAnalysis = {
   face_detected: boolean;
@@ -43,7 +47,7 @@ function eyeAspectRatio(top: Landmark, bottom: Landmark, left: Landmark, right: 
  * looking away (head yaw/pitch), and multi-person presence from live frames.
  */
 export class FaceTracker {
-  private landmarker: FaceLandmarker | null = null;
+  private landmarker: FaceLandmarkerLike | null = null;
   private initialised = false;
   private lowEarFrames = 0;
   private lastFaceSeenAt = Date.now();
@@ -52,6 +56,7 @@ export class FaceTracker {
     if (this.initialised) {
       return;
     }
+    const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
     const vision = await FilesetResolver.forVisionTasks(FACE_LANDMARKER_WASM_URL);
     this.landmarker = await FaceLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: FACE_LANDMARKER_MODEL_URL, delegate: "GPU" },

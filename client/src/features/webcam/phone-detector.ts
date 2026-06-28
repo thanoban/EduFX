@@ -1,8 +1,5 @@
 "use client";
 
-import * as tf from "@tensorflow/tfjs";
-import * as tflite from "@tensorflow/tfjs-tflite";
-
 import {
   PHONE_MODEL_META_PATH,
   PHONE_MODEL_PATH,
@@ -11,6 +8,10 @@ import {
 } from "@/lib/constants";
 
 type PhoneModelConfig = { input_shape?: number[]; classes?: Record<string, number> };
+type TfJsModule = typeof import("@tensorflow/tfjs");
+type TfliteModule = typeof import("@tensorflow/tfjs-tflite");
+type TFLiteModelLike = Awaited<ReturnType<TfliteModule["loadTFLiteModel"]>>;
+type TensorLike = { data: () => PromiseLike<ArrayLike<number>>; dispose: () => void };
 
 type PhonePreprocessorConfig = {
   size?: number;
@@ -24,9 +25,11 @@ export type PhonePrediction = { detected: boolean; confidence: number; rawScore:
 
 /** Real phone-in-frame detection via the bundled TFLite MobileNetV2 classifier. */
 export class PhoneDetector {
-  private model: tflite.TFLiteModel | null = null;
+  private model: TFLiteModelLike | null = null;
   private config: PhoneModelConfig | null = null;
   private preprocessor: PhonePreprocessorConfig | null = null;
+  private tf: TfJsModule | null = null;
+  private tflite: TfliteModule | null = null;
   private readonly threshold: number;
   private initialised = false;
 
@@ -38,7 +41,10 @@ export class PhoneDetector {
     if (this.initialised) {
       return;
     }
-    const wasmAware = tflite as unknown as { setWasmPath?: (path: string) => void };
+    const [tf, tflite] = await Promise.all([import("@tensorflow/tfjs"), import("@tensorflow/tfjs-tflite")]);
+    this.tf = tf;
+    this.tflite = tflite;
+    const wasmAware = tflite as TfliteModule & { setWasmPath?: (path: string) => void };
     if (typeof wasmAware.setWasmPath === "function") {
       wasmAware.setWasmPath(PHONE_WASM_PATH);
     }
@@ -56,9 +62,10 @@ export class PhoneDetector {
     if (!this.initialised || !this.model || !this.preprocessor) {
       await this.init();
     }
-    if (!this.model || !this.preprocessor) {
+    if (!this.model || !this.preprocessor || !this.tf) {
       return { detected: false, confidence: 0, rawScore: 0 };
     }
+    const tf = this.tf;
 
     const size = this.preprocessor.size ?? this.config?.input_shape?.[0] ?? 224;
 
@@ -72,22 +79,22 @@ export class PhoneDetector {
       return rescaled.sub(mean).div(std).expandDims(0);
     });
 
-    const output = (this.model as unknown as { predict: (input: unknown) => unknown }).predict(inputTensor);
+    const output = this.model.predict(inputTensor as unknown as Parameters<TFLiteModelLike["predict"]>[0]);
     const predictionTensor = Array.isArray(output)
-      ? output[0]
-      : output instanceof tf.Tensor
-        ? output
-        : Object.values(output as Record<string, tf.Tensor>)[0];
+      ? (output[0] as TensorLike)
+      : typeof output === "object" && output !== null && "data" in output
+        ? (output as TensorLike)
+        : (Object.values(output as Record<string, TensorLike>)[0] as TensorLike);
     const values = await predictionTensor.data();
     const rawScore = Number(values[0] ?? 0);
 
     inputTensor.dispose();
     if (Array.isArray(output)) {
-      output.forEach((tensor) => tensor.dispose());
-    } else if (output instanceof tf.Tensor) {
-      output.dispose();
+      output.forEach((tensor) => (tensor as TensorLike).dispose());
+    } else if (typeof output === "object" && output !== null && "dispose" in output) {
+      (output as TensorLike).dispose();
     } else {
-      Object.values(output as Record<string, tf.Tensor>).forEach((tensor) => tensor.dispose());
+      Object.values(output as Record<string, TensorLike>).forEach((tensor) => tensor.dispose());
     }
 
     const detected = rawScore >= this.threshold;
