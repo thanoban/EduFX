@@ -63,7 +63,11 @@ class QuizService:
         if self.rag_repository:
             chunks = self.rag_repository.retrieve(subtopic.title, subtopic_id, top_k=5)
 
-        weak_concepts = select_weak_concepts(self.repository.get_weak_attempts(student_id, subtopic_id))
+        try:
+            weak_attempts = self.repository.get_weak_attempts(student_id, subtopic_id)
+            weak_concepts = select_weak_concepts(weak_attempts)
+        except Exception:
+            weak_concepts = []
 
         raw_questions = generate_quiz_questions(
             vertex_model=self.vertex_model,  # type: ignore[arg-type]
@@ -100,8 +104,11 @@ class QuizService:
                     created_at=datetime.now(UTC),
                 )
             )
-        stored = self.repository.store_ai_questions(student_id, subtopic_id, questions)
-        return stored if stored else questions
+        try:
+            stored = self.repository.store_ai_questions(student_id, subtopic_id, questions)
+            return stored if stored else questions
+        except Exception:
+            return questions
 
     def _to_payload(
         self,

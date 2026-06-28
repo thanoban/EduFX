@@ -154,7 +154,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     removeStorage(STORAGE_KEYS.lastDiagnostic);
     removeStorage(STORAGE_KEYS.lastSession);
     void supabase?.auth.signOut();
-    window.location.href = "/dashboard";
+    window.location.href = "/login";
   }
 
   const value = useMemo(

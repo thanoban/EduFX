@@ -1,7 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 import { useAuth } from "@/features/auth/use-auth";
 
 export function useAuthGuard() {
-  return useAuth();
+  const auth = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!auth.loading && !auth.student) {
+      router.replace("/login");
+    }
+  }, [auth.loading, auth.student, router]);
+
+  return auth;
 }

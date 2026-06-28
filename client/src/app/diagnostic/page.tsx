@@ -2,21 +2,27 @@
 
 import { PageState } from "@/components/ui/page-state";
 import { DiagnosticScreen } from "@/features/diagnostic/diagnostic-screen";
+import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import { diagnosticApi } from "@/lib/api";
 import { useAsyncResource } from "@/lib/use-async-resource";
 
 export default function DiagnosticPage() {
+  const { student, loading: authLoading } = useAuthGuard();
   const { data: questions, error, loading } = useAsyncResource(
     () => diagnosticApi.getQuestions(),
     []
   );
 
-  if (loading) {
+  if (authLoading || loading) {
     return <PageState title="Building diagnostic" message="EduFX is preparing the 40-question placement check." />;
   }
 
   if (error) {
     return <PageState tone="error" title="Diagnostic could not load" message={error} />;
+  }
+
+  if (!student) {
+    return null;
   }
 
   if (!questions?.length) {
