@@ -80,7 +80,7 @@ def main() -> None:
         print("Run: gcloud auth application-default login")
         sys.exit(1)
 
-    notes_dir = Path(__file__).resolve().parents[4] / "data" / "notes"
+    notes_dir = Path(__file__).resolve().parents[3] / "data" / "notes"
     csv_files = sorted(notes_dir.glob("*.csv"))
     if not csv_files:
         print(f"No CSV files found in {notes_dir}")

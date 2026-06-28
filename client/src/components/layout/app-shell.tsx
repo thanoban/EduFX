@@ -46,14 +46,15 @@ export function AppShell({
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`nav-link ${pathname === item.href ? "active" : ""}`.trim()}
-            >
-              <Icon size={18} strokeWidth={2.2} />
-              {item.label}
-            </Link>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-link ${pathname === item.href ? "active" : ""}`.trim()}
+                aria-current={pathname === item.href ? "page" : undefined}
+              >
+                <Icon size={18} strokeWidth={2.2} />
+                {item.label}
+              </Link>
             );
           })}
         </nav>

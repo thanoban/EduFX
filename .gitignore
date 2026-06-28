@@ -11,8 +11,12 @@ client/.next/
 # Local env
 .env
 *.local
+.codex/
+.mcp.json
 
 # Local runtime logs
+*.log
+*.err.log
 client/*.log
 client/*.err.log
 server/*.log

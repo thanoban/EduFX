@@ -71,6 +71,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body {
+  overflow-x: hidden;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -88,6 +92,7 @@ h2,
 h3,
 p {
   margin-top: 0;
+  overflow-wrap: anywhere;
 }
 
 h1 {
@@ -243,6 +248,7 @@ p {
   font-size: 0.92rem;
   border: 1px solid transparent;
   transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  overflow-wrap: anywhere;
 }
 
 .nav-link:hover {
@@ -343,6 +349,7 @@ p {
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .page-header {
@@ -420,6 +427,7 @@ p {
   justify-content: center;
   gap: 8px;
   transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
+  overflow-wrap: anywhere;
 }
 
 .button:active {
@@ -640,10 +648,14 @@ p {
   display: grid;
   align-content: end;
   background:
-    linear-gradient(160deg, rgba(67, 56, 202, 0.92), rgba(12, 19, 34, 0.92)),
-    url("https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=1600&q=80");
-  background-size: cover;
+    linear-gradient(160deg, rgba(15, 23, 42, 0.94), rgba(76, 29, 149, 0.86)),
+    radial-gradient(900px 480px at 85% 18%, rgba(99, 102, 241, 0.45), transparent 62%),
+    radial-gradient(700px 420px at 12% 82%, rgba(16, 185, 129, 0.18), transparent 52%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, auto, 18px 18px, 18px 18px;
   background-position: center;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, repeat;
   overflow: hidden;
   box-shadow: var(--shadow-lg);
 }
@@ -652,7 +664,9 @@ p {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(800px 360px at 90% 10%, rgba(124, 58, 237, 0.34), transparent 60%);
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(12, 19, 34, 0.22) 100%),
+    radial-gradient(800px 360px at 90% 10%, rgba(124, 58, 237, 0.28), transparent 60%);
   pointer-events: none;
 }
 
@@ -665,6 +679,7 @@ p {
   max-width: 720px;
   color: rgba(255, 255, 255, 0.8);
   font-size: 1.05rem;
+  text-wrap: pretty;
 }
 
 .hero-panel .pill {
@@ -767,6 +782,7 @@ p {
   font-weight: 770;
   letter-spacing: -0.025em;
   line-height: 1.08;
+  text-wrap: balance;
 }
 
 .hero-strip__metrics {

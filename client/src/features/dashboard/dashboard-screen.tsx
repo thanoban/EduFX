@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, BarChart3, BookOpenCheck, CalendarCheck, Gauge, Target } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -18,6 +18,7 @@ export function DashboardScreen({
   plan: StudyPlanItem[];
   progress: ProgressRecord[];
 }) {
+  const router = useRouter();
   const { student } = useAuthGuard();
   const weakCount = progress.filter((item) => item.current_level !== "advanced").length;
   const masteryCount = progress.filter((item) => item.current_level === "advanced").length;
@@ -36,7 +37,7 @@ export function DashboardScreen({
       action={
         <Button
           icon={<ArrowRight size={17} />}
-          onClick={() => (window.location.href = nextTopic ? `/study/${nextTopic.subtopic_id}` : "/diagnostic")}
+          onClick={() => router.push(nextTopic ? `/study/${nextTopic.subtopic_id}` : "/diagnostic")}
         >
           {nextTopic ? "Start first topic" : "Open diagnostic"}
         </Button>
@@ -84,9 +85,9 @@ export function DashboardScreen({
                 <div className="muted">
                   EduFX needs diagnostic levels before it can schedule weak and strong subtopics.
                 </div>
-                <Link href="/diagnostic">
-                  <Button icon={<ArrowRight size={16} />}>Start diagnostic</Button>
-                </Link>
+                <Button href="/diagnostic" icon={<ArrowRight size={16} />}>
+                  Start diagnostic
+                </Button>
               </div>
             ) : null}
             {plan.map((item) => (
@@ -104,9 +105,9 @@ export function DashboardScreen({
                   <div className="cluster">
                     <StatusPill label={item.current_level} />
                     {item.is_overdue ? <StatusPill label="Deadline override" tone="danger" /> : null}
-                    <Link href={`/study/${item.subtopic_id}`}>
-                      <Button icon={<ArrowRight size={16} />}>Study</Button>
-                    </Link>
+                    <Button href={`/study/${item.subtopic_id}`} icon={<ArrowRight size={16} />}>
+                      Study
+                    </Button>
                   </div>
                 </div>
               </div>

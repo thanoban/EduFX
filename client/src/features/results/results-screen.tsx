@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowLeft, Award, Gauge, Smartphone, Target } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -31,9 +30,9 @@ export function ResultsScreen({
       title="Session complete"
       subtitle="Review score, focus outcome, and AI explanations for any mistakes."
       action={
-        <Link href="/dashboard">
-          <Button icon={<ArrowLeft size={17} />}>Back to dashboard</Button>
-        </Link>
+        <Button href="/dashboard" icon={<ArrowLeft size={17} />}>
+          Back to dashboard
+        </Button>
       }
     >
       <section className="hero-strip hero-strip--success">

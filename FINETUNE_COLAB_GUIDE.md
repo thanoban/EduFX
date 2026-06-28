@@ -1,151 +1,410 @@
-# Fine-Tuning Guide — Google Colab + Vertex AI
+# EduFX Fine-Tune Guide - Colab Enterprise L4 (Viva Ready)
 
-This guide explains **how to fine-tune an open model in Google Colab** (for the learning
-experience) while **using Vertex AI for the production API**. No code — just the decisions,
-steps, and reasoning.
+This is the EduFX fine-tuning path that actually worked end to end.
 
----
+Final working setup:
 
-## 1. The key decision you must understand first
+- Platform: Google Cloud Colab Enterprise
+- Runtime template: `g2-standard-4` with `NVIDIA L4 x1`
+- Region used: `us-central1`
+- Base model: `Qwen/Qwen2.5-7B-Instruct`
+- Method: self-run QLoRA
+- Training stack: `transformers + peft + trl + bitsandbytes + accelerate + datasets`
+- Dataset used for the successful run:
+  - `data/finetune/train.jsonl` = 5 records
+  - `data/finetune/val.jsonl` = 1 record
 
-There are **two separate things** you might mean by "fine-tuning," and they do **not** mix:
-
-| Path | What it is | Where it runs | Do you see the learning? |
-|---|---|---|---|
-| **A — Vertex AI managed tuning** | Upload JSONL → Google tunes Gemini for you | Google Cloud (black box) | ❌ No. You don't see the training loop, loss, or epochs. |
-| **B — Colab self fine-tuning** | You train an *open* model (Gemma/Llama) yourself with QLoRA | Free Colab GPU | ✅ Yes. You see loss curves, epochs, everything. |
-
-**The trap:** A model you fine-tune in **Path B (Colab)** is an *open-weight* model
-(Gemma, Llama…). It is **NOT a Gemini model**, so it **cannot be served through the
-Vertex AI Gemini API**. The Gemini API only serves Google's own Gemini models.
-
-### So what should you actually do?
-
-Recommended hybrid for this project:
-
-- **Production API → keep Vertex AI Gemini 2.5 Flash** (already built into the app, no
-  fine-tuning needed — prompt + RAG handles quiz + explanations well).
-- **Learning exercise → fine-tune Gemma 2 in Colab** on your chemistry data. This is
-  where you actually *learn* fine-tuning.
-- **Optional later:** if you want your fine-tuned Gemma in production, you deploy it to a
-  **Vertex AI custom endpoint** (Model Garden) — a separate serving path from the Gemini
-  API, and it **costs money to keep running** (not free).
-
-> **Bottom line:** Use Colab fine-tuning to learn. Keep Gemini-via-Vertex-AI for the live
-> app. Don't expect the Colab-trained model to appear in the Gemini API — it won't.
+This guide is the one to use for your viva because it reflects the final stable path, not the earlier failed experiments.
 
 ---
 
-## 2. Which free models can you train?
+## 0. Result reference
 
-All of these are **open weights and free to fine-tune**. Free Colab gives you a **T4 GPU
-(16 GB)**, which is enough for small models using **QLoRA (4-bit quantization)**.
+The measured results of the successful run are now kept separately in:
 
-| Model | Size | Fits free Colab (QLoRA)? | Notes |
-|---|---|---|---|
-| **Gemma 2 2B** | 2B | ✅ Easily | **Best pick** — Google ecosystem, small, fast |
-| Gemma 2 9B | 9B | ⚠️ Tight but possible | Better quality, slower, may need Colab Pro |
-| Llama 3.2 1B / 3B | 1–3B | ✅ Easily | Great small alternative |
-| Phi-3 mini | 3.8B | ✅ Yes | Strong reasoning for its size |
-| Mistral 7B | 7B | ⚠️ Tight | Needs careful QLoRA settings |
+- [RESULT_FINETUNE.md](D:/PROJECTS/2ndYearProject/EduFX_MVC/RESULT_FINETUNE.md)
 
-**Recommendation: Gemma 2 2B.** It's small enough to train comfortably on free Colab,
-it's from Google (consistent with your stack), and 2B is plenty for a narrow task like
-"explain why this chemistry answer is wrong."
-
-### Access requirement
-- **Gemma / Llama** require accepting a license on **Hugging Face** before download. You
-  create a free HF account, accept the model terms, and generate an access token.
+Use this guide for the process and setup. Use the results file for the final numbers and viva evidence.
 
 ---
 
-## 3. How much data do you need (recap)
+## 1. What happened technically
 
-- **Task A (quiz generation):** 100–200 examples is enough. Optional to fine-tune at all.
-- **Task B (explanations):** 50–300 examples. **Recommended to skip fine-tuning** — prompt
-  + RAG handles per-answer explanations better (see `DATA_FORMAT_GUIDE.md`).
-- **No need** to split data by subtopic or by beginner/intermediate/advanced. One flat
-  JSONL file; put the level as a label *inside* the prompt text.
-- **Quality > quantity.** 80 clean examples beat 500 messy ones.
+We tried the free Colab / Unsloth route first. That path kept running into runtime-level issues:
 
-If you only fine-tune **one** task as a learning exercise, do **Task A (quiz generation)** —
-its value is consistent structure (15 questions, valid JSON, exam style), which is exactly
-what fine-tuning is good at.
+- bf16 / fp16 grad scaler crashes
+- dtype mismatch errors inside LoRA kernels
+- fragile package-version interactions
+- extra confusion from rerunning cells in mixed notebook state
 
----
+So the final engineering decision was:
 
-## 4. Step-by-step — fine-tuning in Google Colab (no code)
+1. move from free Colab to Colab Enterprise using GCP credits
+2. use an L4 GPU instead of a free T4
+3. keep the training self-run so the learning value stays high
+4. switch from the fragile Unsloth path to the standard Hugging Face QLoRA stack
 
-### Phase 1 — Prepare the data
-1. Collect your training examples into a single **JSONL** file (one example per line).
-2. Each line = an instruction/response pair (the prompt + the ideal answer).
-3. Use the export script already in the repo (`server/notebooks/export_training_data.py`)
-   to pull Task B examples from Supabase, or hand-write Task A examples.
-4. Split into **train (~90%)** and **validation (~10%)** so you can watch for overfitting.
-5. Upload the JSONL to Colab (drag into the file panel, or mount Google Drive).
-
-### Phase 2 — Set up the Colab environment
-6. Open a new Colab notebook. Set **Runtime → Change runtime type → T4 GPU**.
-7. Install the training libraries (Unsloth or Hugging Face `transformers` + `peft` + `trl`
-   + `bitsandbytes`). **Unsloth is recommended** — it's free, ~2× faster, and fits bigger
-   models on the free T4.
-8. Add your **Hugging Face token** as a Colab secret (to download Gemma/Llama).
-
-### Phase 3 — Load the base model
-9. Download the base model in **4-bit (QLoRA)** form — this is what makes it fit in 16 GB.
-10. Attach **LoRA adapters** (you train these small adapter layers, not the whole model —
-    that's why it fits on free hardware).
-
-### Phase 4 — Train
-11. Point the trainer at your JSONL, set the chat/prompt format to match how you'll call
-    the model later.
-12. Set key hyperparameters: **epochs (2–3 is plenty)**, learning rate, batch size,
-    max sequence length.
-13. Start training. **Watch the loss curve** — this is the "learning" you wanted to see.
-    Training loss should drop; if validation loss starts rising, you're overfitting → stop.
-14. A small dataset on Gemma 2 2B typically trains in **minutes to ~1 hour** on free Colab.
-
-### Phase 5 — Test
-15. Run a few sample prompts through the freshly tuned model **inside the notebook**.
-16. Compare against the base model on the same prompts — confirm the tuned one follows your
-    format/style better.
-
-### Phase 6 — Save the result
-17. **Merge** the LoRA adapters into the base model (gives you a standalone model), OR keep
-    the adapters separate (smaller, reusable).
-18. **Push to Hugging Face Hub** (free) so the model is stored and shareable, OR download the
-    files to Google Drive.
-19. Optionally export to **GGUF** format if you want to run it locally with Ollama / llama.cpp.
+That is a strong viva answer because it shows debugging, comparison, and a justified architecture choice.
 
 ---
 
-## 5. How to actually USE the fine-tuned model
+## 2. What this fine-tune is for
 
-Pick based on budget and goal:
+Only Task A is fine-tuned:
 
-| Goal | How to serve | Cost |
-|---|---|---|
-| **Just learning / demo in notebook** | Run it in Colab directly | Free |
-| **Run on your own machine** | Export to GGUF → **Ollama** or llama.cpp | Free |
-| **Free hosted API** | Push to **Hugging Face Hub** → HF Inference | Free tier (rate-limited) |
-| **Production endpoint** | Deploy to **Vertex AI Model Garden** custom endpoint | 💰 Paid (always-on GPU) |
+- Task A: quiz generation -> fine-tuned
+- Task B: explanations -> still live Gemini + RAG
 
-> Your live EduFX app keeps calling **Vertex AI Gemini 2.5 Flash** as it does now. The
-> Colab-trained Gemma is a separate artifact — swap it in only if/when you deploy it to one
-> of the serving paths above.
+Reason:
+
+- quiz generation needs strict JSON structure and consistent MCQ style
+- explanations depend on the student's exact wrong answer and current retrieved notes, so live generation is better
 
 ---
 
-## 6. Summary cheat-sheet
+## 3. Dataset snapshot
 
-- ✅ Fine-tune **Gemma 2 2B** in **Colab (free T4)** using **QLoRA + Unsloth** → this is your
-  learning path.
-- ✅ Keep **Vertex AI Gemini 2.5 Flash** for the live API.
-- ❌ A Colab-tuned Gemma **cannot** be served via the Vertex AI *Gemini* API — different
-  model family.
-- ✅ Data: one flat JSONL, **no subtopic split, no difficulty split**, level goes in the
-  prompt text. 100–200 examples is enough.
-- ✅ If tuning only one task, do **Task A (quiz generation)**; let **Task B (explanations)**
-  stay on prompt + RAG.
-- 💰 Serving the tuned model in production (Vertex endpoint) is the only paid step — Colab
-  training, HF hosting, and local Ollama are free.
+Current local dataset:
+
+- [train.jsonl](D:/PROJECTS/2ndYearProject/EduFX_MVC/data/finetune/train.jsonl)
+- [val.jsonl](D:/PROJECTS/2ndYearProject/EduFX_MVC/data/finetune/val.jsonl)
+
+Verified facts:
+
+- `train.jsonl` has 5 records
+- `val.jsonl` has 1 record
+- each record asks for exactly 15 questions
+- each output contains exactly:
+  - 5 easy
+  - 5 medium
+  - 5 hard
+- topic scope in the current dataset is `mixed_inorganic`, not only s-block
+
+Important viva point:
+
+This dataset is enough to prove the pipeline works, but it is too small to claim production-quality generalization.
+
+---
+
+## 4. Notebook title and runtime
+
+Recommended notebook title:
+
+`EduFX_Finetune_Guide_Qwen25_7B_L4`
+
+Runtime template used:
+
+- Machine type: `g2-standard-4`
+- GPU: `NVIDIA L4 x1`
+- Python: `3.12`
+- Region: `us-central1`
+
+From the notebook screen:
+
+1. open the notebook in Colab Enterprise
+2. connect it to the L4 runtime
+3. verify CUDA before installing anything
+
+---
+
+## 5. Cell 1 - Verify GPU
+
+```python
+import torch
+
+print("cuda available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("GPU:", torch.cuda.get_device_name(0))
+    print("bf16 supported:", torch.cuda.is_bf16_supported())
+```
+
+Expected result on the successful path:
+
+- `cuda available: True`
+- `GPU: NVIDIA L4`
+
+If CUDA is false, reconnect the runtime before doing anything else.
+
+---
+
+## 6. Cell 2 - Install the stable training stack
+
+Use the standard Hugging Face stack, not Unsloth, for the final working path.
+
+```python
+%%capture
+!pip install -U transformers peft trl accelerate bitsandbytes datasets sentencepiece
+```
+
+If the notebook already contains packages from older experiments, restart the runtime after this install.
+
+Why this stack was chosen:
+
+- it is the standard open fine-tuning workflow
+- it exposes the real training loop
+- it avoids the Unsloth-specific dtype failures we hit earlier
+- it is easier to explain in a viva
+
+---
+
+## 7. Cell 3 - Upload dataset files
+
+Upload these two files into `/content/` using the file sidebar:
+
+- `train.jsonl`
+- `val.jsonl`
+
+They should appear as:
+
+- `/content/train.jsonl`
+- `/content/val.jsonl`
+
+---
+
+## 8. Cell 4 - Load tokenizer and 4-bit base model
+
+```python
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
+MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.float32,
+)
+
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=True)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_ID,
+    quantization_config=bnb_config,
+    device_map="auto",
+    torch_dtype=torch.float32,
+)
+
+model.config.use_cache = False
+
+print("Model loaded.")
+print(type(model).__name__)
+```
+
+Why this mattered:
+
+- the base model is loaded in 4-bit to reduce memory
+- compute is kept in float32 for stability
+- this is still QLoRA because the frozen base is quantized and only LoRA adapters are trained
+
+---
+
+## 9. Cell 5 - Attach LoRA adapters
+
+```python
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+model = prepare_model_for_kbit_training(model)
+
+lora_config = LoraConfig(
+    r=8,
+    lora_alpha=16,
+    lora_dropout=0.0,
+    bias="none",
+    task_type="CAUSAL_LM",
+    target_modules="all-linear",
+)
+
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()
+
+for name, param in model.named_parameters():
+    if param.requires_grad:
+        print("Trainable dtype:", param.dtype)
+        break
+```
+
+Why `r=8`:
+
+- enough capacity for a narrow formatting task
+- safer for a tiny dataset
+- lighter than a larger adapter setup
+
+---
+
+## 10. Cell 6 - Format the dataset
+
+```python
+from datasets import load_dataset
+
+def format_record(row):
+    messages = [
+        {"role": "user", "content": row["instruction"]},
+        {"role": "assistant", "content": row["output"]},
+    ]
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=False,
+    )
+    return {"text": text}
+
+train_ds = load_dataset("json", data_files="/content/train.jsonl", split="train")
+val_ds = load_dataset("json", data_files="/content/val.jsonl", split="train")
+
+train_ds = train_ds.map(format_record)
+val_ds = val_ds.map(format_record)
+
+print("Train records:", len(train_ds))
+print("Val records:", len(val_ds))
+print(train_ds[0]["text"][:500])
+```
+
+Important detail:
+
+- older tutorials often show raw string concatenation
+- here we use the tokenizer chat template so the input matches the model family correctly
+
+---
+
+## 11. Cell 7 - Train
+
+This is the exact stable training style that produced the successful run.
+
+```python
+from trl import SFTTrainer, SFTConfig
+
+trainer = SFTTrainer(
+    model=model,
+    processing_class=tokenizer,
+    train_dataset=train_ds,
+    eval_dataset=val_ds,
+    args=SFTConfig(
+        output_dir="/content/edufx-checkpoints",
+        dataset_text_field="text",
+        max_length=3072,
+        packing=False,
+        num_train_epochs=3,
+        per_device_train_batch_size=1,
+        per_device_eval_batch_size=1,
+        gradient_accumulation_steps=4,
+        learning_rate=2e-4,
+        warmup_steps=5,
+        logging_steps=1,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        fp16=False,
+        bf16=False,
+        gradient_checkpointing=True,
+        optim="paged_adamw_8bit",
+        report_to="none",
+        seed=42,
+    ),
+)
+
+trainer_stats = trainer.train()
+
+print(f"\nTraining complete.")
+print(f"Time taken: {trainer_stats.metrics['train_runtime']:.0f} seconds")
+print(f"Final loss: {trainer_stats.metrics['train_loss']:.4f}")
+```
+
+Two key notes:
+
+1. In the TRL version used here, `SFTConfig` expects `max_length`, not `max_seq_length`.
+2. We kept `fp16=False` and `bf16=False` in the final stable run to avoid the dtype instability that caused earlier failures.
+
+---
+
+## 12. Successful training result
+
+The actual measured values are documented in:
+
+- [RESULT_FINETUNE.md](D:/PROJECTS/2ndYearProject/EduFX_MVC/RESULT_FINETUNE.md)
+
+Interpretation:
+
+- validation loss decreased each epoch
+- the model learned the task format
+- the run was stable and completed successfully
+- because validation has only 1 record, these numbers are encouraging but not enough for a strong quality claim
+
+---
+
+## 13. Cell 8 - Save the adapter
+
+```python
+SAVE_PATH = "/content/edufx-qwen25-7b-lora"
+
+model.save_pretrained(SAVE_PATH)
+tokenizer.save_pretrained(SAVE_PATH)
+
+print("Saved to:", SAVE_PATH)
+```
+
+Optional zip and download:
+
+```python
+import shutil
+from google.colab import files
+
+shutil.make_archive("/content/edufx-qwen25-7b-lora", "zip", SAVE_PATH)
+files.download("/content/edufx-qwen25-7b-lora.zip")
+```
+
+---
+
+## 14. What to say in the viva
+
+You can explain the work like this:
+
+1. "We used self-run QLoRA rather than managed tuning because I wanted to learn and control the actual training loop."
+2. "The first path used free Colab and Unsloth, but repeated bf16/fp16 and package-compatibility issues made that route unstable."
+3. "We moved to Colab Enterprise on GCP credits with an NVIDIA L4, which gave a more reliable environment."
+4. "We fine-tuned Qwen2.5-7B-Instruct in 4-bit using LoRA adapters, so memory stayed low while only a small percentage of parameters were trained."
+5. "The dataset was intentionally treated as a pipeline proof: 5 training records and 1 validation record."
+6. "The training completed successfully, validation loss decreased, and the result shows the pipeline works. The next step is scaling the dataset before claiming production readiness."
+
+---
+
+## 15. Limitations and next step
+
+Current limitation:
+
+- only 6 total examples were used
+
+So this run proves:
+
+- environment setup works
+- data format works
+- QLoRA training works
+- adapter saving works
+
+It does not yet prove:
+
+- broad generalization
+- robust chemistry coverage
+- production-quality evaluation
+
+The next serious step is to expand to at least 50 to 100 reviewed examples.
+
+---
+
+## 16. Why we did not use Vertex managed tuning for learning
+
+Vertex tuning is still a valid production path, but it hides much of the training mechanics.
+
+For this learning phase we intentionally wanted to understand:
+
+- quantization
+- LoRA
+- chat templating
+- optimizer and scheduler behavior
+- train / validation loss
+- adapter saving
+
+That is why the Colab Enterprise path is the better viva story.

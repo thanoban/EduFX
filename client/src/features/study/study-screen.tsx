@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { ArrowRight, BookOpen, CheckCircle2 } from "lucide-react";
 
@@ -19,9 +18,9 @@ export function StudyScreen({ content }: { content: ContentRecord }) {
       title={content.subtopic_title}
       subtitle={`Content tuned for ${content.level} level in ${content.group_name}.`}
       action={
-        <Link href={`/webcam-check?subtopic=${content.subtopic_id}`}>
-          <Button icon={<ArrowRight size={17} />}>Finish reading</Button>
-        </Link>
+        <Button href={`/webcam-check?subtopic=${content.subtopic_id}`} icon={<ArrowRight size={17} />}>
+          Finish reading
+        </Button>
       }
     >
       <div className="grid-2">
