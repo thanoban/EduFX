@@ -19,7 +19,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
   const router = useRouter();
   const params = useSearchParams();
   const { student } = useAuthGuard();
-  const tracker = useWebcamTracker();
+  const { start, stop, cancel, state } = useWebcamTracker();
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -30,11 +30,11 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
     if (!student) {
       return;
     }
-    tracker.start(student.student_id, quiz.session_id, webcamEnabled);
+    void start(student.student_id, quiz.session_id, webcamEnabled);
     return () => {
-      tracker.cancel();
+      cancel();
     };
-  }, [student, quiz.session_id, quiz.subtopic_id, tracker, webcamEnabled]);
+  }, [student, quiz.session_id, webcamEnabled, start, cancel]);
 
   const answered = useMemo(
     () => quiz.questions.filter((question) => answers[question.id]).length,
@@ -48,7 +48,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
     }
     setBusy(true);
     try {
-      await tracker.stop(student.student_id, quiz.session_id, quiz.subtopic_id, webcamEnabled);
+      await stop(student.student_id, quiz.session_id, quiz.subtopic_id, webcamEnabled);
       const result: QuizResultPayload = await resultsApi.submit(
         student.student_id,
         quiz.session_id,
@@ -116,7 +116,33 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
               <span>Difficulty lane</span>
               <strong>{activeQuestion?.difficulty ?? "mixed"}</strong>
             </div>
+            {webcamEnabled ? (
+              <div className="metric-inline">
+                <span>Live focus</span>
+                <strong>
+                  {state?.ready ? `${state.focusScore}%` : state?.warning ? "Unavailable" : "Starting…"}
+                </strong>
+              </div>
+            ) : null}
           </div>
+          {webcamEnabled && state?.ready ? (
+            <div className="cluster" style={{ gap: 8, flexWrap: "wrap" }}>
+              {state.absent ? <StatusPill label="Away" tone="danger" /> : null}
+              {state.phoneDetected ? <StatusPill label="Phone" tone="danger" /> : null}
+              {state.drowsy ? <StatusPill label="Drowsy" tone="warning" /> : null}
+              {state.lookingAway ? <StatusPill label="Looking away" tone="warning" /> : null}
+              {state.multiplePersons ? <StatusPill label="Multiple people" tone="warning" /> : null}
+              {state.talking ? <StatusPill label="Talking" tone="warning" /> : null}
+              {!state.absent &&
+              !state.phoneDetected &&
+              !state.drowsy &&
+              !state.lookingAway &&
+              !state.multiplePersons &&
+              !state.talking ? (
+                <StatusPill label="Focused" tone="success" />
+              ) : null}
+            </div>
+          ) : null}
         </aside>
 
         {activeQuestion ? (

@@ -120,12 +120,14 @@ class BehaviourSummaryRequest(BaseModel):
     session_id: int
     subtopic_id: int
     webcam_enabled: bool
-    phone_percent: int
-    drowsy_percent: int
-    away_percent: int
-    talking_percent: int
-    absent_percent: int
-    focus_score: int
+    # Percentages and focus are advisory only — the server recomputes them from
+    # the stored snapshots so it stays the source of truth.
+    phone_percent: int = 0
+    drowsy_percent: int = 0
+    away_percent: int = 0
+    talking_percent: int = 0
+    absent_percent: int = 0
+    focus_score: int | None = None
 
 
 class QuizAnswerDTO(BaseModel):

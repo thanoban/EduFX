@@ -50,23 +50,68 @@ def test_save_snapshot_deducts_for_phone_and_drowsy():
     assert result["focus_score"] == 30
 
 
-def test_save_summary_stores_percentages():
+def _snapshot(session_id: int, **flags) -> dict:
+    base = {
+        "student_id": 1,
+        "session_id": session_id,
+        "face_detected": True,
+        "looking_away": False,
+        "phone_detected": False,
+        "drowsy": False,
+        "multiple_persons": False,
+        "talking": False,
+        "absent": False,
+        "focus_score": 0,
+    }
+    base.update(flags)
+    return base
+
+
+def test_save_summary_aggregates_from_stored_snapshots():
+    # Server is the source of truth: it ignores client-sent percentages and
+    # recomputes everything from the snapshots saved during the session.
+    service, store, session = _make_service()
+    service.save_snapshot(_snapshot(session.id))  # clean frame, focus 100
+    service.save_snapshot(_snapshot(session.id, phone_detected=True))  # focus 60
+
+    result = service.save_summary(
+        {
+            "student_id": 1,
+            "session_id": session.id,
+            "webcam_enabled": True,
+            "phone_percent": 99,  # client value must be ignored
+            "focus_score": 99,
+        }
+    )
+    assert result["session_id"] == session.id
+    # One of two frames had a phone → 50%; one of two frames was focused (>=80) → 50%.
+    assert store.session_summaries[session.id].phone_percent == 50
+    assert result["focus_score"] == 50
+
+
+def test_save_summary_untracked_when_webcam_off():
+    service, store, session = _make_service()
+    result = service.save_summary(
+        {
+            "student_id": 1,
+            "session_id": session.id,
+            "webcam_enabled": False,
+        }
+    )
+    assert result["focus_score"] is None
+    assert store.session_summaries[session.id].focus_score is None
+
+
+def test_save_summary_untracked_when_enabled_but_no_snapshots():
     service, store, session = _make_service()
     result = service.save_summary(
         {
             "student_id": 1,
             "session_id": session.id,
             "webcam_enabled": True,
-            "phone_percent": 10,
-            "drowsy_percent": 20,
-            "away_percent": 5,
-            "talking_percent": 0,
-            "absent_percent": 0,
-            "focus_score": 75,
         }
     )
-    assert result["session_id"] == session.id
-    assert result["focus_score"] == 75
+    assert result["focus_score"] is None
 
 
 def test_save_summary_recomputes_focus_if_zero():

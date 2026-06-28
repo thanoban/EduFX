@@ -22,7 +22,7 @@ export function BehaviourLogsScreen({ sessions }: { sessions: BehaviourHistoryIt
               <div className="stack">
                 <strong>{session.subtopics?.title ?? "Study session"}</strong>
                 <div className="muted">
-                  Focus {session.focus_score ?? 0}% • phone {session.phone_percent}% • away {session.away_percent}%
+                  Focus {session.webcam_enabled && session.focus_score !== null ? `${session.focus_score}%` : "not tracked"} • phone {session.phone_percent}% • away {session.away_percent}%
                 </div>
               </div>
               <StatusPill label={session.webcam_enabled ? "Tracked" : "Skipped"} tone={session.webcam_enabled ? "success" : "warning"} />

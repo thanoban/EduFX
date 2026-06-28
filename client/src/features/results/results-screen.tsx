@@ -24,6 +24,8 @@ export function ResultsScreen({
   const levelShiftLabel = lastQuizResult?.level_changed
     ? `${lastQuizResult.previous_level} -> ${lastQuizResult.new_level}`
     : `Stayed at ${lastQuizResult?.new_level ?? "current level"}`;
+  const focusTracked = results.focus_score !== null && results.focus_score !== undefined;
+  const focusLabel = focusTracked ? `${results.focus_score}%` : "Not tracked";
 
   return (
     <AppShell
@@ -50,7 +52,7 @@ export function ResultsScreen({
             <span>quiz score</span>
           </div>
           <div className="metric-box">
-            <strong>{results.focus_score ?? 0}%</strong>
+            <strong>{focusLabel}</strong>
             <span>focus score</span>
           </div>
           <div className="metric-box">
@@ -62,7 +64,7 @@ export function ResultsScreen({
 
       <div className="grid-4">
         <StatCard icon={<Award size={18} />} label="Quiz score" value={`${results.quiz_score}%`} hint={`${results.correct_answers}/${results.total_questions} correct`} />
-        <StatCard icon={<Gauge size={18} />} label="Focus score" value={`${results.focus_score ?? 0}%`} hint={results.webcam_enabled ? "Webcam summary enabled" : "Tracking skipped"} />
+        <StatCard icon={<Gauge size={18} />} label="Focus score" value={focusLabel} hint={results.webcam_enabled ? "Webcam summary enabled" : "Tracking skipped"} />
         <StatCard icon={<Smartphone size={18} />} label="Phone alerts" value={`${results.phone_percent}%`} hint="Snapshot share" />
         <StatCard icon={<Target size={18} />} label="Away alerts" value={`${results.away_percent}%`} hint="Attention drift" />
       </div>

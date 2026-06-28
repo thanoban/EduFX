@@ -16,6 +16,7 @@ export function WebcamCheckScreen() {
   const subtopic = params.get("subtopic") ?? "1";
   const { student } = useAuthGuard();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [cameraReady, setCameraReady] = useState(false);
   const readinessChecks = [
@@ -25,13 +26,29 @@ export function WebcamCheckScreen() {
     { label: "Tracking optional", ok: true }
   ];
 
+  const releasePreview = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraReady(false);
+  };
+
   useEffect(() => {
+    let cancelled = false;
+
     async function setupCamera() {
       if (!enabled || !navigator.mediaDevices?.getUserMedia || !videoRef.current) {
         return;
       }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => undefined);
         setCameraReady(true);
@@ -39,7 +56,19 @@ export function WebcamCheckScreen() {
         setCameraReady(false);
       }
     }
-    void setupCamera();
+
+    if (enabled) {
+      void setupCamera();
+    } else {
+      releasePreview();
+    }
+
+    // Release the preview camera when leaving the page or toggling off, so the
+    // quiz screen can acquire its own stream without a device conflict.
+    return () => {
+      cancelled = true;
+      releasePreview();
+    };
   }, [enabled]);
 
   return (
@@ -70,7 +99,7 @@ export function WebcamCheckScreen() {
             ))}
           </div>
         </SectionCard>
-        <SectionCard title="What will be tracked" eyebrow="Demo tracker">
+        <SectionCard title="What will be tracked" eyebrow="On-device AI tracker">
           <div className="stack">
             <div className="list-item">Eye openness and drowsiness signals</div>
             <div className="list-item">Looking away and presence checks</div>

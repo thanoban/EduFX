@@ -22,25 +22,32 @@ class BehaviourService:
             multiple_persons=payload["multiple_persons"],
             talking=payload["talking"],
             absent=payload["absent"],
-            focus_score=payload["focus_score"],
+            focus_score=payload.get("focus_score", 0),
         )
-        if log.focus_score == 0:
-            log.focus_score = calculate_focus_score(log)
+        # Server is the source of truth: always derive the focus score from the
+        # detected flags rather than trusting the client-sent value.
+        log.focus_score = calculate_focus_score(log)
         saved = self.repository.add_snapshot(log)
         return {"snapshot_id": saved.id, "focus_score": saved.focus_score}
 
     def save_summary(self, payload: dict) -> dict:
         session = self.repository.get_session(payload["session_id"])
-        session.webcam_enabled = payload["webcam_enabled"]
-        session.phone_percent = payload["phone_percent"]
-        session.drowsy_percent = payload["drowsy_percent"]
-        session.away_percent = payload["away_percent"]
-        session.talking_percent = payload["talking_percent"]
-        session.absent_percent = payload["absent_percent"]
-        session.focus_score = payload["focus_score"]
+        webcam_enabled = payload["webcam_enabled"]
+        session.webcam_enabled = webcam_enabled
 
-        if payload["webcam_enabled"] and session.focus_score == 0:
-            aggregate = aggregate_behaviour(self.repository.list_snapshots(session.id))
+        snapshots = self.repository.list_snapshots(session.id) if webcam_enabled else []
+
+        if not webcam_enabled or not snapshots:
+            # Untracked session (webcam off, or enabled but no frames captured):
+            # there is no real focus signal, so store None rather than a misleading 0.
+            session.phone_percent = 0
+            session.drowsy_percent = 0
+            session.away_percent = 0
+            session.talking_percent = 0
+            session.absent_percent = 0
+            session.focus_score = None
+        else:
+            aggregate = aggregate_behaviour(snapshots)
             session.phone_percent = aggregate["phone_percent"]
             session.drowsy_percent = aggregate["drowsy_percent"]
             session.away_percent = aggregate["away_percent"]
