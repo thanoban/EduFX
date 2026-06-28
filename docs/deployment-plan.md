@@ -86,8 +86,9 @@ Add these in the repo: **Settings → Secrets and variables → Actions → New 
 | `GCP_PROJECT_ID` | `responsive-sun-491204-e0` | GCP project ID |
 | `GCP_SA_KEY` | full JSON contents of `edufx-deploy-key.json` | Part 1, step 5 |
 | `SUPABASE_URL` | `https://marvtabsezuiwfqhcwcb.supabase.co` | Supabase → Project Settings → API |
-| `SUPABASE_KEY` | anon public key | Supabase → Project Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | service_role key | Supabase → Project Settings → API |
+| `SUPABASE_ANON_KEY` | anon/public/publishable key used by the frontend | Supabase → Project Settings → API |
+| `SUPABASE_KEY` | anon public key or server fallback key | Supabase → Project Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role/secret key used only by the backend | Supabase → Project Settings → API |
 | `SUPABASE_JWT_SECRET` | JWT secret | Supabase → Project Settings → API → JWT Settings |
 | `FRONTEND_URL` | (blank initially, fill after first deploy) | Cloud Run frontend URL |
 | `FINETUNED_MODEL_URL` | optional, e.g. `http://<vm-ip>:8080` | vLLM VM URL, only when the GPU model server is running |
@@ -131,7 +132,7 @@ FRONTEND_ORIGIN=<frontend Cloud Run URL>   # locks CORS
 ```
 NEXT_PUBLIC_API_BASE_URL      = backend Cloud Run URL
 NEXT_PUBLIC_SUPABASE_URL      = Supabase URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY = Supabase anon key
+NEXT_PUBLIC_SUPABASE_ANON_KEY = GitHub secret `SUPABASE_ANON_KEY` only; never use `SUPABASE_SERVICE_ROLE_KEY` or any `sb_secret_...` value here
 ```
 
 The workflow passes the backend's deployed URL into the frontend build automatically (`needs.deploy-backend.outputs.url`), so the order is: **backend deploys first → its URL feeds the frontend build → frontend deploys**.
@@ -206,6 +207,7 @@ A GPU VM does **not** scale to zero — it bills continuously while running. For
 
 - [ ] Part 1 GCP setup run (registry + both service accounts)
 - [ ] All GitHub secrets added except `FRONTEND_URL`
+- [ ] `SUPABASE_ANON_KEY` is anon/public/publishable; no `sb_secret_...` value is used in any `NEXT_PUBLIC_*` build arg
 - [ ] Supabase schema applied (tables + `content_chunks` + `match_content_chunks` RPC)
 - [ ] RAG notes ingested (55 chunks in `content_chunks`)
 - [ ] First push to `main` succeeds in Actions
