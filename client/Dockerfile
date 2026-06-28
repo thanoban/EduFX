@@ -23,7 +23,11 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SKIP_LOGIN=$NEXT_PUBLIC_SKIP_LOGIN
 
-RUN npm run build
+RUN if echo "$NEXT_PUBLIC_SUPABASE_ANON_KEY" | grep -q '^sb_secret_'; then \
+      echo "Refusing to build frontend with a secret Supabase key. Use the anon public key for NEXT_PUBLIC_SUPABASE_ANON_KEY." >&2; \
+      exit 1; \
+    fi \
+    && npm run build
 
 FROM node:20-alpine AS runner
 

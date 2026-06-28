@@ -90,12 +90,13 @@ jobs:
 
       - name: Build & push frontend image
         run: |
+          ANON_KEY=$(gcloud secrets versions access latest --secret=edufx-supabase-anon-key --project=${{ secrets.GCP_PROJECT_ID }})
           IMAGE=${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
           docker build \
             -f client/Dockerfile \
             --build-arg NEXT_PUBLIC_API_BASE_URL=${{ needs.deploy-backend.outputs.url }} \
             --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" \
             --build-arg NEXT_PUBLIC_SKIP_LOGIN=false \
             -t $IMAGE \
             .
@@ -120,3 +121,22 @@ jobs:
         run: |
           echo "Backend:  ${{ needs.deploy-backend.outputs.url }}"
           echo "Frontend: ${{ steps.deploy.outputs.url }}"
+
+  sync-backend-origin:
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Update backend CORS origin
+        run: |
+          gcloud run services update ${{ env.BACKEND_SERVICE }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --update-env-vars FRONTEND_ORIGIN=${{ needs.deploy-frontend.outputs.url }}
