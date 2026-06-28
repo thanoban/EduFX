@@ -90,6 +90,7 @@ Add these in the repo: **Settings → Secrets and variables → Actions → New 
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key | Supabase → Project Settings → API |
 | `SUPABASE_JWT_SECRET` | JWT secret | Supabase → Project Settings → API → JWT Settings |
 | `FRONTEND_URL` | (blank initially, fill after first deploy) | Cloud Run frontend URL |
+| `FINETUNED_MODEL_URL` | optional, e.g. `http://<vm-ip>:8080` | vLLM VM URL, only when the GPU model server is running |
 
 These map directly into the Cloud Run service env vars in `.github/workflows/deploy.yml`. Nothing secret lives in the repo — `.env` stays gitignored.
 
@@ -110,6 +111,8 @@ GOOGLE_CLOUD_LOCATION=global
 VERTEX_MODEL=gemini-2.5-flash
 EMBEDDING_MODEL=gemini-embedding-001
 EMBEDDING_DIMENSIONS=384
+FINETUNED_MODEL_URL=<optional vLLM URL>
+FINETUNED_MODEL_NAME=edufx
 FRONTEND_ORIGIN=<frontend Cloud Run URL>   # locks CORS
 ```
 
@@ -151,7 +154,7 @@ The workflow is already committed at `.github/workflows/deploy.yml`. Trigger is 
 
 ## Part 6 — Fine-Tuned Model Deployment (Optional)
 
-The fine-tuned Qwen2.5-7B adapter ([finetune-results.md](finetune-results.md)) serves Task A (quiz generation). The app calls it via a vLLM OpenAI-compatible endpoint and **falls back to Gemini if `FINETUNED_MODEL_URL` is unset** — so this is optional and can be added later.
+The fine-tuned Qwen2.5-7B adapter ([finetune-results.md](finetune-results.md)) serves Task A (quiz generation). The app calls it via a vLLM OpenAI-compatible endpoint and **falls back to Gemini if `FINETUNED_MODEL_URL` is unset or unreachable** — so this is optional and can be added later.
 
 ### Serving option: vLLM on a GCE GPU VM
 
@@ -176,7 +179,7 @@ python -m vllm.entrypoints.openai.api_server \
   --port 8080
 ```
 
-This exposes `/v1/chat/completions`. Point the backend at it by setting `FINETUNED_MODEL_URL=http://<vm-ip>:8080` in the Cloud Run env. The integration code (`_call_finetuned()` in `ai_service.py`) is documented in [finetune-colab-guide.md](finetune-colab-guide.md) §17.
+This exposes `/v1/chat/completions`. Point the backend at it by setting `FINETUNED_MODEL_URL=http://<vm-ip>:8080` in the Cloud Run env. The deployed backend uses `FINETUNED_MODEL_NAME=edufx`, matching the `--lora-modules edufx=...` name above.
 
 ### Cost note
 
@@ -209,3 +212,4 @@ A GPU VM does **not** scale to zero — it bills continuously while running. For
 - [ ] `FRONTEND_URL` secret added after first deploy, workflow re-run
 - [ ] `edufx-deploy-key.json` deleted from local machine
 - [ ] (Optional) GPU VM + vLLM for the fine-tuned model
+- [ ] (Optional) `FINETUNED_MODEL_URL` secret added only while the vLLM VM is running

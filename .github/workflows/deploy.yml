@@ -64,6 +64,8 @@ jobs:
             VERTEX_MODEL=gemini-2.5-flash
             EMBEDDING_MODEL=gemini-embedding-001
             EMBEDDING_DIMENSIONS=384
+            FINETUNED_MODEL_URL=${{ secrets.FINETUNED_MODEL_URL }}
+            FINETUNED_MODEL_NAME=edufx
             FRONTEND_ORIGIN=${{ secrets.FRONTEND_URL }}
 
   # ── 2. Build + deploy Next.js frontend ────────────────────────────────────

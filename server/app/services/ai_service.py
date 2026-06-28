@@ -39,6 +39,40 @@ def _call_vertex(model_name: str, prompt: str, temperature: float, max_tokens: i
     return response.text or ""
 
 
+def _call_finetuned(prompt: str, temperature: float, max_tokens: int) -> str:
+    """Call an optional vLLM OpenAI-compatible endpoint.
+
+    The endpoint is intentionally optional: when it is unset or unavailable,
+    callers fall back to Vertex Gemini so the app stays usable without a GPU VM.
+    """
+    import httpx
+
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.finetuned_model_url:
+        return ""
+
+    base_url = settings.finetuned_model_url.rstrip("/")
+    response = httpx.post(
+        f"{base_url}/v1/chat/completions",
+        json={
+            "model": settings.finetuned_model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        },
+        timeout=45,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    choices = payload.get("choices") or []
+    if not choices:
+        return ""
+    message = choices[0].get("message") or {}
+    return str(message.get("content") or "")
+
+
 def generate_quiz_questions(
     *,
     vertex_model: str,
@@ -91,14 +125,17 @@ def generate_quiz_questions(
         f"and {spread['hard']} hard questions, in any order.\n"
         "Each object must have exactly these keys: "
         "question_text, option_a, option_b, option_c, option_d, "
-        "correct_answer (value: A, B, C, or D), difficulty (value: easy, medium, or hard), "
-        "concept (a short 2-4 word lowercase tag for the specific idea the question tests, "
-        "e.g. 'ionisation energy trend').\n"
+        "correct_answer (value: A, B, C, or D), difficulty (value: easy, medium, or hard).\n"
         "Output raw JSON array only. No markdown, no explanation, no extra text."
     )
 
     try:
-        raw = _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096)
+        try:
+            raw = _call_finetuned(prompt, temperature=0.4, max_tokens=4096)
+        except Exception:
+            raw = ""
+        if not raw:
+            raw = _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096)
         cleaned = _strip_fences(raw)
         questions = json.loads(cleaned)
         if isinstance(questions, list):

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     vertex_model: str = "gemini-2.5-flash"
     embedding_model: str = "gemini-embedding-001"
     embedding_dimensions: int = 384
+    finetuned_model_url: str | None = None
+    finetuned_model_name: str = "edufx"
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")
