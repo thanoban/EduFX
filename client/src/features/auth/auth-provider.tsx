@@ -71,35 +71,54 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    async function syncSupabase() {
+    if (AUTO_BOOTSTRAP_DEMO) {
+      void bootstrapDemoStudent().finally(() => setLoading(false));
+      return;
+    }
+
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    async function handleSession(accessToken: string) {
       try {
-        if (AUTO_BOOTSTRAP_DEMO) {
-          await bootstrapDemoStudent();
-          return;
-        }
-        if (supabase) {
-          const sessionResult = await getSessionWithTimeout(4000);
-          if (sessionResult) {
-            const { data } = sessionResult;
-            const accessToken = data.session?.access_token;
-            if (accessToken) {
-              const profile = await authApi.login(accessToken);
-              setStudent(profile);
-              setToken(accessToken);
-              writeStorage(STORAGE_KEYS.student, profile);
-              writeStorage(STORAGE_KEYS.token, accessToken);
-              return;
-            }
-          }
-        }
+        const profile = await authApi.login(accessToken);
+        setStudent(profile);
+        setToken(accessToken);
+        writeStorage(STORAGE_KEYS.student, profile);
+        writeStorage(STORAGE_KEYS.token, accessToken);
       } catch (error) {
-        console.error("Auth bootstrap failed", error);
+        console.error("Auth login failed", error);
       } finally {
         setLoading(false);
       }
     }
 
-    void syncSupabase();
+    // onAuthStateChange fires on OAuth redirect (SIGNED_IN) and session restore
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.access_token) {
+          void handleSession(session.access_token);
+        } else if (event === "SIGNED_OUT") {
+          setStudent(null);
+          setToken(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    // Also check for a session that already exists (e.g. page reload)
+    getSessionWithTimeout(4000)
+      .then((result) => {
+        if (!result?.data.session) {
+          setLoading(false);
+        }
+        // if session exists, onAuthStateChange fires SIGNED_IN and handles it
+      })
+      .catch(() => setLoading(false));
+
+    return () => subscription.unsubscribe();
   }, []);
 
   async function signInDemo(profile?: { name?: string; email?: string }) {
