@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   experimental: {
-    externalDir: true
-  }
+    externalDir: true,
+  },
 };
 
 export default nextConfig;

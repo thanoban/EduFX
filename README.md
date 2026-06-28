@@ -66,10 +66,14 @@ npm test
 npm run build
 ```
 
+## Docs
+
+All project documentation lives in [`docs/`](docs/index.md) — architecture, fine-tuning guide, RAG data format, UI details, and session handoff.
+
 ## Environment
 
-- Backend example: [infra/.env.server.example](D:/PROJECTS/2ndYearProject/EduFX_MVC/infra/.env.server.example)
-- Frontend example: [infra/.env.client.example](D:/PROJECTS/2ndYearProject/EduFX_MVC/infra/.env.client.example)
+- Backend example: [infra/.env.server.example](infra/.env.server.example)
+- Frontend example: [infra/.env.client.example](infra/.env.client.example)
 
 ### Supabase mode
 

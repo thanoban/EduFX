@@ -358,7 +358,177 @@ files.download("/content/edufx-qwen25-7b-lora.zip")
 
 ---
 
-## 14. What to say in the viva
+## 14. Adapter files produced
+
+After `model.save_pretrained()` and `tokenizer.save_pretrained()`, the adapter folder contains:
+
+| File | What it is |
+|------|-----------|
+| `adapter_model.safetensors` | The actual trained LoRA delta weights (~50 MB) |
+| `adapter_config.json` | LoRA config — base model pointer, r=8, alpha=16, target modules |
+| `tokenizer_config.json` | Qwen2Tokenizer, model_max_length=131072, eos=`<\|im_end\|>` |
+| `chat_template.jinja` | ChatML template — how inputs must be structured at inference time |
+| `tokenizer.json` | Full tokenizer vocabulary |
+| `README.md` | Auto-generated PEFT model card |
+
+Key values confirmed in `adapter_config.json`:
+
+- `base_model_name_or_path`: `Qwen/Qwen2.5-7B-Instruct`
+- `peft_type`: `LORA`
+- `r`: `8`
+- `lora_alpha`: `16`
+- `lora_dropout`: `0.0`
+- `bias`: `none`
+- `target_modules`: `q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj`
+- `inference_mode`: `true`
+
+---
+
+## 15. Chat format the model learned (ChatML)
+
+The model uses Qwen's ChatML format, not raw text. Every inference call must use this format:
+
+```
+<|im_start|>system
+You are an A-Level Chemistry examiner.
+<|im_end|>
+<|im_start|>user
+{instruction text}
+<|im_end|>
+<|im_start|>assistant
+```
+
+The tokenizer's `apply_chat_template` handles this automatically:
+
+```python
+messages = [
+    {"role": "system", "content": "You are an A-Level Chemistry examiner."},
+    {"role": "user",   "content": instruction},
+]
+text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+```
+
+This matches exactly how `format_record` prepared the training data (Cell 6).
+
+---
+
+## 16. Inference demo (for viva or testing)
+
+Run this in a Colab Enterprise notebook to prove the adapter works:
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import PeftModel
+import torch, json
+
+MODEL_ID  = "Qwen/Qwen2.5-7B-Instruct"
+ADAPTER   = "/content/edufx-qwen25-7b-lora"   # or local path to adapter folder
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.float32,
+)
+
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+base      = AutoModelForCausalLM.from_pretrained(MODEL_ID, quantization_config=bnb_config, device_map="auto")
+model     = PeftModel.from_pretrained(base, ADAPTER)
+model.eval()
+
+instruction = (
+    "You are an A-Level Chemistry examiner.\n"
+    "Topic: Alkali metals. Block: s_block. Student level: mixed.\n\n"
+    "Notes: Group 1 reactions, ionisation energies, periodic trends.\n\n"
+    "Generate exactly 15 multiple-choice A-Level chemistry questions as a JSON array.\n"
+    "The 15 questions must include exactly 5 easy, 5 medium, and 5 hard questions, in any order.\n"
+    "Each object must have exactly these keys: question_text, option_a, option_b, option_c, option_d, "
+    "correct_answer (value: A, B, C, or D), difficulty (value: easy, medium, or hard).\n"
+    "Output raw JSON array only. No markdown, no explanation, no extra text."
+)
+
+messages = [
+    {"role": "system", "content": "You are an A-Level Chemistry examiner."},
+    {"role": "user",   "content": instruction},
+]
+text   = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+inputs = tokenizer(text, return_tensors="pt").to("cuda")
+
+with torch.no_grad():
+    out = model.generate(**inputs, max_new_tokens=4096, temperature=0.4, do_sample=True, pad_token_id=tokenizer.eos_token_id)
+
+response = tokenizer.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+questions = json.loads(response)
+print(f"Generated {len(questions)} questions")
+print(f"Difficulties: {[q['difficulty'] for q in questions]}")
+```
+
+Expected output: 15 questions, 5 easy / 5 medium / 5 hard, raw JSON.
+
+---
+
+## 17. Integration into the EduFX app
+
+### Architecture split
+
+| Task | Model | Reason |
+|------|-------|--------|
+| Task A — quiz generation | Fine-tuned Qwen 2.5 7B | Strict JSON format, consistent MCQ style |
+| Task B — explanations | Vertex AI Gemini (live) | Needs live RAG context and per-student wrong answer |
+
+### Deployment option: GCE VM with vLLM
+
+vLLM can serve the base model + LoRA adapter together without merging:
+
+```bash
+# On a GCE T4 VM
+pip install vllm
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-7B-Instruct \
+  --enable-lora \
+  --lora-modules edufx=./edufx-qwen25-7b-lora/ \
+  --port 8080
+```
+
+vLLM exposes an OpenAI-compatible `/v1/chat/completions` endpoint at that port.
+
+### Code change in `server/app/services/ai_service.py`
+
+Add alongside `_call_vertex`:
+
+```python
+def _call_finetuned(prompt: str, endpoint_url: str) -> str:
+    """Call the fine-tuned Qwen model via vLLM OpenAI-compatible endpoint."""
+    import httpx
+    payload = {
+        "model": "edufx",
+        "messages": [
+            {"role": "system", "content": "You are an A-Level Chemistry examiner."},
+            {"role": "user",   "content": prompt},
+        ],
+        "temperature": 0.4,
+        "max_tokens": 4096,
+    }
+    r = httpx.post(f"{endpoint_url}/v1/chat/completions", json=payload, timeout=60)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+```
+
+In `generate_quiz_questions`, swap the generation call:
+
+```python
+# Add FINETUNED_MODEL_URL to settings (empty string = use Gemini fallback)
+if settings.finetuned_model_url:
+    raw = _call_finetuned(prompt, settings.finetuned_model_url)
+else:
+    raw = _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096)
+```
+
+`generate_explanation` stays unchanged — always calls Vertex AI Gemini.
+
+---
+
+## 18. What to say in the viva
 
 You can explain the work like this:
 
@@ -371,7 +541,7 @@ You can explain the work like this:
 
 ---
 
-## 15. Limitations and next step
+## 19. Limitations and next step
 
 Current limitation:
 
@@ -394,7 +564,7 @@ The next serious step is to expand to at least 50 to 100 reviewed examples.
 
 ---
 
-## 16. Why we did not use Vertex managed tuning for learning
+## 20. Why we did not use Vertex managed tuning for learning
 
 Vertex tuning is still a valid production path, but it hides much of the training mechanics.
 
