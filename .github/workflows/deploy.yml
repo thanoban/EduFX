@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GCP_REGION: asia-northeast1
   REGISTRY: asia-northeast1-docker.pkg.dev
