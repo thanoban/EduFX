@@ -86,8 +86,8 @@ Add these in the repo: **Settings → Secrets and variables → Actions → New 
 | `GCP_PROJECT_ID` | `responsive-sun-491204-e0` | GCP project ID |
 | `GCP_SA_KEY` | full JSON contents of `edufx-deploy-key.json` | Part 1, step 5 |
 | `SUPABASE_URL` | `https://marvtabsezuiwfqhcwcb.supabase.co` | Supabase → Project Settings → API |
-| `SUPABASE_ANON_KEY` | anon/public/publishable key used by the frontend | Supabase → Project Settings → API |
-| `SUPABASE_KEY` | anon public key or server fallback key | Supabase → Project Settings → API |
+| `SUPABASE_ANON_KEY` | **PUBLIC** key baked into the browser bundle — the legacy `anon` JWT (`eyJ…`) or the new `sb_publishable_…` key. Never an `sb_secret_…` key. | Supabase → Project Settings → API → Project API keys → `anon`/`publishable` |
+| `SUPABASE_KEY` | backend-only key (may be the `sb_secret_…`/service key); used server-side, never sent to the browser | Supabase → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role/secret key used only by the backend | Supabase → Project Settings → API |
 | `SUPABASE_JWT_SECRET` | JWT secret | Supabase → Project Settings → API → JWT Settings |
 | `FRONTEND_URL` | (blank initially, fill after first deploy) | Cloud Run frontend URL |
