@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { PageState } from "@/components/ui/page-state";
 import { useAuth } from "@/features/auth/use-auth";
+import {
+  normalizeErrorMessage,
+  resolveCallbackAccessToken,
+} from "@/features/auth/auth-callback-session";
 import { supabase } from "@/lib/supabase";
-
-function normalizeErrorMessage(raw: string | null) {
-  if (!raw) {
-    return null;
-  }
-
-  return decodeURIComponent(raw.replace(/\+/g, " "));
-}
 
 export function AuthCallbackScreen() {
   const router = useRouter();
@@ -21,14 +17,11 @@ export function AuthCallbackScreen() {
   const { authenticateWithAccessToken, authError: authContextError } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
-  const oauthError = useMemo(
-    () =>
-      normalizeErrorMessage(searchParams.get("error_description")) ??
-      normalizeErrorMessage(searchParams.get("error")),
-    [searchParams]
-  );
-
   useEffect(() => {
+    const oauthError =
+      normalizeErrorMessage(searchParams.get("error_description")) ??
+      normalizeErrorMessage(searchParams.get("error"));
+
     if (oauthError) {
       setError(oauthError);
       return;
@@ -48,73 +41,25 @@ export function AuthCallbackScreen() {
     }, 12000);
 
     async function finalizeCallback() {
-      const code = searchParams.get("code");
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-      const hashError =
-        normalizeErrorMessage(hashParams.get("error_description")) ??
-        normalizeErrorMessage(hashParams.get("error"));
-
-      if (hashError) {
-        setError(hashError);
-        return;
-      }
-
-      const { data: existingSession, error: existingSessionError } = await supabaseClient.auth.getSession();
-      if (cancelled) {
-        return;
-      }
-      if (existingSessionError) {
-        setError(existingSessionError.message);
-        return;
-      }
-
-      if (!existingSession.session) {
-        if (code) {
-          const { error: exchangeError } = await supabaseClient.auth.exchangeCodeForSession(code);
-          if (cancelled) {
-            return;
-          }
-          if (exchangeError) {
-            setError(exchangeError.message);
-            return;
-          }
-        } else {
-          const accessToken = hashParams.get("access_token");
-          const refreshToken = hashParams.get("refresh_token");
-
-          if (accessToken && refreshToken) {
-            const { error: setSessionError } = await supabaseClient.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            if (cancelled) {
-              return;
-            }
-            if (setSessionError) {
-              setError(setSessionError.message);
-              return;
-            }
-
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-          }
+      const resolution = await resolveCallbackAccessToken(
+        new URLSearchParams(searchParams.toString()),
+        window.location.hash,
+        supabaseClient,
+        () => {
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
         }
-      }
-
-      const { data: finalSession, error: finalSessionError } = await supabaseClient.auth.getSession();
+      );
       if (cancelled) {
         return;
       }
-      if (finalSessionError) {
-        setError(finalSessionError.message);
-        return;
-      }
-      if (!finalSession.session) {
-        setError("Google sign-in completed, but no EduFX session was created. Please try again.");
+
+      if (resolution.error || !resolution.accessToken) {
+        setError(resolution.error ?? "Google sign-in completed, but no EduFX session was created. Please try again.");
         return;
       }
 
       try {
-        const profile = await authenticateWithAccessToken(finalSession.session.access_token);
+        const profile = await authenticateWithAccessToken(resolution.accessToken);
         if (cancelled) {
           return;
         }
@@ -136,7 +81,7 @@ export function AuthCallbackScreen() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [oauthError, authenticateWithAccessToken, authContextError, router, searchParams]);
+  }, [authenticateWithAccessToken, authContextError, router, searchParams]);
 
   if (error) {
     return (
