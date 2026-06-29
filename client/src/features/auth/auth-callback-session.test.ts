@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { readCallbackTokens, resolveCallbackAccessToken } from "@/features/auth/auth-callback-session";
+import {
+  readCallbackTokens,
+  resolveCallbackAccessToken,
+  resolveExistingSessionAccessToken,
+} from "@/features/auth/auth-callback-session";
 
 function createSupabaseClientMock(overrides?: {
   exchangeCodeForSession?: () => Promise<{ data: { session: { access_token: string } | null }; error: { message: string } | null }>;
@@ -81,6 +85,19 @@ describe("auth callback token resolution", () => {
 
     expect(result).toEqual({ accessToken: "existing-session-token", error: null });
     expect(exchangeCodeForSession).toHaveBeenCalledWith("oauth-code");
+    expect(getSession).toHaveBeenCalledOnce();
+  });
+
+  it("reads an existing session directly for oauth error recovery", async () => {
+    const getSession = vi.fn().mockResolvedValue({
+      data: { session: { access_token: "existing-session-token" } },
+      error: null,
+    });
+    const client = createSupabaseClientMock({ getSession });
+
+    const result = await resolveExistingSessionAccessToken(client);
+
+    expect(result).toEqual({ accessToken: "existing-session-token", error: null });
     expect(getSession).toHaveBeenCalledOnce();
   });
 });

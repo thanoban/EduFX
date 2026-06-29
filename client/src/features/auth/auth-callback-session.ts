@@ -123,3 +123,16 @@ export async function resolveCallbackAccessToken(
     error: "Google sign-in completed, but no EduFX session was created. Please try again.",
   };
 }
+
+export async function resolveExistingSessionAccessToken(supabaseClient: SupabaseClientLike) {
+  const existingSession = await supabaseClient.auth.getSession();
+  if (existingSession.error) {
+    return { accessToken: null, error: existingSession.error.message };
+  }
+
+  if (existingSession.data.session?.access_token) {
+    return { accessToken: existingSession.data.session.access_token, error: null };
+  }
+
+  return { accessToken: null, error: null };
+}

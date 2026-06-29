@@ -59,6 +59,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const lastHandledTokenRef = useRef<string | null>(null);
+  const oauthRedirectInFlightRef = useRef(false);
 
   async function bootstrapDemoStudent(profile?: { name?: string; email?: string }) {
     const name = profile?.name ?? DEFAULT_DEMO_PROFILE.name;
@@ -182,10 +183,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await signInDemo();
       return;
     }
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
-    });
+    if (oauthRedirectInFlightRef.current) {
+      return;
+    }
+    oauthRedirectInFlightRef.current = true;
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      });
+    } catch (error) {
+      oauthRedirectInFlightRef.current = false;
+      throw error;
+    }
   }
 
   async function signInWithEmail(email: string, password: string) {
@@ -239,6 +249,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   function signOut() {
     lastHandledTokenRef.current = null;
+    oauthRedirectInFlightRef.current = false;
     setAuthError(null);
     setStudent(null);
     setToken(null);
