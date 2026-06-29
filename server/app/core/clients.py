@@ -1,13 +1,15 @@
 from dataclasses import dataclass
+from typing import Any
 
 from supabase import Client, create_client
 
 from app.core.config import Settings
+from app.core.simple_supabase import SimpleSupabaseClient
 
 
 @dataclass(slots=True)
 class ExternalClients:
-    supabase: Client | None = None
+    supabase: Any | None = None
     vertex_model: str | None = None
 
 
@@ -16,7 +18,10 @@ def build_external_clients(settings: Settings) -> ExternalClients:
     supabase_key = settings.supabase_service_role_key or settings.supabase_key
 
     if settings.supabase_url and supabase_key:
-        supabase_client = create_client(settings.supabase_url, supabase_key)
+        if supabase_key.startswith("sb_secret_"):
+            supabase_client = SimpleSupabaseClient(settings.supabase_url, supabase_key)
+        else:
+            supabase_client = create_client(settings.supabase_url, supabase_key)
 
     vertex_model: str | None = None
     if settings.google_cloud_project:

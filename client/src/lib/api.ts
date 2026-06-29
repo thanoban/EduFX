@@ -48,7 +48,7 @@ async function request<T>(
 
 export const authApi = {
   login(token: string) {
-    return request<StudentProfile>("/auth/google", { method: "POST", token });
+    return request<StudentProfile>("/auth/google", { method: "POST", token, body: {} });
   },
   check(studentId: number) {
     return request<{ student_id: number; diagnostic_completed: boolean }>("/auth/check", {
