@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren
 } from "react";
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastHandledTokenRef = useRef<string | null>(null);
 
   async function bootstrapDemoStudent(profile?: { name?: string; email?: string }) {
     const name = profile?.name ?? DEFAULT_DEMO_PROFILE.name;
@@ -82,6 +84,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     async function handleSession(accessToken: string) {
+      if (lastHandledTokenRef.current === accessToken) {
+        setLoading(false);
+        return;
+      }
+
+      lastHandledTokenRef.current = accessToken;
+
       try {
         const profile = await authApi.login(accessToken);
         setStudent(profile);
@@ -89,6 +98,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         writeStorage(STORAGE_KEYS.student, profile);
         writeStorage(STORAGE_KEYS.token, accessToken);
       } catch (error) {
+        lastHandledTokenRef.current = null;
         console.error("Auth login failed", error);
       } finally {
         setLoading(false);
@@ -101,8 +111,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.access_token) {
           void handleSession(session.access_token);
         } else if (event === "SIGNED_OUT") {
+          lastHandledTokenRef.current = null;
           setStudent(null);
           setToken(null);
+          removeStorage(STORAGE_KEYS.student);
+          removeStorage(STORAGE_KEYS.token);
+          removeStorage(STORAGE_KEYS.lastDiagnostic);
+          removeStorage(STORAGE_KEYS.lastSession);
           setLoading(false);
         }
       }
@@ -111,10 +126,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // Also check for a session that already exists (e.g. page reload)
     getSessionWithTimeout(4000)
       .then((result) => {
+        if (result?.data.session?.access_token) {
+          void handleSession(result.data.session.access_token);
+          return;
+        }
+
         if (!result?.data.session) {
           setLoading(false);
         }
-        // if session exists, onAuthStateChange fires SIGNED_IN and handles it
       })
       .catch(() => setLoading(false));
 
@@ -147,6 +166,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function signOut() {
+    lastHandledTokenRef.current = null;
     setStudent(null);
     setToken(null);
     removeStorage(STORAGE_KEYS.student);
