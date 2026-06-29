@@ -26,9 +26,11 @@ export function SettingsScreen() {
         </SectionCard>
         <SectionCard title="Session controls" eyebrow="Security" action={<ShieldCheck size={18} />}>
           <div className="stack">
-            <div className="list-item">Resetting clears this browser session, then returns to the post-login demo workspace.</div>
+            <div className="list-item">
+              Logging out clears this browser session and returns you to the EduFX sign-in screen.
+            </div>
             <Button icon={<LogOut size={16} />} variant="secondary" onClick={signOut}>
-              Reset local session
+              Log out
             </Button>
           </div>
         </SectionCard>

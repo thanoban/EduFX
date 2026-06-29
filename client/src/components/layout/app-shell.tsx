@@ -75,7 +75,7 @@ export function AppShell({
             <div className="muted">{student?.email ?? "Not signed in"}</div>
           </div>
           <Button variant="ghost" icon={<LogOut size={16} />} onClick={signOut}>
-            Reset session
+            Log out
           </Button>
         </div>
       </aside>
