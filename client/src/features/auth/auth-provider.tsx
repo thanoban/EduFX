@@ -20,6 +20,8 @@ type AuthContextValue = {
   student: StudentProfile | null;
   token: string | null;
   loading: boolean;
+  authError: string | null;
+  authenticateWithAccessToken: (accessToken: string) => Promise<StudentProfile>;
   signInDemo: (profile?: { name?: string; email?: string }) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => void;
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const lastHandledTokenRef = useRef<string | null>(null);
 
   async function bootstrapDemoStudent(profile?: { name?: string; email?: string }) {
@@ -57,16 +60,47 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const email = profile?.email ?? DEFAULT_DEMO_PROFILE.email;
     const demoToken = `demo:${name}:${email}`;
     const authProfile = await authApi.login(demoToken);
+    setAuthError(null);
     setStudent(authProfile);
     setToken(demoToken);
     writeStorage(STORAGE_KEYS.student, authProfile);
     writeStorage(STORAGE_KEYS.token, demoToken);
   }
 
+  async function authenticateWithAccessToken(accessToken: string) {
+    const cachedStudent = readStorage<StudentProfile | null>(STORAGE_KEYS.student, null);
+    const cachedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
+
+    if (lastHandledTokenRef.current === accessToken && cachedStudent && cachedToken === accessToken) {
+      setAuthError(null);
+      setStudent(cachedStudent);
+      setToken(accessToken);
+      return cachedStudent;
+    }
+
+    lastHandledTokenRef.current = accessToken;
+    setAuthError(null);
+
+    try {
+      const profile = await authApi.login(accessToken);
+      setStudent(profile);
+      setToken(accessToken);
+      writeStorage(STORAGE_KEYS.student, profile);
+      writeStorage(STORAGE_KEYS.token, accessToken);
+      return profile;
+    } catch (error) {
+      lastHandledTokenRef.current = null;
+      const message = error instanceof Error ? error.message : "Auth login failed";
+      setAuthError(message);
+      throw error;
+    }
+  }
+
   useEffect(() => {
     const storedStudent = readStorage<StudentProfile | null>(STORAGE_KEYS.student, null);
     const storedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
     if (storedStudent && storedToken) {
+      setAuthError(null);
       setStudent(storedStudent);
       setToken(storedToken);
       setLoading(false);
@@ -89,16 +123,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      lastHandledTokenRef.current = accessToken;
-
       try {
-        const profile = await authApi.login(accessToken);
-        setStudent(profile);
-        setToken(accessToken);
-        writeStorage(STORAGE_KEYS.student, profile);
-        writeStorage(STORAGE_KEYS.token, accessToken);
+        await authenticateWithAccessToken(accessToken);
       } catch (error) {
-        lastHandledTokenRef.current = null;
         console.error("Auth login failed", error);
       } finally {
         setLoading(false);
@@ -112,6 +139,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           void handleSession(session.access_token);
         } else if (event === "SIGNED_OUT") {
           lastHandledTokenRef.current = null;
+          setAuthError(null);
           setStudent(null);
           setToken(null);
           removeStorage(STORAGE_KEYS.student);
@@ -167,6 +195,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   function signOut() {
     lastHandledTokenRef.current = null;
+    setAuthError(null);
     setStudent(null);
     setToken(null);
     removeStorage(STORAGE_KEYS.student);
@@ -178,8 +207,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   const value = useMemo(
-    () => ({ student, token, loading, signInDemo, signInWithGoogle, signOut, refreshStatus }),
-    [student, token, loading]
+    () => ({
+      student,
+      token,
+      loading,
+      authError,
+      authenticateWithAccessToken,
+      signInDemo,
+      signInWithGoogle,
+      signOut,
+      refreshStatus
+    }),
+    [student, token, loading, authError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

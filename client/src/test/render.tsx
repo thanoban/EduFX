@@ -27,6 +27,8 @@ export function renderWithAuth(
           student,
           token: "demo:Ali Hassan:ali.hassan@edufx.demo",
           loading: false,
+          authError: null,
+          authenticateWithAccessToken: async () => student ?? defaultStudent,
           signInDemo: async () => undefined,
           signInWithGoogle: async () => undefined,
           signOut: () => undefined,

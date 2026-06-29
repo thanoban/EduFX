@@ -18,10 +18,10 @@ function normalizeErrorMessage(raw: string | null) {
 export function AuthCallbackScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { student, loading } = useAuth();
+  const { authenticateWithAccessToken, authError: authContextError } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
-  const authError = useMemo(
+  const oauthError = useMemo(
     () =>
       normalizeErrorMessage(searchParams.get("error_description")) ??
       normalizeErrorMessage(searchParams.get("error")),
@@ -29,8 +29,8 @@ export function AuthCallbackScreen() {
   );
 
   useEffect(() => {
-    if (authError) {
-      setError(authError);
+    if (oauthError) {
+      setError(oauthError);
       return;
     }
 
@@ -41,9 +41,23 @@ export function AuthCallbackScreen() {
 
     const supabaseClient = supabase;
     let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) {
+        setError("Google sign-in is taking too long. Please try again.");
+      }
+    }, 12000);
 
     async function finalizeCallback() {
       const code = searchParams.get("code");
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const hashError =
+        normalizeErrorMessage(hashParams.get("error_description")) ??
+        normalizeErrorMessage(hashParams.get("error"));
+
+      if (hashError) {
+        setError(hashError);
+        return;
+      }
 
       const { data: existingSession, error: existingSessionError } = await supabaseClient.auth.getSession();
       if (cancelled) {
@@ -54,14 +68,35 @@ export function AuthCallbackScreen() {
         return;
       }
 
-      if (!existingSession.session && code) {
-        const { error: exchangeError } = await supabaseClient.auth.exchangeCodeForSession(code);
-        if (cancelled) {
-          return;
-        }
-        if (exchangeError) {
-          setError(exchangeError.message);
-          return;
+      if (!existingSession.session) {
+        if (code) {
+          const { error: exchangeError } = await supabaseClient.auth.exchangeCodeForSession(code);
+          if (cancelled) {
+            return;
+          }
+          if (exchangeError) {
+            setError(exchangeError.message);
+            return;
+          }
+        } else {
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            const { error: setSessionError } = await supabaseClient.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            if (cancelled) {
+              return;
+            }
+            if (setSessionError) {
+              setError(setSessionError.message);
+              return;
+            }
+
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          }
         }
       }
 
@@ -75,6 +110,23 @@ export function AuthCallbackScreen() {
       }
       if (!finalSession.session) {
         setError("Google sign-in completed, but no EduFX session was created. Please try again.");
+        return;
+      }
+
+      try {
+        const profile = await authenticateWithAccessToken(finalSession.session.access_token);
+        if (cancelled) {
+          return;
+        }
+        clearTimeout(timeoutId);
+        router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
+      } catch (loginError) {
+        if (cancelled) {
+          return;
+        }
+        const message =
+          loginError instanceof Error ? loginError.message : authContextError ?? "EduFX login failed.";
+        setError(message);
       }
     }
 
@@ -82,14 +134,9 @@ export function AuthCallbackScreen() {
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
-  }, [authError, searchParams]);
-
-  useEffect(() => {
-    if (!loading && student) {
-      router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic");
-    }
-  }, [loading, router, student]);
+  }, [oauthError, authenticateWithAccessToken, authContextError, router, searchParams]);
 
   if (error) {
     return (
