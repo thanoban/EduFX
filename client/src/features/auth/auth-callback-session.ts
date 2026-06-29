@@ -70,21 +70,26 @@ export async function resolveCallbackAccessToken(
 
   if (callbackTokens.code) {
     const { data, error } = await supabaseClient.auth.exchangeCodeForSession(callbackTokens.code);
+
+    if (!error && data.session?.access_token) {
+      return { accessToken: data.session.access_token, error: null };
+    }
+
+    // The client may have `detectSessionInUrl` enabled, which exchanges the
+    // one-time code automatically before this manual call runs. In that case the
+    // manual exchange errors ("code already used") even though sign-in actually
+    // succeeded — so always check getSession before surfacing the exchange error.
+    const fallbackSession = await supabaseClient.auth.getSession();
+    if (fallbackSession.data.session?.access_token) {
+      return { accessToken: fallbackSession.data.session.access_token, error: null };
+    }
+
     if (error) {
       return { accessToken: null, error: error.message };
     }
 
-    if (data.session?.access_token) {
-      return { accessToken: data.session.access_token, error: null };
-    }
-
-    const fallbackSession = await supabaseClient.auth.getSession();
     if (fallbackSession.error) {
       return { accessToken: null, error: fallbackSession.error.message };
-    }
-
-    if (fallbackSession.data.session?.access_token) {
-      return { accessToken: fallbackSession.data.session.access_token, error: null };
     }
   }
 

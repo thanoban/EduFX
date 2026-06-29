@@ -31,6 +31,8 @@ export function renderWithAuth(
           authenticateWithAccessToken: async () => student ?? defaultStudent,
           signInDemo: async () => undefined,
           signInWithGoogle: async () => undefined,
+          signInWithEmail: async () => student ?? defaultStudent,
+          signUpWithEmail: async () => ({ profile: student ?? defaultStudent, needsConfirmation: false }),
           signOut: () => undefined,
           refreshStatus: async () => undefined
         }}

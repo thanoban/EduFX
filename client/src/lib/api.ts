@@ -28,7 +28,7 @@ async function request<T>(
   path: string,
   { method = "GET", token, studentId, body }: RequestOptions = {}
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const init: RequestInit = {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -37,7 +37,31 @@ async function request<T>(
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store"
-  });
+  };
+
+  // Cloud Run scales to zero, so the first request after idle can be a cold
+  // start that drops the connection (surfaces as "Failed to fetch" in the
+  // browser). Retry transient network errors a few times with a short backoff
+  // before giving up, so a cold backend doesn't break sign-in.
+  let response: Response | null = null;
+  let lastNetworkError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, init);
+      break;
+    } catch (error) {
+      lastNetworkError = error;
+      await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+    }
+  }
+
+  if (!response) {
+    throw new Error(
+      lastNetworkError instanceof Error
+        ? `Could not reach the EduFX server (${lastNetworkError.message}). Please try again.`
+        : "Could not reach the EduFX server. Please try again."
+    );
+  }
 
   const payload = (await response.json()) as ApiResponse<T>;
   if (!response.ok || !payload.success || payload.data === null) {

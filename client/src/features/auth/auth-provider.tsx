@@ -24,6 +24,11 @@ type AuthContextValue = {
   authenticateWithAccessToken: (accessToken: string) => Promise<StudentProfile>;
   signInDemo: (profile?: { name?: string; email?: string }) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<StudentProfile>;
+  signUpWithEmail: (
+    email: string,
+    password: string
+  ) => Promise<{ profile: StudentProfile | null; needsConfirmation: boolean }>;
   signOut: () => void;
   refreshStatus: () => Promise<void>;
 };
@@ -183,6 +188,45 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
   }
 
+  async function signInWithEmail(email: string, password: string) {
+    if (!supabase) {
+      setAuthError("Email sign-in is not configured.");
+      throw new Error("Email sign-in is not configured.");
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAuthError(error.message);
+      throw new Error(error.message);
+    }
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      const message = "Sign-in succeeded but no session was returned. Please try again.";
+      setAuthError(message);
+      throw new Error(message);
+    }
+    return authenticateWithAccessToken(accessToken);
+  }
+
+  async function signUpWithEmail(email: string, password: string) {
+    if (!supabase) {
+      setAuthError("Email sign-up is not configured.");
+      throw new Error("Email sign-up is not configured.");
+    }
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setAuthError(error.message);
+      throw new Error(error.message);
+    }
+    // When email confirmation is enabled, signUp returns a user but no session
+    // until the user confirms via the emailed link.
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      return { profile: null, needsConfirmation: true };
+    }
+    const profile = await authenticateWithAccessToken(accessToken);
+    return { profile, needsConfirmation: false };
+  }
+
   async function refreshStatus() {
     if (!student) {
       return;
@@ -215,6 +259,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       authenticateWithAccessToken,
       signInDemo,
       signInWithGoogle,
+      signInWithEmail,
+      signUpWithEmail,
       signOut,
       refreshStatus
     }),
