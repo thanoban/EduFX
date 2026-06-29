@@ -11,7 +11,7 @@ import {
 } from "react";
 
 import { authApi } from "@/lib/api";
-import { STORAGE_KEYS } from "@/lib/constants";
+import { IDLE_SESSION_TIMEOUT_MS, STORAGE_KEYS } from "@/lib/constants";
 import { readStorage, removeStorage, writeStorage } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import type { StudentProfile } from "@/types/contracts";
@@ -60,6 +60,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [authError, setAuthError] = useState<string | null>(null);
   const lastHandledTokenRef = useRef<string | null>(null);
   const oauthRedirectInFlightRef = useRef(false);
+
+  function clearSessionState() {
+    lastHandledTokenRef.current = null;
+    oauthRedirectInFlightRef.current = false;
+    setAuthError(null);
+    setStudent(null);
+    setToken(null);
+    removeStorage(STORAGE_KEYS.student);
+    removeStorage(STORAGE_KEYS.token);
+    removeStorage(STORAGE_KEYS.lastDiagnostic);
+    removeStorage(STORAGE_KEYS.lastSession);
+    removeStorage(STORAGE_KEYS.lastQuizResult);
+  }
+
+  function redirectToLogin(reason?: "expired") {
+    const target = reason === "expired" ? "/login?session=expired" : "/login";
+    window.location.replace(target);
+  }
+
+  function finishSignOut(reason?: "expired") {
+    clearSessionState();
+    void supabase?.auth.signOut();
+    redirectToLogin(reason);
+  }
 
   async function bootstrapDemoStudent(profile?: { name?: string; email?: string }) {
     const name = profile?.name ?? DEFAULT_DEMO_PROFILE.name;
@@ -144,14 +168,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.access_token) {
           void handleSession(session.access_token);
         } else if (event === "SIGNED_OUT") {
-          lastHandledTokenRef.current = null;
-          setAuthError(null);
-          setStudent(null);
-          setToken(null);
-          removeStorage(STORAGE_KEYS.student);
-          removeStorage(STORAGE_KEYS.token);
-          removeStorage(STORAGE_KEYS.lastDiagnostic);
-          removeStorage(STORAGE_KEYS.lastSession);
+          clearSessionState();
           setLoading(false);
         }
       }
@@ -173,6 +190,46 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!student) {
+      return;
+    }
+
+    let timeoutId = 0;
+    let expired = false;
+
+    const resetIdleTimer = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        if (expired) {
+          return;
+        }
+        expired = true;
+        finishSignOut("expired");
+      }, IDLE_SESSION_TIMEOUT_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        resetIdleTimer();
+      }
+    };
+
+    resetIdleTimer();
+    window.addEventListener("pointerdown", resetIdleTimer);
+    window.addEventListener("keydown", resetIdleTimer);
+    window.addEventListener("focus", resetIdleTimer);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("pointerdown", resetIdleTimer);
+      window.removeEventListener("keydown", resetIdleTimer);
+      window.removeEventListener("focus", resetIdleTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [student]);
 
   async function signInDemo(profile?: { name?: string; email?: string }) {
     await bootstrapDemoStudent(profile);
@@ -248,17 +305,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function signOut() {
-    lastHandledTokenRef.current = null;
-    oauthRedirectInFlightRef.current = false;
-    setAuthError(null);
-    setStudent(null);
-    setToken(null);
-    removeStorage(STORAGE_KEYS.student);
-    removeStorage(STORAGE_KEYS.token);
-    removeStorage(STORAGE_KEYS.lastDiagnostic);
-    removeStorage(STORAGE_KEYS.lastSession);
-    void supabase?.auth.signOut();
-    window.location.href = "/login";
+    finishSignOut();
   }
 
   const value = useMemo(

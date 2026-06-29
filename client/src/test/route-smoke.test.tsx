@@ -53,6 +53,8 @@ describe("frontend route smoke coverage", () => {
     );
     expect(screen.getByText("Your adaptive study map is ready.")).toBeInTheDocument();
     expect(screen.getByText("Group Trends")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("renders the dashboard shell", () => {

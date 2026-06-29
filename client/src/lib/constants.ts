@@ -15,6 +15,7 @@ export const PHONE_WASM_PATH = "/wasm/";
 export const PHONE_MODEL_PATH = "/models/phone/phone_detection_model.tflite";
 export const PHONE_MODEL_META_PATH = "/models/phone/model_config.json";
 export const PHONE_PREPROCESSOR_PATH = "/models/phone/preprocessor_config.json";
+export const IDLE_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
 export const STORAGE_KEYS = {
   student: "edufx.mvc.student",

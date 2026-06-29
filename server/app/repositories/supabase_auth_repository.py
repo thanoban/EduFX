@@ -1,3 +1,4 @@
+import httpx
 from supabase import Client
 
 from app.models.domain import Student
@@ -14,9 +15,22 @@ class SupabaseAuthRepository:
         return self.mapper.student_from_row(rows[0]) if rows else None
 
     def create_student(self, name: str, email: str) -> Student:
-        rows = self.client.table("students").insert({"name": name, "email": email}).execute().data
-        row = self.mapper.ensure_one(rows, "Student could not be created", status_code=500)
-        student = self.mapper.student_from_row(row)
+        try:
+            rows = self.client.table("students").insert({"name": name, "email": email}).execute().data
+            row = self.mapper.ensure_one(rows, "Student could not be created", status_code=500)
+            student = self.mapper.student_from_row(row)
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code != 409:
+                raise
+
+            # Duplicate first-login requests can race on the unique email
+            # constraint. Treat that as a successful "someone else created it
+            # first" outcome and continue with the existing student record.
+            existing_student = self.find_student_by_email(email)
+            if existing_student is None:
+                raise
+            student = existing_student
+
         self.mapper.ensure_progress_records(student.id)
         return student
 

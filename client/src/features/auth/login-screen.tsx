@@ -31,6 +31,13 @@ export function LoginScreen() {
     }
   }, [student, router]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("session") === "expired") {
+      setNote("Your EduFX session expired after 30 minutes of inactivity. Please sign in again.");
+    }
+  }, []);
+
   async function handleDemo() {
     setBusy(true);
     setError(null);

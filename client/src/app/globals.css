@@ -706,27 +706,80 @@ p {
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.72fr);
+  grid-template-rows: auto 1fr;
   gap: 20px;
   padding: 20px;
   align-items: stretch;
 }
 
-.auth-brandline {
-  position: fixed;
-  top: 32px;
-  left: 38px;
-  z-index: 3;
-  color: #ffffff;
+.auth-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+}
+
+.auth-toolbar__brand,
+.auth-toolbar__identity {
+  display: grid;
+  gap: 2px;
+}
+
+.auth-toolbar__brand strong,
+.auth-toolbar__identity strong {
+  color: var(--ink);
+  font-size: 0.98rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.auth-toolbar__brand span,
+.auth-toolbar__identity span,
+.auth-toolbar__welcome {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.auth-toolbar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-toolbar__identity {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.auth-toolbar__timeout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .hero-panel {
   position: relative;
   min-height: calc(100vh - 40px);
   border-radius: var(--radius-lg);
-  padding: 86px 48px 40px;
+  padding: 48px 48px 40px;
   color: #ffffff;
   display: grid;
   align-content: end;
@@ -1230,9 +1283,20 @@ p {
     padding: 20px;
   }
 
-  .auth-brandline {
-    position: absolute;
-    color: #ffffff;
+  .auth-toolbar {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .auth-toolbar,
+  .auth-toolbar__actions {
+    display: grid;
+  }
+
+  .auth-toolbar__timeout,
+  .auth-toolbar__identity,
+  .auth-toolbar .button {
+    width: 100%;
   }
 
   .page-header {
