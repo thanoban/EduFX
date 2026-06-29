@@ -93,10 +93,11 @@ jobs:
           IMAGE=${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
           docker build \
             -f client/Dockerfile \
-            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ needs.deploy-backend.outputs.url }} \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=/api/backend \
             --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --build-arg NEXT_PUBLIC_SKIP_LOGIN=false \
+            --build-arg BACKEND_ORIGIN=${{ needs.deploy-backend.outputs.url }} \
             -t $IMAGE \
             .
           docker push $IMAGE
@@ -115,6 +116,8 @@ jobs:
             --memory=512Mi
             --cpu=1
             --service-account=edufx-runtime@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+          env_vars: |
+            BACKEND_ORIGIN=${{ needs.deploy-backend.outputs.url }}
 
       - name: Print deployed URLs
         run: |
