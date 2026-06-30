@@ -66,26 +66,61 @@ describe("auth callback token resolution", () => {
     expect(onHashTokensApplied).toHaveBeenCalledOnce();
   });
 
-  it("falls back to an existing session when the exchange response is empty", async () => {
+  it("falls back to a post-exchange session when auto-detection does not populate one", async () => {
     const exchangeCodeForSession = vi.fn().mockResolvedValue({
       data: { session: null },
       error: null,
     });
-    const getSession = vi.fn().mockResolvedValue({
-      data: { session: { access_token: "existing-session-token" } },
-      error: null,
-    });
+    const getSession = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: { session: null },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { session: { access_token: "existing-session-token" } },
+        error: null,
+      });
     const client = createSupabaseClientMock({ exchangeCodeForSession, getSession });
 
     const result = await resolveCallbackAccessToken(
       new URLSearchParams("code=oauth-code"),
       "",
       client,
+      undefined,
+      { sessionWaitTimeoutMs: 0 },
     );
 
     expect(result).toEqual({ accessToken: "existing-session-token", error: null });
     expect(exchangeCodeForSession).toHaveBeenCalledWith("oauth-code");
-    expect(getSession).toHaveBeenCalledOnce();
+    expect(getSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the auto-detected PKCE session before attempting a manual exchange", async () => {
+    const exchangeCodeForSession = vi.fn();
+    const getSession = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: { session: null },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { session: { access_token: "detected-session-token" } },
+        error: null,
+      });
+    const client = createSupabaseClientMock({ exchangeCodeForSession, getSession });
+
+    const result = await resolveCallbackAccessToken(
+      new URLSearchParams("code=oauth-code"),
+      "",
+      client,
+      undefined,
+      { sessionWaitTimeoutMs: 300 },
+    );
+
+    expect(result).toEqual({ accessToken: "detected-session-token", error: null });
+    expect(getSession).toHaveBeenCalledTimes(2);
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
   it("reads an existing session directly for oauth error recovery", async () => {

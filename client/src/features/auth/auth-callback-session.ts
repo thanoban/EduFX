@@ -33,6 +33,9 @@ type CallbackTokens = {
   refreshToken: string | null;
 };
 
+const SESSION_POLL_INTERVAL_MS = 250;
+const SESSION_POLL_TIMEOUT_MS = 5000;
+
 export function normalizeErrorMessage(raw: string | null) {
   if (!raw) {
     return null;
@@ -57,11 +60,41 @@ export function readCallbackTokens(searchParams: URLSearchParams, hash: string):
   };
 }
 
+async function waitForExistingSessionAccessToken(
+  supabaseClient: SupabaseClientLike,
+  timeoutMs: number = SESSION_POLL_TIMEOUT_MS,
+) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: string | null = null;
+
+  while (Date.now() <= deadline) {
+    const existingSession = await supabaseClient.auth.getSession();
+    if (existingSession.error) {
+      lastError = existingSession.error.message;
+    }
+
+    if (existingSession.data.session?.access_token) {
+      return { accessToken: existingSession.data.session.access_token, error: null };
+    }
+
+    if (Date.now() >= deadline) {
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, SESSION_POLL_INTERVAL_MS));
+  }
+
+  return { accessToken: null, error: lastError };
+}
+
 export async function resolveCallbackAccessToken(
   searchParams: URLSearchParams,
   hash: string,
   supabaseClient: SupabaseClientLike,
   onHashTokensApplied?: () => void,
+  options?: {
+    sessionWaitTimeoutMs?: number;
+  },
 ) {
   const callbackTokens = readCallbackTokens(searchParams, hash);
   if (callbackTokens.error) {
@@ -69,6 +102,18 @@ export async function resolveCallbackAccessToken(
   }
 
   if (callbackTokens.code) {
+    // With detectSessionInUrl enabled, supabase-js performs the PKCE exchange
+    // automatically on the callback page. Give that automatic flow a moment to
+    // populate the session before trying a manual exchange, otherwise the same
+    // one-time code can be consumed twice and the redirect stalls or errors.
+    const detectedSession = await waitForExistingSessionAccessToken(
+      supabaseClient,
+      options?.sessionWaitTimeoutMs,
+    );
+    if (detectedSession.accessToken) {
+      return detectedSession;
+    }
+
     const { data, error } = await supabaseClient.auth.exchangeCodeForSession(callbackTokens.code);
 
     if (!error && data.session?.access_token) {
@@ -125,14 +170,5 @@ export async function resolveCallbackAccessToken(
 }
 
 export async function resolveExistingSessionAccessToken(supabaseClient: SupabaseClientLike) {
-  const existingSession = await supabaseClient.auth.getSession();
-  if (existingSession.error) {
-    return { accessToken: null, error: existingSession.error.message };
-  }
-
-  if (existingSession.data.session?.access_token) {
-    return { accessToken: existingSession.data.session.access_token, error: null };
-  }
-
-  return { accessToken: null, error: null };
+  return waitForExistingSessionAccessToken(supabaseClient);
 }
