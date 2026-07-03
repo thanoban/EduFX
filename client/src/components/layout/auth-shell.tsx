@@ -13,9 +13,12 @@ export function AuthShell({
   return (
     <main className="hero-layout">
       <header className="auth-toolbar">
-        <div className="auth-toolbar__brand">
-          <strong>EduFX</strong>
-          <span>Adaptive chemistry study planner</span>
+        <div className="auth-toolbar__brand-wrap">
+          <div className="brand-mark">FX</div>
+          <div className="auth-toolbar__brand">
+            <strong>EduFX</strong>
+            <span>Adaptive chemistry study planner</span>
+          </div>
         </div>
 
         {student ? (
@@ -36,7 +39,10 @@ export function AuthShell({
             </Button>
           </div>
         ) : (
-          <div className="auth-toolbar__welcome">Secure access for your learning profile</div>
+          <div className="auth-toolbar__welcome-wrap">
+            <span className="pill">Protected session</span>
+            <div className="auth-toolbar__welcome">Secure access for your learning profile</div>
+          </div>
         )}
       </header>
       <section className="hero-panel">{hero}</section>

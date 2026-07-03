@@ -1350,6 +1350,10 @@ p {
   font-size: 0.86rem;
 }
 
+.login-card--loading {
+  align-content: start;
+}
+
 .google-mark {
   display: inline-grid;
   place-items: center;
@@ -1765,6 +1769,78 @@ p {
   animation-delay: 0.36s;
 }
 
+.workspace-loading-shell .page-panel {
+  display: grid;
+  gap: 24px;
+}
+
+.loading-nav,
+.loading-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.loading-card {
+  min-height: 210px;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.skeleton-nav,
+.skeleton-field,
+.skeleton-line,
+.skeleton-button {
+  position: relative;
+  overflow: hidden;
+  background: rgba(109, 94, 252, 0.08);
+}
+
+.skeleton-nav::after,
+.skeleton-field::after,
+.skeleton-line::after,
+.skeleton-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.78), transparent);
+  animation: shimmer 1.35s ease-in-out infinite;
+}
+
+.skeleton-nav {
+  height: 44px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton-field {
+  height: 62px;
+  border-radius: 12px;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: 999px;
+}
+
+.skeleton-line--short {
+  width: 42%;
+}
+
+.skeleton-line--medium {
+  width: 64%;
+}
+
+.skeleton-button {
+  height: 46px;
+  border-radius: 12px;
+}
+
+.skeleton-button--compact {
+  width: 140px;
+}
+
 @keyframes pulse-dot {
   0%,
   80%,
@@ -1775,6 +1851,12 @@ p {
   40% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 
@@ -1857,6 +1939,12 @@ p {
     gap: 22px;
   }
 
+  .workspace-loading-shell .sidebar {
+    position: static;
+    min-height: auto;
+    height: auto;
+  }
+
   .sidebar {
     position: static;
     height: auto;
@@ -1902,6 +1990,24 @@ p {
     gap: 18px;
   }
 
+  .login-story-copy p,
+  .login-card__header p {
+    font-size: 0.98rem;
+  }
+
+  .login-password-row {
+    display: grid;
+    justify-content: start;
+  }
+
+  .login-insight-overlay {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
   .main-area {
     padding: 12px;
   }
@@ -1913,6 +2019,11 @@ p {
 
   .workspace-topbar {
     padding: 12px;
+  }
+
+  .skeleton-button--compact,
+  .workspace-loading-shell .workspace-topbar .skeleton-button {
+    width: 100%;
   }
 
   .page-header {

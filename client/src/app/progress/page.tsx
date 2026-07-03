@@ -18,7 +18,14 @@ export default function ProgressPage() {
   );
 
   if (authLoading || loading) {
-    return <PageState title="Loading learning map" message="EduFX is assembling your topic progress." />;
+    return (
+      <PageState
+        layout="workspace"
+        title="Loading learning map"
+        message="EduFX is assembling your topic progress."
+        eyebrow="Progress"
+      />
+    );
   }
 
   if (error) {

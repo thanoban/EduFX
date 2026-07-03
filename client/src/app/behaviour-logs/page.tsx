@@ -18,7 +18,14 @@ export default function BehaviourLogsPage() {
   );
 
   if (authLoading || loading) {
-    return <PageState title="Loading behaviour history" message="EduFX is collecting recent session summaries." />;
+    return (
+      <PageState
+        layout="workspace"
+        title="Loading behaviour history"
+        message="EduFX is collecting recent session summaries."
+        eyebrow="Behaviour logs"
+      />
+    );
   }
 
   if (error) {

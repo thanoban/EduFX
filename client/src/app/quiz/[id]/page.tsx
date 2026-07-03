@@ -21,7 +21,14 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   );
 
   if (authLoading || loading) {
-    return <PageState title="Preparing quiz" message="EduFX is building the next question set." />;
+    return (
+      <PageState
+        layout="workspace"
+        title="Preparing quiz"
+        message="EduFX is building the next question set."
+        eyebrow="Quiz"
+      />
+    );
   }
 
   if (error) {

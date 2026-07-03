@@ -14,7 +14,14 @@ export default function DiagnosticPage() {
   );
 
   if (authLoading || loading) {
-    return <PageState title="Building diagnostic" message="EduFX is preparing the 40-question placement check." />;
+    return (
+      <PageState
+        layout="auth"
+        title="Building diagnostic"
+        message="EduFX is preparing the 40-question placement check."
+        eyebrow="Diagnostic"
+      />
+    );
   }
 
   if (error) {

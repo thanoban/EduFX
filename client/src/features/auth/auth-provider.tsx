@@ -29,7 +29,7 @@ type AuthContextValue = {
     email: string,
     password: string
   ) => Promise<{ profile: StudentProfile | null; needsConfirmation: boolean }>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 };
 
@@ -40,6 +40,9 @@ const DEFAULT_DEMO_PROFILE = {
   name: "Ali Hassan",
   email: "ali.hassan@edufx.demo"
 };
+const RECENT_SIGN_OUT_KEY = "edufx.mvc.recent-signout-at";
+const RECENT_SIGN_OUT_WINDOW_MS = 15_000;
+const SIGN_OUT_TIMEOUT_MS = 4_000;
 
 async function getSessionWithTimeout(timeoutMs: number) {
   if (!supabase) {
@@ -61,6 +64,36 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const lastHandledTokenRef = useRef<string | null>(null);
   const oauthRedirectInFlightRef = useRef(false);
 
+  function markRecentSignOut() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.sessionStorage.setItem(RECENT_SIGN_OUT_KEY, String(Date.now()));
+  }
+
+  function clearRecentSignOut() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.sessionStorage.removeItem(RECENT_SIGN_OUT_KEY);
+  }
+
+  function hasRecentSignOut() {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const raw = window.sessionStorage.getItem(RECENT_SIGN_OUT_KEY);
+    const lastSignedOutAt = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(lastSignedOutAt)) {
+      return false;
+    }
+    if (Date.now() - lastSignedOutAt > RECENT_SIGN_OUT_WINDOW_MS) {
+      clearRecentSignOut();
+      return false;
+    }
+    return true;
+  }
+
   function clearSessionState() {
     lastHandledTokenRef.current = null;
     oauthRedirectInFlightRef.current = false;
@@ -79,10 +112,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     window.location.replace(target);
   }
 
-  function finishSignOut(reason?: "expired") {
+  async function finishSignOut(reason?: "expired") {
+    setLoading(true);
+    markRecentSignOut();
     clearSessionState();
-    void supabase?.auth.signOut();
-    redirectToLogin(reason);
+    try {
+      if (supabase) {
+        await Promise.race([
+          supabase.auth.signOut({ scope: "local" }),
+          new Promise<null>((resolve) => {
+            window.setTimeout(() => resolve(null), SIGN_OUT_TIMEOUT_MS);
+          }),
+        ]);
+      }
+    } finally {
+      redirectToLogin(reason);
+    }
   }
 
   async function bootstrapDemoStudent(profile?: { name?: string; email?: string }) {
@@ -90,6 +135,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const email = profile?.email ?? DEFAULT_DEMO_PROFILE.email;
     const demoToken = `demo:${name}:${email}`;
     const authProfile = await authApi.login(demoToken);
+    clearRecentSignOut();
     setAuthError(null);
     setStudent(authProfile);
     setToken(demoToken);
@@ -113,6 +159,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     try {
       const profile = await authApi.login(accessToken);
+      clearRecentSignOut();
       setStudent(profile);
       setToken(accessToken);
       writeStorage(STORAGE_KEYS.student, profile);
@@ -127,6 +174,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   useEffect(() => {
+    if (hasRecentSignOut()) {
+      clearSessionState();
+      setLoading(false);
+      return;
+    }
+
     const storedStudent = readStorage<StudentProfile | null>(STORAGE_KEYS.student, null);
     const storedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
     if (storedStudent && storedToken) {
@@ -162,12 +215,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
     }
 
+    const supabaseClient = supabase;
+
     // onAuthStateChange fires on OAuth redirect (SIGNED_IN) and session restore
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
       (event, session) => {
         if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.access_token) {
+          if (hasRecentSignOut()) {
+            void supabaseClient.auth.signOut({ scope: "local" });
+            setLoading(false);
+            return;
+          }
           void handleSession(session.access_token);
         } else if (event === "SIGNED_OUT") {
+          clearRecentSignOut();
           clearSessionState();
           setLoading(false);
         }
@@ -177,6 +238,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // Also check for a session that already exists (e.g. page reload)
     getSessionWithTimeout(4000)
       .then((result) => {
+        if (hasRecentSignOut()) {
+          void supabaseClient.auth.signOut({ scope: "local" });
+          setLoading(false);
+          return;
+        }
+
         if (result?.data.session?.access_token) {
           void handleSession(result.data.session.access_token);
           return;
@@ -305,7 +372,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function signOut() {
-    finishSignOut();
+    return finishSignOut();
   }
 
   const value = useMemo(

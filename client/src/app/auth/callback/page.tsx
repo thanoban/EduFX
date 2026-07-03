@@ -8,8 +8,10 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <PageState
+          layout="auth"
           title="Signing you in"
           message="Completing your Google sign-in and loading your EduFX study profile."
+          eyebrow="Secure sign-in"
         />
       }
     >

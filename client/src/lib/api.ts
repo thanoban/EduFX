@@ -24,6 +24,26 @@ type RequestOptions = {
   body?: unknown;
 };
 
+const REQUEST_RETRY_DELAYS_MS = [700, 1400, 2200];
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const REQUEST_TIMEOUT_MS = 15000;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getApiErrorMessage(path: string, response: Response, payload: ApiResponse<unknown> | null, raw: string) {
+  if (payload?.message) {
+    return payload.message;
+  }
+
+  if (raw.trim()) {
+    return raw.trim().slice(0, 220);
+  }
+
+  return `Request failed for ${path} (${response.status})`;
+}
+
 async function request<T>(
   path: string,
   { method = "GET", token, studentId, body }: RequestOptions = {}
@@ -36,7 +56,7 @@ async function request<T>(
       ...(studentId ? { "X-Student-Id": String(studentId) } : {})
     },
     body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store"
+    cache: "no-store",
   };
 
   // Cloud Run scales to zero, so the first request after idle can be a cold
@@ -45,13 +65,28 @@ async function request<T>(
   // before giving up, so a cold backend doesn't break sign-in.
   let response: Response | null = null;
   let lastNetworkError: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < REQUEST_RETRY_DELAYS_MS.length; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      response = await fetch(`${API_BASE_URL}${path}`, init);
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...init,
+        signal: controller.signal,
+      });
+
+      if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
+        await delay(REQUEST_RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+
       break;
     } catch (error) {
       lastNetworkError = error;
-      await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+      if (attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
+        await delay(REQUEST_RETRY_DELAYS_MS[attempt]);
+      }
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 
@@ -63,9 +98,22 @@ async function request<T>(
     );
   }
 
-  const payload = (await response.json()) as ApiResponse<T>;
-  if (!response.ok || !payload.success || payload.data === null) {
-    throw new Error(payload.message || `Request failed for ${path}`);
+  const raw = await response.text();
+  let payload: ApiResponse<T> | null = null;
+  if (raw.trim()) {
+    try {
+      payload = JSON.parse(raw) as ApiResponse<T>;
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(path, response, payload, raw));
+  }
+
+  if (!payload || !payload.success || payload.data === null) {
+    throw new Error(payload?.message || `Request failed for ${path}`);
   }
   return payload.data;
 }

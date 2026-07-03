@@ -29,7 +29,14 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   );
 
   if (authLoading || loading) {
-    return <PageState title="Loading results" message="EduFX is preparing your score, focus, and explanations." />;
+    return (
+      <PageState
+        layout="workspace"
+        title="Loading results"
+        message="EduFX is preparing your score, focus, and explanations."
+        eyebrow="Results"
+      />
+    );
   }
 
   if (error) {

@@ -34,8 +34,8 @@ describe("frontend route smoke coverage", () => {
 
   it("renders the login screen", () => {
     renderWithAuth(<LoginScreen />, { student: null });
-    expect(screen.getByText("Sign in to EduFX")).toBeInTheDocument();
-    expect(screen.getByText("Continue with Google")).toBeInTheDocument();
+    expect(screen.getByText("Welcome back")).toBeInTheDocument();
+    expect(screen.getByText("Google")).toBeInTheDocument();
   });
 
   it("renders diagnostic results", () => {

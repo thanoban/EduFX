@@ -21,8 +21,10 @@ export function HomeRedirectScreen() {
 
   return (
     <PageState
+      layout="auth"
       title="Opening EduFX"
       message="Routing you to sign in and restoring any pending authentication session."
+      eyebrow="Welcome back"
     />
   );
 }

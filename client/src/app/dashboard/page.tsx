@@ -22,7 +22,14 @@ export default function DashboardPage() {
   );
 
   if (authLoading || loading) {
-    return <PageState title="Preparing your workspace" message="EduFX is loading your dashboard, plan, and progress." />;
+    return (
+      <PageState
+        layout="workspace"
+        title="Preparing your workspace"
+        message="EduFX is loading your dashboard, plan, and progress."
+        eyebrow="Dashboard"
+      />
+    );
   }
 
   if (error) {

@@ -21,7 +21,14 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
   );
 
   if (authLoading || loading) {
-    return <PageState title="Opening study notes" message="EduFX is selecting level-aware content for this topic." />;
+    return (
+      <PageState
+        layout="workspace"
+        title="Opening study notes"
+        message="EduFX is selecting level-aware content for this topic."
+        eyebrow="Study"
+      />
+    );
   }
 
   if (error) {

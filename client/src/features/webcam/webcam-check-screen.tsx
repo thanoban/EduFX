@@ -2,11 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Eye, Video, VideoOff } from "lucide-react";
+import { Eye, Gauge, ShieldCheck, Video, VideoOff } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
+import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 
@@ -76,11 +77,61 @@ export function WebcamCheckScreen() {
       title="Before you begin"
       subtitle={`Prepare the session environment for ${student?.name ?? "your"} quiz run.`}
       action={
-        <Button icon={<Video size={17} />} onClick={() => router.push(`/quiz/${subtopic}?webcam=${enabled ? "1" : "0"}`)}>
+        <Button
+          icon={<Video size={17} />}
+          disabled={enabled && !cameraReady}
+          onClick={() => router.push(`/quiz/${subtopic}?webcam=${enabled ? "1" : "0"}`)}
+        >
           Start quiz now
         </Button>
       }
     >
+      <section className="hero-strip">
+        <div className="hero-strip__copy">
+          <span className="eyebrow"><ShieldCheck size={14} /> Session check</span>
+          <h3>Choose whether this quiz should include focus tracking.</h3>
+          <p className="muted">
+            The webcam preview is optional. EduFX keeps the analysis on-device and stores only the
+            summary percentages used to reflect on study quality later.
+          </p>
+        </div>
+        <div className="hero-strip__metrics">
+          <div className="metric-box">
+            <strong>{enabled ? (cameraReady ? "Ready" : "Waiting") : "Skipped"}</strong>
+            <span>camera status</span>
+          </div>
+          <div className="metric-box">
+            <strong>Local</strong>
+            <span>video never uploads</span>
+          </div>
+          <div className="metric-box">
+            <strong>Optional</strong>
+            <span>quiz works without tracking</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid-3" style={{ marginBottom: 24 }}>
+        <StatCard
+          icon={<Video size={18} />}
+          label="Tracking mode"
+          value={enabled ? "On" : "Off"}
+          hint="Can be changed before starting the quiz"
+        />
+        <StatCard
+          icon={<Gauge size={18} />}
+          label="Readiness"
+          value={cameraReady ? "Ready" : enabled ? "Checking" : "Skipped"}
+          hint="Preview must be ready only when tracking is enabled"
+        />
+        <StatCard
+          icon={<ShieldCheck size={18} />}
+          label="Privacy"
+          value="Local"
+          hint="Only derived focus signals are stored"
+        />
+      </div>
+
       <div className="grid-2">
         <SectionCard title="Camera preview" eyebrow="Client-side only">
           <div className="camera-preview">
@@ -107,6 +158,12 @@ export function WebcamCheckScreen() {
             <div className="callout">
               Video stays local. EduFX stores only derived focus flags and session summary percentages.
             </div>
+            {enabled && !cameraReady ? (
+              <div className="callout">
+                Camera tracking is enabled, but the preview is not ready yet. Wait for the feed or
+                switch to &quot;Skip tracking&quot; to continue immediately.
+              </div>
+            ) : null}
             <div className="cluster">
               <Button icon={<VideoOff size={16} />} variant={enabled ? "secondary" : "primary"} onClick={() => setEnabled(false)}>
                 Skip tracking

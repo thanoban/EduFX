@@ -21,6 +21,7 @@ export function AuthCallbackScreen() {
   const searchParams = useSearchParams();
   const { student, authenticateWithAccessToken, authError: authContextError } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [slow, setSlow] = useState(false);
 
   useEffect(() => {
     const oauthError =
@@ -39,15 +40,15 @@ export function AuthCallbackScreen() {
 
     const supabaseClient = supabase;
     let cancelled = false;
-    const timeoutId = window.setTimeout(() => {
+    const slowId = window.setTimeout(() => {
       if (!cancelled) {
-        setError("Google sign-in is taking too long. Please try again.");
+        setSlow(true);
       }
-    }, 12000);
+    }, 8000);
 
     async function finalizeCallback() {
       if (student) {
-        clearTimeout(timeoutId);
+        clearTimeout(slowId);
         router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic");
         return;
       }
@@ -73,7 +74,7 @@ export function AuthCallbackScreen() {
           if (cancelled) {
             return;
           }
-          clearTimeout(timeoutId);
+          clearTimeout(slowId);
           router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
           return;
         } catch (loginError) {
@@ -111,7 +112,7 @@ export function AuthCallbackScreen() {
         if (cancelled) {
           return;
         }
-        clearTimeout(timeoutId);
+        clearTimeout(slowId);
         router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
       } catch (loginError) {
         if (cancelled) {
@@ -127,7 +128,7 @@ export function AuthCallbackScreen() {
 
     return () => {
       cancelled = true;
-      clearTimeout(timeoutId);
+      clearTimeout(slowId);
     };
   }, [student, authenticateWithAccessToken, authContextError, router, searchParams]);
 
@@ -145,8 +146,14 @@ export function AuthCallbackScreen() {
 
   return (
     <PageState
+      layout="auth"
       title="Signing you in"
-      message="Completing your Google sign-in and loading your EduFX study profile."
+      message={
+        slow
+          ? "Finalizing your secure EduFX session. This can take a little longer if the study server is waking up."
+          : "Completing your Google sign-in and loading your EduFX study profile."
+      }
+      eyebrow="Secure sign-in"
     />
   );
 }
