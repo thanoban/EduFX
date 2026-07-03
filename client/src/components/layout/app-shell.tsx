@@ -6,7 +6,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import {
   Activity,
   BarChart3,
-  Gauge,
+  Flame,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -31,17 +31,20 @@ export function AppShell({
 }: PropsWithChildren<{ title: string; subtitle: string; action?: ReactNode }>) {
   const pathname = usePathname();
   const { student, signOut } = useAuth();
+  const adaptivePlanReady = Boolean(student?.diagnostic_completed);
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">FX</div>
-          <div>
+          <div className="brand-mark">Fx</div>
+          <div className="brand-copy">
             <h1>EduFX</h1>
-            <small>Adaptive Chemistry Platform</small>
+            <small>Chemistry · A-Level</small>
           </div>
         </div>
+
+        <div className="sidebar-section-label">Workspace</div>
         <nav className="nav-list">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -52,38 +55,64 @@ export function AppShell({
                 className={`nav-link ${pathname === item.href ? "active" : ""}`.trim()}
                 aria-current={pathname === item.href ? "page" : undefined}
               >
-                <Icon size={18} strokeWidth={2.2} />
+                <Icon size={17} strokeWidth={2.2} />
                 {item.label}
               </Link>
             );
           })}
         </nav>
+
+        <div style={{ flex: 1 }} />
+
         <div className="sidebar-insight">
           <div className="cluster" style={{ justifyContent: "space-between" }}>
-            <Gauge size={18} />
-            <span className="sidebar-insight__score">Live</span>
+            <Flame size={16} />
+            <span className="sidebar-insight__score">12-day streak</span>
           </div>
-          <strong>Focus-aware learning</strong>
-          <span>Quiz behaviour, progress, and next-topic scheduling stay connected.</span>
+          <div className="progress-bar">
+            <span style={{ width: "80%" }} />
+          </div>
+          <span>3 sessions to your weekly goal</span>
         </div>
+
         <div className="sidebar-user stack">
-          <div className="avatar" aria-hidden="true">
-            {(student?.name ?? "Student").slice(0, 2).toUpperCase()}
+          <div className="cluster" style={{ alignItems: "center", flexWrap: "nowrap" }}>
+            <div className="avatar" aria-hidden="true">
+              {(student?.name ?? "Student").slice(0, 2).toUpperCase()}
+            </div>
+            <div className="sidebar-user__meta">
+              <strong>{student?.name ?? "Student"}</strong>
+              <div className="muted">{student?.email ?? "Not signed in"}</div>
+            </div>
           </div>
-          <div>
-            <strong>{student?.name ?? "Student"}</strong>
-            <div className="muted">{student?.email ?? "Not signed in"}</div>
+          <div className="sidebar-user__actions">
+            <Button variant="ghost" icon={<LogOut size={15} />} onClick={signOut}>
+              Log out
+            </Button>
           </div>
-          <Button variant="ghost" icon={<LogOut size={16} />} onClick={signOut}>
-            Log out
-          </Button>
         </div>
       </aside>
       <main className="main-area">
+        <header className="workspace-topbar">
+          <div className="stack" style={{ gap: 4 }}>
+            <span className="eyebrow">
+              <ShieldCheck size={13} /> Signed-in workspace
+            </span>
+            <div className="workspace-topbar__identity">
+              <strong>{student?.name ?? "EduFX student"}</strong>
+              <span>{student?.email ?? "Adaptive study session ready"}</span>
+            </div>
+          </div>
+          <div className="workspace-topbar__actions">
+            <span className={`pill ${adaptivePlanReady ? "success" : "warning"}`.trim()}>
+              {adaptivePlanReady ? "Adaptive plan active" : "Diagnostic required"}
+            </span>
+          </div>
+        </header>
         <div className="page-panel">
           <header className="page-header">
             <div className="stack">
-              <span className="eyebrow"><ShieldCheck size={14} /> EduFX workspace</span>
+              <span className="eyebrow"><ShieldCheck size={13} /> EduFX workspace</span>
               <h2>{title}</h2>
               <div className="muted">{subtitle}</div>
             </div>

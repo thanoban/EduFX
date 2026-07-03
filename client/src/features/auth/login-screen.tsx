@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowRight, FlaskConical, GraduationCap, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, GraduationCap, Lock, Mail } from "lucide-react";
 
-import { AuthShell } from "@/components/layout/auth-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/use-auth";
 
@@ -88,107 +87,157 @@ export function LoginScreen() {
   }
 
   return (
-    <AuthShell
-      hero={
-        <div className="stack">
-          <span className="pill"><FlaskConical size={15} /> A-Level chemistry</span>
-          <h1>EduFX</h1>
+    <main className="login-page-v2">
+      <section className="login-story-panel" aria-label="EduFX learning workspace">
+        <div className="login-brand">
+          <div className="login-brand__mark" aria-hidden="true" />
+          <strong>EduFX</strong>
+        </div>
+
+        <div className="login-story-copy">
+          <span className="pill">
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: "#34d399" }} />
+            Adaptive · S-block unit
+          </span>
+          <h1>Master A-Level chemistry, one focused session at a time.</h1>
           <p>
-            Adaptive study planning, focused quiz sessions, and behaviour-aware feedback for the
-            S-block chemistry unit.
+            Diagnostic-driven study plans, distraction-free quizzes, and behaviour-aware feedback
+            across Group 1 and Group 2.
           </p>
-          <div className="grid-2">
-            <div className="section-card">
-              <h3>10 subtopics</h3>
-              <p className="muted">Diagnostic levels and daily plans across Group 1 and Group 2.</p>
+          <div className="login-story-stats">
+            <div className="login-story-stats__item">
+              <strong>10</strong>
+              <span>subtopics</span>
             </div>
-            <div className="section-card">
-              <h3>Focus reports</h3>
-              <p className="muted">Optional webcam summaries support better study routines.</p>
+            <div className="login-story-stats__divider" />
+            <div className="login-story-stats__item">
+              <strong>3</strong>
+              <span>mastery levels</span>
+            </div>
+            <div className="login-story-stats__divider" />
+            <div className="login-story-stats__item">
+              <strong>92</strong>
+              <span>focus score</span>
             </div>
           </div>
         </div>
-      }
-    >
-      <div className="stack">
-        <span className="pill"><ShieldCheck size={15} /> Secure access</span>
-        <h2>{mode === "signup" ? "Create your EduFX account" : "Sign in to EduFX"}</h2>
-        <p className="muted">
-          Use your email and password, continue with Google, or try the local demo student.
-        </p>
 
-        {error ? <div className="auth-error">{error}</div> : null}
-        {note ? <div className="auth-note">{note}</div> : null}
+        <div className="login-story-trust">
+          <div className="login-story-trust__avatars">
+            <span style={{ background: "#6d5efc" }} />
+            <span style={{ background: "#14b8a6" }} />
+            <span style={{ background: "#f59e0b" }} />
+          </div>
+          Trusted by 2,400+ chemistry students
+        </div>
+      </section>
 
-        <form className="stack" onSubmit={handleEmailSubmit}>
-          <label className="field">
-            <span className="field__label">Email</span>
-            <input
-              className="field__input"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="you@example.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span className="field__label">Password</span>
-            <input
-              className="field__input"
-              type="password"
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              required
-              minLength={6}
-              placeholder="At least 6 characters"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+      <section className="login-form-stage" aria-label="Sign in to EduFX">
+        <div className="login-card">
+          <div className="login-card__header">
+            <span className="mono-label">Welcome back</span>
+            <h2>{mode === "signup" ? "Create account" : "Sign in to EduFX"}</h2>
+            <p>
+              {mode === "signup"
+                ? "Enter your details to create your workspace."
+                : "Continue your S-block study plan."}
+            </p>
+          </div>
+
+          {error ? <div className="auth-error">{error}</div> : null}
+          {note ? <div className="auth-note">{note}</div> : null}
+
+          <form className="login-form" onSubmit={handleEmailSubmit}>
+            <label className="field">
+              <span className="field__label">Email address</span>
+              <span className="login-input-wrap">
+                <Mail size={18} />
+                <input
+                  className="field__input login-input"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="scholar@edufx.app"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </span>
+            </label>
+            <label className="field">
+              <span className="login-password-row">
+                <span className="field__label">Password</span>
+                {mode === "signin" ? (
+                  <button
+                    type="button"
+                    className="auth-toggle"
+                    onClick={() => {
+                      setError(null);
+                      setNote("Password reset is handled through your institution account admin.");
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                ) : null}
+              </span>
+              <span className="login-input-wrap">
+                <Lock size={18} />
+                <input
+                  className="field__input login-input"
+                  type="password"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <Eye size={16} style={{ left: "auto", right: 14 }} />
+              </span>
+            </label>
+            <Button type="submit" className="login-primary-button" disabled={busy || loading}>
+              {mode === "signup" ? "Create workspace" : "Sign in"}
+              <ArrowRight size={17} />
+            </Button>
+          </form>
+
+          <div className="auth-divider">OR</div>
+
           <Button
-            type="submit"
-            icon={<Mail size={17} />}
+            variant="secondary"
+            className="login-google-button"
+            icon={<span className="google-mark" aria-hidden="true"><GraduationCap size={16} /></span>}
+            onClick={handleGoogle}
             disabled={busy || loading}
           >
-            {mode === "signup" ? "Create account" : "Sign in with email"}
+            Google
           </Button>
-        </form>
 
-        <p className="muted small-text">
-          {mode === "signup" ? "Already have an account? " : "New to EduFX? "}
-          <button
-            type="button"
-            className="auth-toggle"
-            onClick={() => {
-              setMode(mode === "signup" ? "signin" : "signup");
-              setError(null);
-              setNote(null);
-            }}
+          <Button
+            variant="ghost"
+            className="login-demo-button"
+            icon={<ArrowRight size={17} />}
+            onClick={handleDemo}
+            disabled={busy || loading}
           >
-            {mode === "signup" ? "Sign in" : "Create an account"}
-          </button>
-        </p>
+            Use demo student
+          </Button>
 
-        <div className="auth-divider">or</div>
-
-        <Button
-          variant="secondary"
-          icon={<GraduationCap size={17} />}
-          onClick={handleGoogle}
-          disabled={busy || loading}
-        >
-          Continue with Google
-        </Button>
-        <Button
-          variant="ghost"
-          icon={<ArrowRight size={17} />}
-          onClick={handleDemo}
-          disabled={busy || loading}
-        >
-          Use demo student
-        </Button>
-      </div>
-    </AuthShell>
+          <p className="login-switch-copy">
+            {mode === "signup" ? "Already have an account? " : "New to EduFX? "}
+            <button
+              type="button"
+              className="auth-toggle"
+              onClick={() => {
+                setMode(mode === "signup" ? "signin" : "signup");
+                setError(null);
+                setNote(null);
+              }}
+            >
+              {mode === "signup" ? "Sign in" : "Create an account"}
+            </button>
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }
