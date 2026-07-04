@@ -10,7 +10,14 @@ const defaultStudent: StudentProfile = {
   name: "Ali Hassan",
   email: "ali.hassan@edufx.demo",
   diagnostic_completed: true,
-  is_admin: false
+  is_admin: false,
+  free_days: [],
+  session_length: "medium",
+  next_expected_date: null,
+  email_reminders_enabled: true,
+  current_streak: 0,
+  longest_streak: 0,
+  last_study_date: null
 };
 
 export function renderWithAuth(
@@ -35,7 +42,8 @@ export function renderWithAuth(
           signInWithEmail: async () => student ?? defaultStudent,
           signUpWithEmail: async () => ({ profile: student ?? defaultStudent, needsConfirmation: false }),
           signOut: async () => undefined,
-          refreshStatus: async () => undefined
+          refreshStatus: async () => undefined,
+          updateStudentProfile: () => undefined
         }}
       >
         {children}

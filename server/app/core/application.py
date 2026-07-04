@@ -9,10 +9,12 @@ from app.routes.behaviour import router as behaviour_router
 from app.routes.content import router as content_router
 from app.routes.diagnostic import router as diagnostic_router
 from app.routes.explanation import router as explanation_router
+from app.routes.internal import router as internal_router
 from app.routes.progress import router as progress_router
 from app.routes.quiz import router as quiz_router
 from app.routes.results import router as results_router
 from app.routes.scheduler import router as scheduler_router
+from app.routes.settings import router as settings_router
 
 
 def create_app() -> FastAPI:
@@ -44,6 +46,8 @@ def create_app() -> FastAPI:
     app.include_router(progress_router, prefix="/progress", tags=["progress"])
     app.include_router(behaviour_router, prefix="/behaviour", tags=["behaviour"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    app.include_router(settings_router, prefix="/settings", tags=["settings"])
+    app.include_router(internal_router, prefix="/internal", tags=["internal"])
 
     @app.get("/")
     def health() -> dict[str, str]:

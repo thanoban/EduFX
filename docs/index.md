@@ -14,4 +14,5 @@
 | [finetune-aws-hosting-guide.md](finetune-aws-hosting-guide.md) | Hosting the fine-tuned model on AWS EC2 (free credit) |
 | [finetune-azure-hosting-guide.md](finetune-azure-hosting-guide.md) | Hosting the fine-tuned model on Azure (on/off GPU VM) |
 | [recommender-colab-training.md](recommender-colab-training.md) | Train the DKT knowledge-tracing recommender in Colab (8 cells + explanations) |
+| [recommender-learning-basics.md](recommender-learning-basics.md) | Beginner-friendly explanation of the recommender training process from simulator to backend integration |
 | [ui-details.md](ui-details.md) | UI component map, page-by-page layout |

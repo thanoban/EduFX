@@ -31,6 +31,7 @@ type AuthContextValue = {
   ) => Promise<{ profile: StudentProfile | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
   refreshStatus: () => Promise<void>;
+  updateStudentProfile: (profile: StudentProfile) => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -375,6 +376,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return finishSignOut();
   }
 
+  function updateStudentProfile(profile: StudentProfile) {
+    setStudent(profile);
+    writeStorage(STORAGE_KEYS.student, profile);
+  }
+
   const value = useMemo(
     () => ({
       student,
@@ -387,7 +393,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       signInWithEmail,
       signUpWithEmail,
       signOut,
-      refreshStatus
+      refreshStatus,
+      updateStudentProfile
     }),
     [student, token, loading, authError]
   );

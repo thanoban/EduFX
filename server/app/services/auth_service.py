@@ -14,13 +14,7 @@ class AuthService:
         student = self.repository.find_student_by_email(identity.email)
         if student is None:
             student = self.repository.create_student(identity.name, identity.email)
-        return StudentProfileDTO(
-            student_id=student.id,
-            name=student.name,
-            email=student.email,
-            diagnostic_completed=student.diagnostic_completed,
-            is_admin=student.role == "admin",
-        )
+        return StudentProfileDTO.from_student(student)
 
     def is_admin(self, email: str) -> bool:
         student = self.repository.find_student_by_email(email)
@@ -30,10 +24,4 @@ class AuthService:
         student = self.repository.get_student(student_id)
         if student is None:
             raise EduFXError("Student not found", status_code=404)
-        return StudentProfileDTO(
-            student_id=student.id,
-            name=student.name,
-            email=student.email,
-            diagnostic_completed=student.diagnostic_completed,
-            is_admin=student.role == "admin",
-        )
+        return StudentProfileDTO.from_student(student)

@@ -71,9 +71,11 @@ def _decode_supabase_token(token: str, settings: Any) -> dict[str, Any]:
             options={"verify_aud": False},
         )
 
-    # No verification key available for this token's algorithm — extract the
-    # claims without signature verification so identity still resolves.
-    return jwt.decode(token, options={"verify_signature": False})
+    raise EduFXError(
+        "Authentication token could not be verified. Configure SUPABASE_URL for asymmetric tokens "
+        "or SUPABASE_JWT_SECRET for HS256 tokens.",
+        status_code=401,
+    )
 
 
 def verify_google_token(token: str) -> TokenIdentity:
@@ -95,4 +97,3 @@ def verify_google_token(token: str) -> TokenIdentity:
 
 def auth_token_dependency(authorization: str | None = Header(default=None)) -> str:
     return parse_bearer_token(authorization)
-

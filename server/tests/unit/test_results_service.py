@@ -2,6 +2,7 @@ from app.core.store import DemoDataStore
 from app.repositories.behaviour_repository import BehaviourRepository
 from app.repositories.quiz_repository import QuizRepository
 from app.repositories.results_repository import ResultsRepository
+from app.services.learning_coach_service import LearningCoachService
 from app.services.results_service import ResultsService
 
 
@@ -88,3 +89,27 @@ def test_get_session_results_after_submit():
     assert dto.correct_answers == 1
     assert len(dto.attempts) == 1
     assert dto.attempts[0].is_correct is True
+
+
+def test_learning_coach_builds_recovery_plan_from_score_concept_and_focus():
+    service, store, student, session = _make_service()
+    q_id = _first_question_for_subtopic(store, 1)
+    question = store.questions[q_id]
+    wrong = next(x for x in ("A", "B", "C", "D") if x != question.correct_answer)
+    session.focus_score = 48
+    session.phone_percent = 30
+    session.away_percent = 45
+    session.webcam_enabled = True
+    service.submit_quiz(
+        student_id=student.id,
+        session_id=session.id,
+        subtopic_id=1,
+        webcam_enabled=True,
+        answers=[{"question_id": q_id, "student_answer": wrong}],
+    )
+
+    coach = LearningCoachService(ResultsRepository(store)).build_session_plan(session.id, student.id)
+
+    assert coach.headline.startswith("Recovery plan")
+    assert {insight.agent for insight in coach.insights} == {"performance", "concept", "focus", "planner"}
+    assert any(action.priority == "high" for action in coach.actions)

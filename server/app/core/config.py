@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")
+    # Reminder emails (server/app/core/email.py). Unset in dev/test — send_email
+    # then just logs instead of calling Resend, so nothing breaks without a key.
+    resend_api_key: str | None = None
+    resend_from_email: str = "EduFX <reminders@edufx.app>"
+    reminders_shared_secret: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parents[3] / ".env"),

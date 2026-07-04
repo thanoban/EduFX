@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, BookOpenCheck, CalendarCheck, Gauge, Target } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpenCheck, CalendarCheck, Flame, Gauge, Target } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,79 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
-import type { ProgressRecord, StudyPlanItem } from "@/types/contracts";
+import type { ProgressRecord, StudentProfile, StudyPlanItem } from "@/types/contracts";
+
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toBackendWeekday(date: Date) {
+  return (date.getDay() + 6) % 7;
+}
+
+function nextFreeDayLabel(freeDays: number[], todayWeekday: number) {
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const candidate = (todayWeekday + offset) % 7;
+    if (freeDays.includes(candidate)) {
+      return offset === 1 ? "tomorrow" : DAY_NAMES[candidate];
+    }
+  }
+  return null;
+}
+
+function buildDashboardBanner(student: StudentProfile | null, planLength: number) {
+  if (!student) {
+    return null;
+  }
+  const today = new Date();
+  const todayWeekday = toBackendWeekday(today);
+  const iso = todayIso();
+  const studiedToday = student.last_study_date === iso;
+
+  if (studiedToday) {
+    return {
+      tone: "success" as const,
+      title: "Nice work — you've already studied today.",
+      body: student.current_streak > 0
+        ? `That keeps your ${student.current_streak}-day streak alive.`
+        : "Come back tomorrow to start a new streak."
+    };
+  }
+
+  if (student.free_days.length === 0) {
+    return {
+      tone: "default" as const,
+      title: "Set your study availability",
+      body: "Tell EduFX which days you're usually free in Settings so your daily plan fits your schedule."
+    };
+  }
+
+  const isFreeToday = student.free_days.includes(todayWeekday);
+  const isPromisedToday = student.next_expected_date === iso;
+
+  if ((isFreeToday || isPromisedToday) && planLength > 0) {
+    return {
+      tone: "success" as const,
+      title: "You said you're free today.",
+      body: "Your plan below is sized to fit the time you have — no need to rush through everything at once."
+    };
+  }
+
+  if (!isFreeToday && !isPromisedToday) {
+    const nextDay = nextFreeDayLabel(student.free_days, todayWeekday);
+    return {
+      tone: "warning" as const,
+      title: "No study planned today.",
+      body: nextDay
+        ? `Your next free day is ${nextDay}. Rest up, or study anyway if you have time.`
+        : "Let EduFX know when you're next free from the Results screen or Settings."
+    };
+  }
+
+  return null;
+}
 
 export function DashboardScreen({
   plan,
@@ -29,6 +101,7 @@ export function DashboardScreen({
       )
     : 0;
   const nextTopic = plan[0];
+  const banner = buildDashboardBanner(student, plan.length);
 
   return (
     <AppShell
@@ -68,6 +141,19 @@ export function DashboardScreen({
           </div>
         </div>
       </section>
+
+      {banner ? (
+        <div className="list-item cluster" style={{ justifyContent: "space-between", marginTop: 16 }}>
+          <div className="cluster">
+            <Flame size={18} />
+            <div className="stack" style={{ gap: 2 }}>
+              <strong>{banner.title}</strong>
+              <span className="muted">{banner.body}</span>
+            </div>
+          </div>
+          <StatusPill label={banner.tone === "success" ? "On track" : banner.tone === "warning" ? "Heads up" : "Setup"} tone={banner.tone} />
+        </div>
+      ) : null}
 
       <div className="grid-4">
         <StatCard icon={<BookOpenCheck size={18} />} label="Subtopics mastered" value={`${progress.filter((item) => item.current_level === "advanced").length}`} hint="Advanced level records" />

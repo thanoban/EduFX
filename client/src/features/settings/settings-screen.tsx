@@ -1,14 +1,55 @@
 "use client";
 
+import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
-import { Clock3, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { settingsApi } from "@/lib/api";
+import type { SessionLength } from "@/types/contracts";
+import { CalendarClock, Clock3, LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
+
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const SESSION_LENGTH_OPTIONS: Array<{ value: SessionLength; label: string }> = [
+  { value: "short", label: "15–20 min" },
+  { value: "medium", label: "30–45 min" },
+  { value: "long", label: "1hr+" }
+];
 
 export function SettingsScreen() {
-  const { student, signOut } = useAuthGuard();
+  const { student, signOut, updateStudentProfile } = useAuthGuard();
+  const [freeDays, setFreeDays] = useState<number[]>(student?.free_days ?? []);
+  const [sessionLength, setSessionLength] = useState<SessionLength>(student?.session_length ?? "medium");
+  const [emailRemindersEnabled, setEmailRemindersEnabled] = useState(student?.email_reminders_enabled ?? true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  function toggleDay(day: number) {
+    setSaved(false);
+    setFreeDays((current) =>
+      current.includes(day) ? current.filter((value) => value !== day) : [...current, day].sort()
+    );
+  }
+
+  async function handleSaveAvailability() {
+    if (!student) {
+      return;
+    }
+    setSaving(true);
+    setSaved(false);
+    try {
+      const profile = await settingsApi.updateAvailability(student.student_id, {
+        free_days: freeDays,
+        session_length: sessionLength,
+        email_reminders_enabled: emailRemindersEnabled
+      });
+      updateStudentProfile(profile);
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <AppShell
@@ -69,6 +110,77 @@ export function SettingsScreen() {
             <Button icon={<LogOut size={16} />} variant="secondary" onClick={signOut}>
               Log out
             </Button>
+          </div>
+        </SectionCard>
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <SectionCard
+          title="Study availability"
+          eyebrow="Personalized daily plan"
+          action={<CalendarClock size={18} />}
+        >
+          <div className="stack">
+            <p className="muted">
+              Tell EduFX which days you're usually free and how much time you have — your daily plan
+              is sized to fit, even on a fully-free day, so other subtopics aren't left behind.
+            </p>
+
+            <div className="stack" style={{ gap: 8 }}>
+              <span className="field__label">Which days are you usually free to study?</span>
+              <div className="cluster">
+                {DAY_LABELS.map((label, day) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={`pill ${freeDays.includes(day) ? "success" : ""}`.trim()}
+                    onClick={() => toggleDay(day)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="stack" style={{ gap: 8 }}>
+              <span className="field__label">On a free day, how much time do you have?</span>
+              <div className="cluster">
+                {SESSION_LENGTH_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`pill ${sessionLength === option.value ? "success" : ""}`.trim()}
+                    onClick={() => {
+                      setSessionLength(option.value);
+                      setSaved(false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="list-item cluster" style={{ justifyContent: "space-between", cursor: "pointer" }}>
+              <span className="cluster">
+                <Mail size={16} /> Email reminders if I miss a planned session
+              </span>
+              <input
+                type="checkbox"
+                checked={emailRemindersEnabled}
+                onChange={(event) => {
+                  setEmailRemindersEnabled(event.target.checked);
+                  setSaved(false);
+                }}
+              />
+            </label>
+
+            <div className="cluster" style={{ justifyContent: "space-between" }}>
+              <Button onClick={handleSaveAvailability} disabled={saving}>
+                {saving ? "Saving…" : "Save availability"}
+              </Button>
+              {saved ? <span className="muted small-text">Saved</span> : null}
+            </div>
           </div>
         </SectionCard>
       </div>

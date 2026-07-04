@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from app.models.domain import BehaviourLog, StudentProgress
@@ -7,6 +7,51 @@ from app.models.domain import BehaviourLog, StudentProgress
 LEVEL_ORDER = ("beginner", "intermediate", "advanced")
 LEVEL_MULTIPLIERS = {"beginner": 3.0, "intermediate": 2.0, "advanced": 0.5}
 LEVEL_DEADLINES = {"beginner": 3, "intermediate": 7, "advanced": 14}
+
+# How many subtopics fit a session length. "long" (a fully-free day) is
+# deliberately capped, not unlimited — cramming everything into one sitting is
+# still worse for retention than spacing it out, and it's the direct fix for
+# "one big day, then nothing for days" starving other subtopics of attention.
+DURATION_TO_CAP = {"short": 1, "medium": 2, "long": 4}
+
+# (weak_count, strong_count) for each possible cap — keeps the existing
+# "mostly weak, a little strong for maintenance" mix at every plan size
+# instead of a formula that gets awkward at the cap=1 edge case.
+CAP_TO_WEAK_STRONG_SPLIT = {1: (1, 0), 2: (1, 1), 3: (2, 1), 4: (3, 1)}
+
+# Tap-chip choices on the post-session "when are you next free?" check-in,
+# resolved to a concrete date. "this_weekend" lands on the coming Saturday (or
+# today, if today already is Sat/Sun). "not_sure" resolves to None — no
+# specific-day reminder gets scheduled, the student just falls back to their
+# regular weekly free_days pattern.
+_SATURDAY = 5
+
+
+def resolve_next_free_choice(choice: str, today: date) -> date | None:
+    if choice == "tomorrow":
+        return today + timedelta(days=1)
+    if choice == "in_2_days":
+        return today + timedelta(days=2)
+    if choice == "this_weekend":
+        if today.weekday() >= _SATURDAY:
+            return today
+        return today + timedelta(days=_SATURDAY - today.weekday())
+    return None  # "not_sure"
+
+
+def update_streak(last_study_date: date | None, current_streak: int, today: date) -> int:
+    """New streak value after a session completed `today`.
+
+    Increments if the last session was yesterday (consecutive), no-ops if
+    today's session was already counted, otherwise resets to 1 — a gap of two
+    or more days breaks the streak. Streak-freeze (Duolingo's grace mechanic)
+    is intentionally out of scope for v1.
+    """
+    if last_study_date == today:
+        return current_streak
+    if last_study_date == today - timedelta(days=1):
+        return current_streak + 1
+    return 1
 
 # A concept counts as mastered once the student's most recent MASTERY_STREAK
 # attempts on it are all correct.

@@ -4,9 +4,11 @@ from app.core.rules import (
     aggregate_behaviour,
     compute_priority,
     level_difficulty_spread,
+    resolve_next_free_choice,
     score_to_level,
     select_weak_concepts,
     update_level_after_quiz,
+    update_streak,
 )
 from app.models.domain import BehaviourLog, StudentProgress
 
@@ -99,3 +101,44 @@ def test_select_weak_concepts_orders_by_severity():
     weak = select_weak_concepts(attempts)
     assert weak[0]["concept"] == "b"
     assert weak[0]["sample_question"] == "q"
+
+
+def test_update_streak_increments_on_consecutive_day():
+    today = date(2026, 7, 3)
+    assert update_streak(today - timedelta(days=1), 4, today) == 5
+
+
+def test_update_streak_noop_when_already_studied_today():
+    today = date(2026, 7, 3)
+    assert update_streak(today, 4, today) == 4
+
+
+def test_update_streak_resets_after_gap():
+    today = date(2026, 7, 3)
+    assert update_streak(today - timedelta(days=3), 10, today) == 1
+
+
+def test_update_streak_starts_from_none():
+    today = date(2026, 7, 3)
+    assert update_streak(None, 0, today) == 1
+
+
+def test_resolve_next_free_choice_tomorrow_and_in_2_days():
+    today = date(2026, 7, 6)  # Monday
+    assert resolve_next_free_choice("tomorrow", today) == date(2026, 7, 7)
+    assert resolve_next_free_choice("in_2_days", today) == date(2026, 7, 8)
+
+
+def test_resolve_next_free_choice_weekend_from_weekday():
+    monday = date(2026, 7, 6)
+    assert resolve_next_free_choice("this_weekend", monday) == date(2026, 7, 11)  # Saturday
+
+
+def test_resolve_next_free_choice_weekend_from_weekend():
+    saturday = date(2026, 7, 11)
+    assert resolve_next_free_choice("this_weekend", saturday) == saturday
+
+
+def test_resolve_next_free_choice_not_sure_returns_none():
+    today = date(2026, 7, 6)
+    assert resolve_next_free_choice("not_sure", today) is None

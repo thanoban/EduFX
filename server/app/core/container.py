@@ -9,8 +9,10 @@ from app.controllers.diagnostic_controller import DiagnosticController
 from app.controllers.explanation_controller import ExplanationController
 from app.controllers.progress_controller import ProgressController
 from app.controllers.quiz_controller import QuizController
+from app.controllers.reminder_controller import ReminderController
 from app.controllers.results_controller import ResultsController
 from app.controllers.scheduler_controller import SchedulerController
+from app.controllers.settings_controller import SettingsController
 from app.core.clients import build_external_clients
 from app.core.config import get_settings
 from app.core.repository_factory import build_repository_bundle
@@ -21,10 +23,13 @@ from app.services.behaviour_service import BehaviourService
 from app.services.content_service import ContentService
 from app.services.diagnostic_service import DiagnosticService
 from app.services.explanation_service import ExplanationService
+from app.services.learning_coach_service import LearningCoachService
 from app.services.progress_service import ProgressService
 from app.services.quiz_service import QuizService
+from app.services.reminder_service import ReminderService
 from app.services.results_service import ResultsService
 from app.services.scheduler_service import SchedulerService
+from app.services.settings_service import SettingsService
 
 
 @dataclass(slots=True)
@@ -40,6 +45,8 @@ class AppContainer:
     progress_controller: ProgressController
     behaviour_controller: BehaviourController
     admin_controller: AdminController
+    settings_controller: SettingsController
+    reminder_controller: ReminderController
 
 
 @lru_cache
@@ -52,7 +59,11 @@ def get_container() -> AppContainer:
 
     auth_service = AuthService(repositories.auth_repository)
     diagnostic_service = DiagnosticService(repositories.diagnostic_repository)
-    scheduler_service = SchedulerService(repositories.scheduler_repository)
+    scheduler_service = SchedulerService(
+        repositories.scheduler_repository,
+        repositories.progress_repository,
+        repositories.results_repository,
+    )
     content_service = ContentService(repositories.content_repository)
     quiz_service = QuizService(
         repositories.quiz_repository,
@@ -66,6 +77,7 @@ def get_container() -> AppContainer:
         repositories.quiz_repository,
         repositories.behaviour_repository,
     )
+    learning_coach_service = LearningCoachService(repositories.results_repository)
     explanation_service = ExplanationService(
         repositories.results_repository,
         rag_repository=rag_repository,
@@ -74,6 +86,8 @@ def get_container() -> AppContainer:
     progress_service = ProgressService(repositories.progress_repository)
     behaviour_service = BehaviourService(repositories.behaviour_repository)
     admin_service = AdminService(repositories.admin_repository)
+    settings_service = SettingsService(repositories.auth_repository)
+    reminder_service = ReminderService(repositories.admin_repository)
 
     return AppContainer(
         auth_service=auth_service,
@@ -82,9 +96,11 @@ def get_container() -> AppContainer:
         scheduler_controller=SchedulerController(scheduler_service),
         content_controller=ContentController(content_service),
         quiz_controller=QuizController(quiz_service),
-        results_controller=ResultsController(results_service),
+        results_controller=ResultsController(results_service, learning_coach_service),
         explanation_controller=ExplanationController(explanation_service),
         progress_controller=ProgressController(progress_service),
         behaviour_controller=BehaviourController(behaviour_service),
         admin_controller=AdminController(admin_service),
+        settings_controller=SettingsController(settings_service),
+        reminder_controller=ReminderController(reminder_service),
     )

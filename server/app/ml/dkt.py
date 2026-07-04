@@ -285,7 +285,7 @@ def write_metadata(path: Path | None = None, **extra) -> None:
         "num_skills": NUM_SKILLS,
         "input_dim": INPUT_DIM,
         "hidden_dim": HIDDEN_DIM,
-        "encoding": "onehot(skill*correct) 2K + focus(1)",
+        "encoding": "onehot(skill*correct) 2K + focus + tracked",
         **extra,
     }
     target = path or (Path(__file__).parent / "artifacts" / "dkt_meta.json")

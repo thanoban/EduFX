@@ -7,9 +7,11 @@ import type {
   BehaviourSession,
   BehaviourSnapshotPayload,
   BehaviourSummaryPayload,
+  CoachPlan,
   ContentRecord,
   DiagnosticQuestion,
   DiagnosticResult,
+  NextFreeChoice,
   ProgressRecord,
   QuizPayload,
   QuizResultPayload,
@@ -17,11 +19,12 @@ import type {
   StudentProfile,
   StudentRole,
   StudyPlanItem,
-  Subtopic
+  Subtopic,
+  UpdateAvailabilityPayload
 } from "@/types/contracts";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "PUT";
   token?: string | null;
   studentId?: number;
   body?: unknown;
@@ -203,6 +206,9 @@ export const resultsApi = {
       explanations: Array<{ attempt_id: number; explanation: string }>;
     }>(`/explanation/${sessionId}/${studentId}`);
     return data.explanations;
+  },
+  getCoachPlan(sessionId: number, studentId: number) {
+    return request<CoachPlan>(`/results/session/${sessionId}/${studentId}/coach`);
   }
 };
 
@@ -233,6 +239,21 @@ export const adminApi = {
       method: "PATCH",
       token,
       body: { role }
+    });
+  }
+};
+
+export const settingsApi = {
+  updateAvailability(studentId: number, payload: UpdateAvailabilityPayload) {
+    return request<StudentProfile>(`/settings/${studentId}/availability`, {
+      method: "PUT",
+      body: payload
+    });
+  },
+  checkInNextFree(studentId: number, choice: NextFreeChoice) {
+    return request<StudentProfile>(`/settings/${studentId}/next-free`, {
+      method: "POST",
+      body: { choice }
     });
   }
 };

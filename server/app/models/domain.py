@@ -11,6 +11,20 @@ class Student:
     email: str
     diagnostic_completed: bool
     role: str = "student"
+    # Availability: which weekdays (0=Mon..6=Sun) the student is usually free,
+    # and how long a typical session is — caps how many subtopics the
+    # scheduler assigns per day (see core.rules.DURATION_TO_CAP) so a fully
+    # free day still doesn't dump the whole syllabus in one sitting.
+    free_days: set[int] = field(default_factory=set)
+    session_length: str = "medium"  # "short" | "medium" | "long"
+    # Set by the post-session "when are you next free?" check-in; lets the
+    # reminder job flag a promised day even if it falls outside free_days.
+    next_expected_date: date | None = None
+    email_reminders_enabled: bool = True
+    # Duolingo-style streak, updated whenever a session is finalized.
+    current_streak: int = 0
+    longest_streak: int = 0
+    last_study_date: date | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

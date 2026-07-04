@@ -37,3 +37,6 @@ class SupabaseAuthRepository:
     def get_student(self, student_id: int) -> Student | None:
         rows = self.client.table("students").select("*").eq("id", student_id).limit(1).execute().data or []
         return self.mapper.student_from_row(rows[0]) if rows else None
+
+    def save_student(self, student: Student) -> None:
+        self.client.table("students").update(self.mapper.student_to_row(student)).eq("id", student.id).execute()

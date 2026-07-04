@@ -91,8 +91,29 @@ class SupabaseMapper:
             email=str(row["email"]),
             diagnostic_completed=bool(row.get("diagnostic_completed", False)),
             role=str(row.get("role") or "student"),
+            free_days=set(row.get("free_days") or []),
+            session_length=str(row.get("session_length") or "medium"),
+            next_expected_date=_parse_date(row.get("next_expected_date")),
+            email_reminders_enabled=bool(row.get("email_reminders_enabled", True)),
+            current_streak=int(row.get("current_streak") or 0),
+            longest_streak=int(row.get("longest_streak") or 0),
+            last_study_date=_parse_date(row.get("last_study_date")),
             created_at=_parse_datetime(row.get("created_at")),
         )
+
+    @staticmethod
+    def student_to_row(student: Student) -> dict[str, Any]:
+        """Inverse of `student_from_row` for the mutable availability/streak
+        fields — used by save_student, not the read path."""
+        return {
+            "free_days": sorted(student.free_days),
+            "session_length": student.session_length,
+            "next_expected_date": student.next_expected_date.isoformat() if student.next_expected_date else None,
+            "email_reminders_enabled": student.email_reminders_enabled,
+            "current_streak": student.current_streak,
+            "longest_streak": student.longest_streak,
+            "last_study_date": student.last_study_date.isoformat() if student.last_study_date else None,
+        }
 
     @staticmethod
     def subtopic_from_row(row: dict[str, Any]) -> Subtopic:

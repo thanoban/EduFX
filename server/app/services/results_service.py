@@ -1,6 +1,6 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from app.core.rules import update_level_after_quiz
+from app.core.rules import update_level_after_quiz, update_streak
 from app.models.domain import QuizAttempt
 from app.models.dto import QuestionWithAttemptDTO, QuizQuestionDTO, QuizResultDTO, SessionResultsDTO
 from app.repositories.contracts import BehaviourRepositoryContract, QuizRepositoryContract, ResultsRepositoryContract
@@ -67,6 +67,8 @@ class ResultsService:
         session.webcam_enabled = webcam_enabled
         self.repository.save_session(session)
 
+        self._update_streak(student_id)
+
         return QuizResultDTO(
             session_id=session_id,
             total_questions=total_questions,
@@ -77,6 +79,16 @@ class ResultsService:
             level_changed=previous_level != new_level,
             wrong_count=total_questions - correct_answers,
         )
+
+    def _update_streak(self, student_id: int) -> None:
+        student = self.repository.get_student(student_id)
+        if student is None:
+            return
+        today = date.today()
+        student.current_streak = update_streak(student.last_study_date, student.current_streak, today)
+        student.longest_streak = max(student.longest_streak, student.current_streak)
+        student.last_study_date = today
+        self.repository.save_student(student)
 
     def get_session_results(self, session_id: int, student_id: int) -> SessionResultsDTO:
         session = self.repository.get_session(session_id)

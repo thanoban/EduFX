@@ -3,8 +3,26 @@ create table if not exists students (
   name text not null,
   email text unique not null,
   diagnostic_completed boolean default false,
+  role text default 'student',
+  free_days jsonb default '[]',
+  session_length text default 'medium',
+  next_expected_date date null,
+  email_reminders_enabled boolean default true,
+  current_streak int default 0,
+  longest_streak int default 0,
+  last_study_date date null,
   created_at timestamp default now()
 );
+
+-- Migration for existing databases (safe to re-run):
+--   alter table students add column if not exists role text default 'student';
+--   alter table students add column if not exists free_days jsonb default '[]';
+--   alter table students add column if not exists session_length text default 'medium';
+--   alter table students add column if not exists next_expected_date date null;
+--   alter table students add column if not exists email_reminders_enabled boolean default true;
+--   alter table students add column if not exists current_streak int default 0;
+--   alter table students add column if not exists longest_streak int default 0;
+--   alter table students add column if not exists last_study_date date null;
 
 create table if not exists subtopics (
   id bigint generated always as identity primary key,

@@ -17,3 +17,6 @@ class AuthRepository:
     def get_student(self, student_id: int) -> Student | None:
         return self.store.students.get(student_id)
 
+    def save_student(self, student: Student) -> None:
+        self.store.students[student.id] = student
+

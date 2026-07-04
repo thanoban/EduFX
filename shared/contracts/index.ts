@@ -6,13 +6,30 @@ export type ApiResponse<T> = {
   data: T | null;
 };
 
+export type SessionLength = "short" | "medium" | "long";
+
 export type StudentProfile = {
   student_id: number;
   name: string;
   email: string;
   diagnostic_completed: boolean;
   is_admin: boolean;
+  free_days: number[];
+  session_length: SessionLength;
+  next_expected_date: string | null;
+  email_reminders_enabled: boolean;
+  current_streak: number;
+  longest_streak: number;
+  last_study_date: string | null;
 };
+
+export type UpdateAvailabilityPayload = {
+  free_days: number[];
+  session_length: SessionLength;
+  email_reminders_enabled: boolean;
+};
+
+export type NextFreeChoice = "tomorrow" | "in_2_days" | "this_weekend" | "not_sure";
 
 export type Subtopic = {
   id: number;
@@ -153,6 +170,30 @@ export type SessionResults = {
   total_questions: number;
   correct_answers: number;
   attempts: SessionAttempt[];
+};
+
+export type CoachInsight = {
+  agent: "performance" | "concept" | "focus" | "planner";
+  title: string;
+  summary: string;
+  severity: "success" | "info" | "warning" | "danger";
+  evidence: string[];
+};
+
+export type CoachAction = {
+  label: string;
+  reason: string;
+  priority: "high" | "medium" | "low";
+  subtopic_id: number | null;
+};
+
+export type CoachPlan = {
+  session_id: number;
+  student_id: number;
+  headline: string;
+  confidence: "high" | "medium" | "low";
+  insights: CoachInsight[];
+  actions: CoachAction[];
 };
 
 export type ProgressRecord = {

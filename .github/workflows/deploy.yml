@@ -73,6 +73,8 @@ jobs:
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
             FRONTEND_ORIGIN=${{ secrets.FRONTEND_URL }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            REMINDERS_SHARED_SECRET=${{ secrets.REMINDERS_SHARED_SECRET }}
 
   # ── 2. Build + deploy Next.js frontend ────────────────────────────────────
   deploy-frontend:

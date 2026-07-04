@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,6 +22,45 @@ class StudentProfileDTO(BaseModel):
     email: str
     diagnostic_completed: bool
     is_admin: bool = False
+    free_days: list[int] = []
+    session_length: Literal["short", "medium", "long"] = "medium"
+    next_expected_date: date | None = None
+    email_reminders_enabled: bool = True
+    current_streak: int = 0
+    longest_streak: int = 0
+    last_study_date: date | None = None
+
+    @classmethod
+    def from_student(cls, student: Any) -> "StudentProfileDTO":
+        """Single mapping point from the Student domain model, so every caller
+        (login, check, settings save) stays in sync when fields are added."""
+        return cls(
+            student_id=student.id,
+            name=student.name,
+            email=student.email,
+            diagnostic_completed=student.diagnostic_completed,
+            is_admin=student.role == "admin",
+            free_days=sorted(student.free_days),
+            session_length=student.session_length,
+            next_expected_date=student.next_expected_date,
+            email_reminders_enabled=student.email_reminders_enabled,
+            current_streak=student.current_streak,
+            longest_streak=student.longest_streak,
+            last_study_date=student.last_study_date,
+        )
+
+
+class UpdateAvailabilityRequest(BaseModel):
+    free_days: list[int]
+    session_length: Literal["short", "medium", "long"]
+    email_reminders_enabled: bool = True
+
+
+NextFreeChoice = Literal["tomorrow", "in_2_days", "this_weekend", "not_sure"]
+
+
+class NextFreeCheckInRequest(BaseModel):
+    choice: NextFreeChoice
 
 
 class DiagnosticQuestionDTO(BaseModel):
@@ -187,6 +226,30 @@ class SessionResultsDTO(BaseModel):
     attempts: list[QuestionWithAttemptDTO]
 
 
+class CoachInsightDTO(BaseModel):
+    agent: Literal["performance", "concept", "focus", "planner"]
+    title: str
+    summary: str
+    severity: Literal["success", "info", "warning", "danger"]
+    evidence: list[str] = []
+
+
+class CoachActionDTO(BaseModel):
+    label: str
+    reason: str
+    priority: Literal["high", "medium", "low"]
+    subtopic_id: int | None = None
+
+
+class CoachPlanDTO(BaseModel):
+    session_id: int
+    student_id: int
+    headline: str
+    confidence: Literal["high", "medium", "low"]
+    insights: list[CoachInsightDTO]
+    actions: list[CoachActionDTO]
+
+
 class ProgressHistoryItemDTO(BaseModel):
     id: int
     session_date: date
@@ -304,4 +367,3 @@ class AdminStudentDetailDTO(BaseModel):
 
 class SetStudentRoleRequest(BaseModel):
     role: Literal["student", "admin"]
-

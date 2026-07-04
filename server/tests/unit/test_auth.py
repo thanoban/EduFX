@@ -37,6 +37,13 @@ def test_hs256_token_with_wrong_secret_is_rejected():
             verify_google_token(token)
 
 
+def test_hs256_token_without_shared_secret_is_rejected():
+    token = jwt.encode({"email": "h@edufx.dev"}, "right", algorithm="HS256")
+    with patch.object(auth, "get_settings", return_value=_Settings()):
+        with pytest.raises(EduFXError, match="could not be verified"):
+            verify_google_token(token)
+
+
 def test_es256_token_is_verified_against_jwks():
     # This is the regression case: Supabase "JWT Signing Keys" issue ES256 tokens
     # that the old HS256-only path rejected with "alg value is not allowed".

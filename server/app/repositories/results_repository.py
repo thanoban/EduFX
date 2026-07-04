@@ -2,7 +2,7 @@ from datetime import date
 
 from app.core.errors import EduFXError
 from app.core.store import DemoDataStore
-from app.models.domain import Question, QuizAttempt, SessionSummary, StudentProgress
+from app.models.domain import Question, QuizAttempt, SessionSummary, Student, StudentProgress
 
 
 class ResultsRepository:
@@ -36,4 +36,10 @@ class ResultsRepository:
 
     def get_question_answers(self, session_id: int):
         return self.store.get_question_answers(session_id)
+
+    def get_student(self, student_id: int) -> Student | None:
+        return self.store.students.get(student_id)
+
+    def save_student(self, student: Student) -> None:
+        self.store.students[student.id] = student
 

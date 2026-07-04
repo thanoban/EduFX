@@ -2,7 +2,7 @@ from datetime import date
 
 from supabase import Client
 
-from app.models.domain import Question, QuestionAnswer, QuizAttempt, SessionSummary, StudentProgress
+from app.models.domain import Question, QuestionAnswer, QuizAttempt, SessionSummary, Student, StudentProgress
 from app.repositories.supabase_base import SupabaseMapper
 
 
@@ -80,3 +80,10 @@ class SupabaseResultsRepository:
 
     def get_question_answers(self, session_id: int) -> list[QuestionAnswer]:
         return self.mapper.question_answers(self.get_attempts(session_id))
+
+    def get_student(self, student_id: int) -> Student | None:
+        rows = self.client.table("students").select("*").eq("id", student_id).limit(1).execute().data or []
+        return self.mapper.student_from_row(rows[0]) if rows else None
+
+    def save_student(self, student: Student) -> None:
+        self.client.table("students").update(self.mapper.student_to_row(student)).eq("id", student.id).execute()

@@ -36,6 +36,9 @@ export function AppShell({
   const items = student?.is_admin
     ? [...navItems, { href: "/admin", label: "Admin", icon: Users }]
     : navItems;
+  const currentStreak = student?.current_streak ?? 0;
+  const longestStreak = student?.longest_streak ?? 0;
+  const streakProgress = longestStreak > 0 ? Math.round((currentStreak / longestStreak) * 100) : currentStreak > 0 ? 100 : 0;
 
   return (
     <div className="app-shell">
@@ -71,12 +74,18 @@ export function AppShell({
         <div className="sidebar-insight">
           <div className="cluster" style={{ justifyContent: "space-between" }}>
             <Flame size={16} />
-            <span className="sidebar-insight__score">12-day streak</span>
+            <span className="sidebar-insight__score">
+              {currentStreak > 0 ? `${currentStreak}-day streak` : "No active streak"}
+            </span>
           </div>
           <div className="progress-bar">
-            <span style={{ width: "80%" }} />
+            <span style={{ width: `${streakProgress}%` }} />
           </div>
-          <span>3 sessions to your weekly goal</span>
+          <span>
+            {longestStreak > currentStreak
+              ? `Best streak: ${longestStreak} days`
+              : "Study today to keep it going"}
+          </span>
         </div>
 
         <div className="sidebar-user stack">

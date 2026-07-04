@@ -1,0 +1,6 @@
+{
+  "num_skills": 10,
+  "input_dim": 22,
+  "hidden_dim": 64,
+  "encoding": "onehot(skill*correct) 2K + focus + tracked"
+}
