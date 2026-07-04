@@ -13,12 +13,15 @@ class SchedulerService:
     def get_todays_plan(self, student_id: int) -> list[StudyPlanItemDTO]:
         today = date.today()
         progress_records = self.repository.get_student_progress(student_id)
+        subtopics_by_id = {item.id: item for item in self.repository.list_subtopics()}
         candidates = []
         for progress in progress_records:
             if is_on_cooldown(progress, today):
                 continue
             priority, overdue = compute_priority(progress, today)
-            subtopic = self.repository.get_subtopic(progress.subtopic_id)
+            subtopic = subtopics_by_id.get(progress.subtopic_id)
+            if subtopic is None:
+                subtopic = self.repository.get_subtopic(progress.subtopic_id)
             bucket = "strong" if progress.current_level == "advanced" else "weak"
             candidates.append((bucket, priority, overdue, progress, subtopic))
 

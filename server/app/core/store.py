@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from itertools import count
 
+from app.core.curriculum_data import SUBTOPIC_NOTES, SUBTOPIC_QUESTIONS
 from app.models.domain import (
     BehaviourLog,
     Content,
@@ -30,39 +31,6 @@ SUBTOPIC_DEFINITIONS = [
     ("group2", "Solubility of Group 2 Salts"),
     ("group2", "Flame Test"),
 ]
-
-
-def _option_set(correct: str) -> tuple[str, str, str, str]:
-    distractors = {
-        "A": ("B", "C", "D"),
-        "B": ("A", "C", "D"),
-        "C": ("A", "B", "D"),
-        "D": ("A", "B", "C"),
-    }
-    return (correct, *distractors[correct])
-
-
-def _make_question(question_id: int, subtopic_id: int, stage: str, index: int, title: str, correct: str) -> Question:
-    answer_letters = _option_set(correct)
-    # Group questions under a few repeating concepts per subtopic so concept-level
-    # mastery (weak vs mastered) is meaningful in demo/test mode.
-    concept = f"{title.lower()} concept {((index - 1) % 3) + 1}"
-    return Question(
-        id=question_id,
-        subtopic_id=subtopic_id,
-        question_text=f"{title}: concept check {index} for the {stage} stage.",
-        option_a=f"{title} explanation option {answer_letters[0]}",
-        option_b=f"{title} explanation option {answer_letters[1]}",
-        option_c=f"{title} explanation option {answer_letters[2]}",
-        option_d=f"{title} explanation option {answer_letters[3]}",
-        correct_answer=correct,
-        difficulty="easy" if index <= 5 else "medium" if index <= 10 else "hard",
-        source="manual",
-        stage=stage,
-        student_id=None,
-        is_diagnostic=stage == "diagnostic",
-        concept=concept,
-    )
 
 
 @dataclass
@@ -103,51 +71,42 @@ class DemoDataStore:
             )
 
     def _seed_content(self) -> None:
-        notes = {
-            "beginner": "Start with visible trends, simple examples, and exam-safe summaries.",
-            "intermediate": "Connect the trend to ionisation energy, lattice effects, and reaction patterns.",
-            "advanced": "Compare anomalies, explain mechanisms, and justify observations with balanced reasoning.",
-        }
         for subtopic in self.subtopics.values():
-            for level, sentence in notes.items():
+            levels = SUBTOPIC_NOTES.get(subtopic.id, {})
+            for level in ("beginner", "intermediate", "advanced"):
+                body = levels.get(level)
+                if not body:
+                    continue
                 content_id = next(self.counters["content"])
                 self.content_records[content_id] = Content(
                     id=content_id,
                     subtopic_id=subtopic.id,
                     level=level,
-                    body=(
-                        f"# {subtopic.title}\n\n"
-                        f"## {level.title()} pathway\n\n"
-                        f"{sentence}\n\n"
-                        f"- Group: {subtopic.group_name}\n"
-                        f"- Study focus: {subtopic.title.lower()}\n"
-                        f"- Practice lens: adapt concepts to S-block chemistry examples."
-                    ),
+                    body=body,
                 )
 
     def _seed_manual_questions(self) -> None:
-        answer_cycle = ("A", "B", "C", "D")
         for subtopic in self.subtopics.values():
-            for index in range(1, 5):
-                question_id = next(self.counters["question"])
-                self.questions[question_id] = _make_question(
-                    question_id,
-                    subtopic.id,
-                    "diagnostic",
-                    index,
-                    subtopic.title,
-                    answer_cycle[(index - 1) % len(answer_cycle)],
-                )
-            for index in range(1, 16):
-                question_id = next(self.counters["question"])
-                self.questions[question_id] = _make_question(
-                    question_id,
-                    subtopic.id,
-                    "first",
-                    index,
-                    subtopic.title,
-                    answer_cycle[(subtopic.id + index - 1) % len(answer_cycle)],
-                )
+            stages = SUBTOPIC_QUESTIONS.get(subtopic.id, {})
+            for stage in ("diagnostic", "first"):
+                for seed in stages.get(stage, []):
+                    question_id = next(self.counters["question"])
+                    self.questions[question_id] = Question(
+                        id=question_id,
+                        subtopic_id=subtopic.id,
+                        question_text=seed["question_text"],
+                        option_a=seed["option_a"],
+                        option_b=seed["option_b"],
+                        option_c=seed["option_c"],
+                        option_d=seed["option_d"],
+                        correct_answer=seed["correct_answer"],
+                        difficulty=seed["difficulty"],
+                        source="manual",
+                        stage=stage,
+                        student_id=None,
+                        is_diagnostic=stage == "diagnostic",
+                        concept=seed["concept"],
+                    )
 
     def clone_question(self, question: Question, student_id: int, stage: str) -> Question:
         question_id = next(self.counters["question"])
@@ -161,8 +120,17 @@ class DemoDataStore:
 
     def create_student(self, name: str, email: str) -> Student:
         student_id = next(self.counters["student"])
-        student = Student(id=student_id, name=name, email=email, diagnostic_completed=False)
+        # The very first student created in a fresh demo store is the admin —
+        # mirrors bootstrapping the first row via SQL against the real database,
+        # without needing an env var for local/dev use.
+        role = "admin" if student_id == 1 else "student"
+        student = Student(id=student_id, name=name, email=email, diagnostic_completed=False, role=role)
         self.students[student_id] = student
+        return student
+
+    def set_student_role(self, student_id: int, role: str) -> Student:
+        student = self.students[student_id]
+        student.role = role
         return student
 
     def ensure_progress_records(self, student_id: int) -> None:

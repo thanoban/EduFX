@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from app.core.clients import ExternalClients
 from app.core.config import Settings
 from app.core.store import demo_store
+from app.repositories.admin_repository import AdminRepository
 from app.repositories.auth_repository import AuthRepository
 from app.repositories.behaviour_repository import BehaviourRepository
 from app.repositories.content_repository import ContentRepository
@@ -13,6 +14,7 @@ from app.repositories.progress_repository import ProgressRepository
 from app.repositories.quiz_repository import QuizRepository
 from app.repositories.results_repository import ResultsRepository
 from app.repositories.scheduler_repository import SchedulerRepository
+from app.repositories.supabase_admin_repository import SupabaseAdminRepository
 from app.repositories.supabase_auth_repository import SupabaseAuthRepository
 from app.repositories.supabase_behaviour_repository import SupabaseBehaviourRepository
 from app.repositories.supabase_content_repository import SupabaseContentRepository
@@ -33,6 +35,7 @@ class RepositoryBundle:
     results_repository: object
     progress_repository: object
     behaviour_repository: object
+    admin_repository: object
     backend_name: str
 
 
@@ -48,6 +51,7 @@ def build_repository_bundle(settings: Settings, clients: ExternalClients) -> Rep
             results_repository=SupabaseResultsRepository(client),
             progress_repository=SupabaseProgressRepository(client),
             behaviour_repository=SupabaseBehaviourRepository(client),
+            admin_repository=SupabaseAdminRepository(client),
             backend_name="supabase",
         )
 
@@ -60,5 +64,6 @@ def build_repository_bundle(settings: Settings, clients: ExternalClients) -> Rep
         results_repository=ResultsRepository(demo_store),
         progress_repository=ProgressRepository(demo_store),
         behaviour_repository=BehaviourRepository(demo_store),
+        admin_repository=AdminRepository(demo_store),
         backend_name="memory",
     )

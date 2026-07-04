@@ -21,6 +21,7 @@ class StudentProfileDTO(BaseModel):
     name: str
     email: str
     diagnostic_completed: bool
+    is_admin: bool = False
 
 
 class DiagnosticQuestionDTO(BaseModel):
@@ -259,4 +260,48 @@ class BehaviourHistoryItemDTO(BaseModel):
     correct_answers: int
     created_at: datetime
     subtopics: SubtopicLiteDTO | None
+
+
+class AdminStudentSummaryDTO(BaseModel):
+    student_id: int
+    name: str
+    email: str
+    role: Literal["student", "admin"]
+    diagnostic_completed: bool
+    subtopics_mastered: int
+    avg_focus_score: int | None
+    total_sessions: int
+    last_active_date: date | None
+
+
+class AdminWeakConceptDTO(BaseModel):
+    concept: str
+    attempts: int
+    correct: int
+    accuracy: float
+    sample_question: str | None
+
+
+class AdminSessionHistoryItemDTO(BaseModel):
+    session_id: int
+    subtopic_id: int
+    subtopic_title: str
+    session_date: date
+    quiz_score: int
+    focus_score: int | None
+
+
+class AdminStudentDetailDTO(BaseModel):
+    student_id: int
+    name: str
+    email: str
+    role: Literal["student", "admin"]
+    diagnostic_completed: bool
+    progress: list[ProgressRecordDTO]
+    session_history: list[AdminSessionHistoryItemDTO]
+    weak_concepts: list[AdminWeakConceptDTO]
+
+
+class SetStudentRoleRequest(BaseModel):
+    role: Literal["student", "admin"]
 

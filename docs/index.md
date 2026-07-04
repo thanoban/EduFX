@@ -11,4 +11,7 @@
 | [finetune-dataset-format.md](finetune-dataset-format.md) | JSONL contract, validation script |
 | [finetune-rag-data-plan.md](finetune-rag-data-plan.md) | Why both fine-tune and RAG are needed |
 | [finetune-vertex-plan.md](finetune-vertex-plan.md) | Vertex managed tuning — future path |
+| [finetune-aws-hosting-guide.md](finetune-aws-hosting-guide.md) | Hosting the fine-tuned model on AWS EC2 (free credit) |
+| [finetune-azure-hosting-guide.md](finetune-azure-hosting-guide.md) | Hosting the fine-tuned model on Azure (on/off GPU VM) |
+| [recommender-colab-training.md](recommender-colab-training.md) | Train the DKT knowledge-tracing recommender in Colab (8 cells + explanations) |
 | [ui-details.md](ui-details.md) | UI component map, page-by-page layout |

@@ -14,6 +14,20 @@ class SupabaseProgressRepository:
         rows = self.client.table("student_progress").select("*").eq("student_id", student_id).execute().data or []
         return [self.mapper.progress_from_row(row) for row in rows]
 
+    def list_subtopics(self) -> list[Subtopic]:
+        return self.mapper.list_subtopics()
+
+    def get_student_session_history(self, student_id: int) -> list[SessionSummary]:
+        rows = (
+            self.client.table("session_summary")
+            .select("*")
+            .eq("student_id", student_id)
+            .order("created_at", desc=True)
+            .execute()
+            .data
+        ) or []
+        return [self.mapper.session_from_row(row) for row in rows]
+
     def get_subtopic(self, subtopic_id: int) -> Subtopic:
         rows = self.client.table("subtopics").select("*").eq("id", subtopic_id).limit(1).execute().data
         return self.mapper.subtopic_from_row(self.mapper.ensure_one(rows, "Subtopic not found"))

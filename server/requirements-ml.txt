@@ -1,0 +1,15 @@
+# Training-only dependencies for the knowledge-tracing recommender (DKT).
+#
+# These are NOT needed to RUN the API. The deployed server uses only numpy
+# (in requirements.txt) for BKT and for DKT inference via exported weights.
+# torch is required only to TRAIN the DKT model offline:
+#
+#   pip install -r requirements-ml.txt
+#   python -m app.ml.train
+#
+# Keeping torch out of the main image keeps the Cloud Run container lean and
+# means a missing torch install degrades gracefully to BKT / the rule-based
+# scheduler rather than breaking the app.
+-r requirements.txt
+torch>=2.2.0
+scikit-learn>=1.4.0   # ROC-AUC metric in the evaluation harness

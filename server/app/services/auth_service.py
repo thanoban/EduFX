@@ -19,7 +19,12 @@ class AuthService:
             name=student.name,
             email=student.email,
             diagnostic_completed=student.diagnostic_completed,
+            is_admin=student.role == "admin",
         )
+
+    def is_admin(self, email: str) -> bool:
+        student = self.repository.find_student_by_email(email)
+        return bool(student and student.role == "admin")
 
     def check_diagnostic(self, student_id: int) -> StudentProfileDTO:
         student = self.repository.get_student(student_id)
@@ -30,4 +35,5 @@ class AuthService:
             name=student.name,
             email=student.email,
             diagnostic_completed=student.diagnostic_completed,
+            is_admin=student.role == "admin",
         )

@@ -64,9 +64,59 @@ def ingest_csv(csv_path: Path, client) -> int:
     return total
 
 
+def ingest_curriculum(client) -> int:
+    """Ingest SUBTOPIC_NOTES (curriculum_data.py) into content_chunks.
+
+    Concatenates all three levels per subtopic (beginner+intermediate+advanced)
+    into one grounding text so RAG retrieval has maximum concept/example
+    coverage — content_chunks has no level column, it's per-subtopic only.
+    Existing chunks for a subtopic are replaced first (content_chunks has no
+    inbound FKs and no unique constraint to upsert against, so delete+reinsert
+    is safe and avoids duplicate chunks on rerun). `subtopic_id` here must be
+    the live Supabase subtopics id, matching SUBTOPIC_NOTES keys 1-10.
+    """
+    from app.core.curriculum_data import SUBTOPIC_NOTES
+    from app.rag.embedder import embed
+
+    source_label = "curriculum_data"
+    total = 0
+    for subtopic_id, levels in SUBTOPIC_NOTES.items():
+        body = "\n\n".join(levels[level] for level in ("beginner", "intermediate", "advanced"))
+        chunks = chunk_text(body)
+        client.table("content_chunks").delete().eq("subtopic_id", subtopic_id).eq(
+            "source", source_label
+        ).execute()
+        rows_to_insert: list[dict] = []
+        for chunk in chunks:
+            try:
+                embedding = embed(chunk)
+            except Exception as exc:
+                print(f"  [skip] embedding failed for subtopic {subtopic_id}: {exc}")
+                continue
+            rows_to_insert.append(
+                {"subtopic_id": subtopic_id, "source": source_label, "chunk_text": chunk, "embedding": embedding}
+            )
+        if rows_to_insert:
+            client.table("content_chunks").insert(rows_to_insert).execute()
+            total += len(rows_to_insert)
+            print(f"  subtopic_id={subtopic_id}: {len(rows_to_insert)} chunks stored")
+    return total
+
+
 def main() -> None:
+    import argparse
+
     from app.core.clients import build_external_clients
     from app.core.config import get_settings
+
+    parser = argparse.ArgumentParser(description="Ingest curriculum content into content_chunks")
+    parser.add_argument(
+        "--source",
+        choices=["csv", "curriculum"],
+        default="curriculum",
+        help="csv reads data/notes/*.csv; curriculum reads app.core.curriculum_data.SUBTOPIC_NOTES",
+    )
+    args = parser.parse_args()
 
     settings = get_settings()
     clients = build_external_clients(settings)
@@ -79,6 +129,11 @@ def main() -> None:
         print("ERROR: GOOGLE_CLOUD_PROJECT not set. Cannot initialize Vertex AI embeddings.")
         print("Run: gcloud auth application-default login")
         sys.exit(1)
+
+    if args.source == "curriculum":
+        total = ingest_curriculum(clients.supabase)
+        print(f"\nDone — {total} chunks embedded and stored in content_chunks.")
+        return
 
     notes_dir = Path(__file__).resolve().parents[3] / "data" / "notes"
     csv_files = sorted(notes_dir.glob("*.csv"))

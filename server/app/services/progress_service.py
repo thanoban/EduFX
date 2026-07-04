@@ -10,10 +10,16 @@ class ProgressService:
 
     def get_progress(self, student_id: int) -> list[ProgressRecordDTO]:
         records = self.repository.get_progress_records(student_id)
+        subtopics_by_id = {item.id: item for item in self.repository.list_subtopics()}
+        sessions_by_subtopic: dict[int, list] = {}
+        for session in self.repository.get_student_session_history(student_id):
+            sessions_by_subtopic.setdefault(session.subtopic_id, []).append(session)
         payload: list[ProgressRecordDTO] = []
         for record in records:
-            subtopic = self.repository.get_subtopic(record.subtopic_id)
-            history = self.repository.get_session_history(student_id, record.subtopic_id)
+            subtopic = subtopics_by_id.get(record.subtopic_id)
+            if subtopic is None:
+                subtopic = self.repository.get_subtopic(record.subtopic_id)
+            history = sessions_by_subtopic.get(record.subtopic_id, [])
             payload.append(
                 ProgressRecordDTO(
                     id=record.id,

@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Users
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,9 @@ export function AppShell({
   const pathname = usePathname();
   const { student, signOut } = useAuth();
   const adaptivePlanReady = Boolean(student?.diagnostic_completed);
+  const items = student?.is_admin
+    ? [...navItems, { href: "/admin", label: "Admin", icon: Users }]
+    : navItems;
 
   return (
     <div className="app-shell">
@@ -46,7 +50,7 @@ export function AppShell({
 
         <div className="sidebar-section-label">Workspace</div>
         <nav className="nav-list">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const Icon = item.icon;
             return (
               <Link

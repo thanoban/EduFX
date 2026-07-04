@@ -77,9 +77,12 @@ class BehaviourService:
 
     def get_student_history(self, student_id: int) -> list[BehaviourHistoryItemDTO]:
         sessions = self.repository.list_student_sessions(student_id)
+        subtopics_by_id = {item.id: item for item in self.repository.list_subtopics()}
         payload: list[BehaviourHistoryItemDTO] = []
         for session in sessions:
-            subtopic = self.repository.get_subtopic(session.subtopic_id)
+            subtopic = subtopics_by_id.get(session.subtopic_id)
+            if subtopic is None:
+                subtopic = self.repository.get_subtopic(session.subtopic_id)
             payload.append(
                 BehaviourHistoryItemDTO(
                     id=session.id,

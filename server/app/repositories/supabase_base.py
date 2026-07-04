@@ -37,6 +37,7 @@ def _parse_datetime(value: str | datetime | None) -> datetime:
 @dataclass
 class SupabaseMapper:
     client: Client
+    _cached_subtopics: list[Subtopic] | None = None
 
     def ensure_one(self, data: list[dict[str, Any]] | None, message: str, status_code: int = 404) -> dict[str, Any]:
         if not data:
@@ -44,14 +45,16 @@ class SupabaseMapper:
         return data[0]
 
     def list_subtopics(self) -> list[Subtopic]:
-        rows = (
-            self.client.table("subtopics")
-            .select("*")
-            .order("order_index")
-            .execute()
-            .data
-        )
-        return [self.subtopic_from_row(row) for row in rows or []]
+        if self._cached_subtopics is None:
+            rows = (
+                self.client.table("subtopics")
+                .select("*")
+                .order("order_index")
+                .execute()
+                .data
+            )
+            self._cached_subtopics = [self.subtopic_from_row(row) for row in rows or []]
+        return list(self._cached_subtopics)
 
     def ensure_progress_records(self, student_id: int) -> None:
         subtopics = self.list_subtopics()
@@ -87,6 +90,7 @@ class SupabaseMapper:
             name=str(row["name"]),
             email=str(row["email"]),
             diagnostic_completed=bool(row.get("diagnostic_completed", False)),
+            role=str(row.get("role") or "student"),
             created_at=_parse_datetime(row.get("created_at")),
         )
 

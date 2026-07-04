@@ -70,6 +70,8 @@ jobs:
             EMBEDDING_DIMENSIONS=384
             FINETUNED_MODEL_URL=${{ secrets.FINETUNED_MODEL_URL }}
             FINETUNED_MODEL_NAME=edufx
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
             FRONTEND_ORIGIN=${{ secrets.FRONTEND_URL }}
 
   # ── 2. Build + deploy Next.js frontend ────────────────────────────────────

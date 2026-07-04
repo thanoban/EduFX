@@ -17,3 +17,4 @@ def test_seed_question_rows_keep_contract_fields():
     assert row["question_text"]
     assert row["correct_answer"] in {"A", "B", "C", "D"}
     assert row["stage"] in {"diagnostic", "first"}
+    assert row["concept"]

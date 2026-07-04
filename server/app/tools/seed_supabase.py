@@ -83,8 +83,21 @@ def _content_rows(content: Content, live_subtopic_id: int) -> dict[str, Any]:
     }
 
 
-def ensure_content(client: Any, subtopic_ids_by_order: dict[int, int], dry_run: bool) -> int:
+def ensure_content(client: Any, subtopic_ids_by_order: dict[int, int], dry_run: bool, overwrite: bool = False) -> int:
     demo = DemoDataStore()
+
+    if overwrite:
+        # content has no inbound FKs, so upserting on the existing (subtopic_id, level)
+        # unique index is safe and lets a content revision replace prior text in place.
+        rows = [
+            _content_rows(content, subtopic_ids_by_order[content.subtopic_id])
+            for content in demo.content_records.values()
+            if content.subtopic_id in subtopic_ids_by_order
+        ]
+        if rows and not dry_run:
+            client.table("content").upsert(rows, on_conflict="subtopic_id,level").execute()
+        return len(rows)
+
     existing_rows = client.table("content").select("subtopic_id,level").execute().data or []
     existing = {(int(row["subtopic_id"]), str(row["level"])) for row in existing_rows}
 
@@ -113,13 +126,58 @@ def _question_rows(question: Question, live_subtopic_id: int) -> dict[str, Any]:
         "difficulty": question.difficulty,
         "source": question.source,
         "stage": question.stage,
+        "concept": question.concept,
         "student_id": question.student_id,
         "is_diagnostic": question.is_diagnostic,
     }
 
 
-def ensure_questions(client: Any, subtopic_ids_by_order: dict[int, int], dry_run: bool) -> tuple[int, int]:
+def ensure_questions(
+    client: Any, subtopic_ids_by_order: dict[int, int], dry_run: bool, overwrite: bool = False
+) -> tuple[int, int]:
     demo = DemoDataStore()
+    stage_targets = {"diagnostic": 4, "first": 15}
+    diagnostic_count = 0
+    first_count = 0
+
+    if overwrite:
+        # quiz_attempts.question_id is an enforced FK, and a student's first quiz can
+        # attempt these exact manual rows directly, so we update existing rows in place
+        # by ordinal position rather than delete+reinsert — that would risk an FK
+        # violation or silently orphan real attempt history.
+        for order_index, live_subtopic_id in subtopic_ids_by_order.items():
+            for stage in ("diagnostic", "first"):
+                seeds = [
+                    question
+                    for question in demo.questions.values()
+                    if question.subtopic_id == order_index and question.stage == stage
+                ]
+                existing = (
+                    client.table("questions")
+                    .select("id")
+                    .eq("subtopic_id", live_subtopic_id)
+                    .eq("stage", stage)
+                    .eq("source", "manual")
+                    .order("id")
+                    .execute()
+                    .data
+                    or []
+                )
+                for row, question in zip(existing, seeds):
+                    if not dry_run:
+                        client.table("questions").update(_question_rows(question, live_subtopic_id)).eq(
+                            "id", row["id"]
+                        ).execute()
+                remaining = seeds[len(existing) :]
+                rows_to_insert = [_question_rows(q, live_subtopic_id) for q in remaining]
+                _execute_insert(client, "questions", rows_to_insert, dry_run)
+                count = len(seeds)
+                if stage == "diagnostic":
+                    diagnostic_count += count
+                else:
+                    first_count += count
+        return diagnostic_count, first_count
+
     existing_rows = (
         client.table("questions")
         .select("subtopic_id,stage,question_text")
@@ -138,9 +196,6 @@ def ensure_questions(client: Any, subtopic_ids_by_order: dict[int, int], dry_run
         existing_counts[key] = existing_counts.get(key, 0) + 1
 
     rows_to_insert: list[dict[str, Any]] = []
-    diagnostic_count = 0
-    first_count = 0
-    stage_targets = {"diagnostic": 4, "first": 15}
 
     for question in demo.questions.values():
         live_subtopic_id = subtopic_ids_by_order.get(question.subtopic_id)
@@ -164,10 +219,10 @@ def ensure_questions(client: Any, subtopic_ids_by_order: dict[int, int], dry_run
     return diagnostic_count, first_count
 
 
-def seed(client: Any, dry_run: bool = False) -> SeedSummary:
+def seed(client: Any, dry_run: bool = False, overwrite: bool = False) -> SeedSummary:
     subtopic_ids_by_order, summary = ensure_subtopics(client, dry_run)
-    summary.content_created = ensure_content(client, subtopic_ids_by_order, dry_run)
-    diagnostic_count, first_count = ensure_questions(client, subtopic_ids_by_order, dry_run)
+    summary.content_created = ensure_content(client, subtopic_ids_by_order, dry_run, overwrite)
+    diagnostic_count, first_count = ensure_questions(client, subtopic_ids_by_order, dry_run, overwrite)
     summary.diagnostic_questions_created = diagnostic_count
     summary.first_questions_created = first_count
     return summary
@@ -176,6 +231,11 @@ def seed(client: Any, dry_run: bool = False) -> SeedSummary:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed Supabase with EduFX baseline curriculum data")
     parser.add_argument("--dry-run", action="store_true", help="Summarize missing rows without writing")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace existing content/question text in place instead of only filling gaps",
+    )
     args = parser.parse_args()
 
     settings = get_settings()
@@ -185,7 +245,7 @@ def main() -> None:
 
     from supabase import create_client
 
-    summary = seed(create_client(settings.supabase_url, supabase_key), dry_run=args.dry_run)
+    summary = seed(create_client(settings.supabase_url, supabase_key), dry_run=args.dry_run, overwrite=args.overwrite)
     mode = "Dry run complete" if args.dry_run else "Seed complete"
     print(mode)
     print(f"  subtopics_created={summary.subtopics_created}")

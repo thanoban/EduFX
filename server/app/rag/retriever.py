@@ -9,7 +9,9 @@ from app.rag.embedder import embed
 def retrieve(query: str, subtopic_id: int, client: Client, top_k: int = 5) -> list[str]:
     """Return top-k matching chunk texts for the query, or [] on any failure."""
     try:
-        query_embedding = embed(query)
+        # Embed the query as a QUERY (not a DOCUMENT) so it matches how the
+        # stored chunks were embedded during ingest.
+        query_embedding = embed(query, task_type="RETRIEVAL_QUERY")
     except Exception:
         return []
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import lru_cache
 
+from app.controllers.admin_controller import AdminController
 from app.controllers.auth_controller import AuthController
 from app.controllers.behaviour_controller import BehaviourController
 from app.controllers.content_controller import ContentController
@@ -14,6 +15,7 @@ from app.core.clients import build_external_clients
 from app.core.config import get_settings
 from app.core.repository_factory import build_repository_bundle
 from app.repositories.rag_repository import RagRepository
+from app.services.admin_service import AdminService
 from app.services.auth_service import AuthService
 from app.services.behaviour_service import BehaviourService
 from app.services.content_service import ContentService
@@ -27,6 +29,7 @@ from app.services.scheduler_service import SchedulerService
 
 @dataclass(slots=True)
 class AppContainer:
+    auth_service: AuthService
     auth_controller: AuthController
     diagnostic_controller: DiagnosticController
     scheduler_controller: SchedulerController
@@ -36,6 +39,7 @@ class AppContainer:
     explanation_controller: ExplanationController
     progress_controller: ProgressController
     behaviour_controller: BehaviourController
+    admin_controller: AdminController
 
 
 @lru_cache
@@ -69,8 +73,10 @@ def get_container() -> AppContainer:
     )
     progress_service = ProgressService(repositories.progress_repository)
     behaviour_service = BehaviourService(repositories.behaviour_repository)
+    admin_service = AdminService(repositories.admin_repository)
 
     return AppContainer(
+        auth_service=auth_service,
         auth_controller=AuthController(auth_service),
         diagnostic_controller=DiagnosticController(diagnostic_service),
         scheduler_controller=SchedulerController(scheduler_service),
@@ -80,4 +86,5 @@ def get_container() -> AppContainer:
         explanation_controller=ExplanationController(explanation_service),
         progress_controller=ProgressController(progress_service),
         behaviour_controller=BehaviourController(behaviour_service),
+        admin_controller=AdminController(admin_service),
     )

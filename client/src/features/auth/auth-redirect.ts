@@ -21,7 +21,8 @@ export function isRecoverableOAuthError(errorCode: string | null, errorMessage: 
     errorCode === "bad_oauth_state" ||
     normalizedMessage.includes("oauth state not found or expired") ||
     normalizedMessage.includes("flow state not found") ||
-    normalizedMessage.includes("flow state expired")
+    normalizedMessage.includes("flow state expired") ||
+    normalizedMessage.includes("code verifier")
   );
 }
 

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
+from app.routes.admin import router as admin_router
 from app.routes.auth import router as auth_router
 from app.routes.behaviour import router as behaviour_router
 from app.routes.content import router as content_router
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(explanation_router, prefix="/explanation", tags=["explanation"])
     app.include_router(progress_router, prefix="/progress", tags=["progress"])
     app.include_router(behaviour_router, prefix="/behaviour", tags=["behaviour"])
+    app.include_router(admin_router, prefix="/admin", tags=["admin"])
 
     @app.get("/")
     def health() -> dict[str, str]:

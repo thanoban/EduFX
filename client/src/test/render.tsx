@@ -9,7 +9,8 @@ const defaultStudent: StudentProfile = {
   student_id: 1,
   name: "Ali Hassan",
   email: "ali.hassan@edufx.demo",
-  diagnostic_completed: true
+  diagnostic_completed: true,
+  is_admin: false
 };
 
 export function renderWithAuth(

@@ -168,7 +168,11 @@ export class BrowserBehaviourTracker {
 
     const face = await this.faceTracker.analyze(this.video);
 
-    if (Date.now() - this.lastPhoneRunAt > 1500 && face.face_detected) {
+    if (!face.face_detected) {
+      // No face in frame: clear any stale phone prediction so it can't keep
+      // reporting "phone detected" while the student is away from the camera.
+      this.latestPhone = { detected: false, confidence: 0, rawScore: 0 };
+    } else if (Date.now() - this.lastPhoneRunAt > 1500) {
       try {
         this.latestPhone = await this.phoneDetector.detect(this.video);
         this.lastPhoneRunAt = Date.now();

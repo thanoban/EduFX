@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 384
     finetuned_model_url: str | None = None
     finetuned_model_name: str = "edufx"
+    gemini_api_key: str | None = None
+    groq_api_key: str | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")

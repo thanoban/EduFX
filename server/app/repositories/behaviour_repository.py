@@ -27,6 +27,9 @@ class BehaviourRepository:
         sessions = [session for session in self.store.session_summaries.values() if session.student_id == student_id]
         return sorted(sessions, key=lambda item: item.created_at, reverse=True)
 
+    def list_subtopics(self) -> list[Subtopic]:
+        return sorted(self.store.subtopics.values(), key=lambda item: item.order_index)
+
     def get_subtopic(self, subtopic_id: int) -> Subtopic | None:
         return self.store.subtopics.get(subtopic_id)
 

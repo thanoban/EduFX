@@ -61,6 +61,9 @@ class SupabaseBehaviourRepository:
         ) or []
         return [self.mapper.session_from_row(row) for row in rows]
 
+    def list_subtopics(self) -> list[Subtopic]:
+        return self.mapper.list_subtopics()
+
     def get_subtopic(self, subtopic_id: int) -> Subtopic | None:
         rows = self.client.table("subtopics").select("*").eq("id", subtopic_id).limit(1).execute().data or []
         return self.mapper.subtopic_from_row(rows[0]) if rows else None

@@ -11,6 +11,7 @@ export type StudentProfile = {
   name: string;
   email: string;
   diagnostic_completed: boolean;
+  is_admin: boolean;
 };
 
 export type Subtopic = {
@@ -188,4 +189,46 @@ export type BehaviourHistoryItem = {
   correct_answers: number;
   created_at: string;
   subtopics: Subtopic | null;
+};
+
+export type StudentRole = "student" | "admin";
+
+export type AdminStudentSummary = {
+  student_id: number;
+  name: string;
+  email: string;
+  role: StudentRole;
+  diagnostic_completed: boolean;
+  subtopics_mastered: number;
+  avg_focus_score: number | null;
+  total_sessions: number;
+  last_active_date: string | null;
+};
+
+export type AdminWeakConcept = {
+  concept: string;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+  sample_question: string | null;
+};
+
+export type AdminSessionHistoryItem = {
+  session_id: number;
+  subtopic_id: number;
+  subtopic_title: string;
+  session_date: string;
+  quiz_score: number;
+  focus_score: number | null;
+};
+
+export type AdminStudentDetail = {
+  student_id: number;
+  name: string;
+  email: string;
+  role: StudentRole;
+  diagnostic_completed: boolean;
+  progress: ProgressRecord[];
+  session_history: AdminSessionHistoryItem[];
+  weak_concepts: AdminWeakConcept[];
 };

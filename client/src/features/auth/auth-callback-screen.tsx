@@ -103,7 +103,11 @@ export function AuthCallbackScreen() {
       }
 
       if (resolution.error || !resolution.accessToken) {
-        setError(resolution.error ?? "Google sign-in completed, but no EduFX session was created. Please try again.");
+        setError(
+          resolution.error
+            ? getOAuthErrorFallbackMessage(null, resolution.error)
+            : "Google sign-in completed, but no EduFX session was created. Please try again.",
+        );
         return;
       }
 

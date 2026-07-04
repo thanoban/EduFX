@@ -10,6 +10,7 @@ class Student:
     name: str
     email: str
     diagnostic_completed: bool
+    role: str = "student"
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

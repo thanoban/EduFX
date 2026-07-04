@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "@/lib/constants";
 import type {
+  AdminStudentDetail,
+  AdminStudentSummary,
   ApiResponse,
   BehaviourHistoryItem,
   BehaviourSession,
@@ -13,12 +15,13 @@ import type {
   QuizResultPayload,
   SessionResults,
   StudentProfile,
+  StudentRole,
   StudyPlanItem,
   Subtopic
 } from "@/types/contracts";
 
 type RequestOptions = {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH";
   token?: string | null;
   studentId?: number;
   body?: unknown;
@@ -212,6 +215,25 @@ export const progressApi = {
   },
   getOne(studentId: number, subtopicId: number) {
     return request<ProgressRecord>(`/progress/${studentId}/${subtopicId}`);
+  }
+};
+
+export const adminApi = {
+  // Admin routes are gated server-side by a real bearer token (require_admin
+  // in routes/admin.py), unlike most other routes here which just trust the
+  // student_id path param — so these calls need the actual token, not just an id.
+  listStudents(token: string) {
+    return request<AdminStudentSummary[]>("/admin/students", { token });
+  },
+  getStudentDetail(token: string, studentId: number) {
+    return request<AdminStudentDetail>(`/admin/students/${studentId}`, { token });
+  },
+  setStudentRole(token: string, studentId: number, role: StudentRole) {
+    return request<AdminStudentDetail>(`/admin/students/${studentId}/role`, {
+      method: "PATCH",
+      token,
+      body: { role }
+    });
   }
 };
 

@@ -26,4 +26,11 @@ describe("auth redirect helpers", () => {
       getOAuthErrorFallbackMessage("bad_oauth_state", "OAuth state not found or expired"),
     ).toBe("Google sign-in expired before EduFX could finish it. Please try again.");
   });
+
+  it("recognizes a missing PKCE code verifier as recoverable (e.g. sign-in retried in another tab)", () => {
+    expect(isRecoverableOAuthError(null, "PKCE code verifier not found in storage")).toBe(true);
+    expect(getOAuthErrorFallbackMessage(null, "PKCE code verifier not found in storage")).toBe(
+      "Google sign-in expired before EduFX could finish it. Please try again.",
+    );
+  });
 });

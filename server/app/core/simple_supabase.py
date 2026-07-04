@@ -16,6 +16,7 @@ class SimpleSupabaseResponse:
 class SimpleSupabaseQuery:
     base_url: str
     headers: dict[str, str]
+    http_client: httpx.Client
     table_name: str
     operation: str = "select"
     payload: Any = None
@@ -47,6 +48,11 @@ class SimpleSupabaseQuery:
         self.prefer_headers = ["return=representation"]
         return self
 
+    def delete(self) -> SimpleSupabaseQuery:
+        self.operation = "delete"
+        self.prefer_headers = ["return=representation"]
+        return self
+
     def eq(self, column: str, value: Any) -> SimpleSupabaseQuery:
         self.params[column] = f"eq.{value}"
         return self
@@ -71,17 +77,18 @@ class SimpleSupabaseQuery:
         if self.prefer_headers:
             headers["Prefer"] = ",".join(self.prefer_headers)
 
-        with httpx.Client(timeout=30) as client:
-            if self.operation == "select":
-                response = client.get(url, headers=headers, params=self.params)
-            elif self.operation == "insert":
-                response = client.post(url, headers=headers, params=self.params, json=self.payload)
-            elif self.operation == "upsert":
-                response = client.post(url, headers=headers, params=self.params, json=self.payload)
-            elif self.operation == "update":
-                response = client.patch(url, headers=headers, params=self.params, json=self.payload)
-            else:
-                raise ValueError(f"Unsupported Supabase operation: {self.operation}")
+        if self.operation == "select":
+            response = self.http_client.get(url, headers=headers, params=self.params)
+        elif self.operation == "insert":
+            response = self.http_client.post(url, headers=headers, params=self.params, json=self.payload)
+        elif self.operation == "upsert":
+            response = self.http_client.post(url, headers=headers, params=self.params, json=self.payload)
+        elif self.operation == "update":
+            response = self.http_client.patch(url, headers=headers, params=self.params, json=self.payload)
+        elif self.operation == "delete":
+            response = self.http_client.delete(url, headers=headers, params=self.params)
+        else:
+            raise ValueError(f"Unsupported Supabase operation: {self.operation}")
 
         response.raise_for_status()
         if not response.content:
@@ -93,13 +100,13 @@ class SimpleSupabaseQuery:
 class SimpleSupabaseRpcCall:
     base_url: str
     headers: dict[str, str]
+    http_client: httpx.Client
     function_name: str
     payload: dict[str, Any]
 
     def execute(self) -> SimpleSupabaseResponse:
         url = f"{self.base_url}/rest/v1/rpc/{quote(self.function_name)}"
-        with httpx.Client(timeout=45) as client:
-            response = client.post(url, headers=self.headers, json=self.payload)
+        response = self.http_client.post(url, headers=self.headers, json=self.payload)
         response.raise_for_status()
         if not response.content:
             return SimpleSupabaseResponse(data=[])
@@ -110,21 +117,31 @@ class SimpleSupabaseRpcCall:
 class SimpleSupabaseClient:
     base_url: str
     api_key: str
+    http_client: httpx.Client = field(
+        default_factory=lambda: httpx.Client(timeout=httpx.Timeout(45.0))
+    )
 
     @property
     def headers(self) -> dict[str, str]:
         return {
             "apikey": self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
     def table(self, table_name: str) -> SimpleSupabaseQuery:
-        return SimpleSupabaseQuery(base_url=self.base_url, headers=self.headers, table_name=table_name)
+        return SimpleSupabaseQuery(
+            base_url=self.base_url,
+            headers=self.headers,
+            http_client=self.http_client,
+            table_name=table_name,
+        )
 
     def rpc(self, function_name: str, payload: dict[str, Any]) -> SimpleSupabaseRpcCall:
         return SimpleSupabaseRpcCall(
             base_url=self.base_url,
             headers=self.headers,
+            http_client=self.http_client,
             function_name=function_name,
             payload=payload,
         )

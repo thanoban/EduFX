@@ -10,6 +10,8 @@ class SchedulerRepository:
         self.store.ensure_progress_records(student_id)
         return [record for record in self.store.student_progress.values() if record.student_id == student_id]
 
+    def list_subtopics(self) -> list[Subtopic]:
+        return sorted(self.store.subtopics.values(), key=lambda item: item.order_index)
+
     def get_subtopic(self, subtopic_id: int) -> Subtopic:
         return self.store.subtopics[subtopic_id]
-

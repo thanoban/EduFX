@@ -17,3 +17,23 @@ export function useAuthGuard() {
 
   return auth;
 }
+
+export function useAdminGuard() {
+  const auth = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (auth.loading) {
+      return;
+    }
+    if (!auth.student) {
+      router.replace("/login");
+      return;
+    }
+    if (!auth.student.is_admin) {
+      router.replace("/dashboard");
+    }
+  }, [auth.loading, auth.student, router]);
+
+  return auth;
+}

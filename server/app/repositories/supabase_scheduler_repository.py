@@ -14,6 +14,9 @@ class SupabaseSchedulerRepository:
         rows = self.client.table("student_progress").select("*").eq("student_id", student_id).execute().data or []
         return [self.mapper.progress_from_row(row) for row in rows]
 
+    def list_subtopics(self) -> list[Subtopic]:
+        return self.mapper.list_subtopics()
+
     def get_subtopic(self, subtopic_id: int) -> Subtopic:
         rows = self.client.table("subtopics").select("*").eq("id", subtopic_id).limit(1).execute().data
         return self.mapper.subtopic_from_row(self.mapper.ensure_one(rows, "Subtopic not found"))
