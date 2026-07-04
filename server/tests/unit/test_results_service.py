@@ -1,9 +1,12 @@
 from app.core.store import DemoDataStore
+from app.ml.recommender_engine import RecommenderEngine
 from app.repositories.behaviour_repository import BehaviourRepository
+from app.repositories.progress_repository import ProgressRepository
 from app.repositories.quiz_repository import QuizRepository
 from app.repositories.results_repository import ResultsRepository
-from app.services.learning_coach_service import LearningCoachService
+from app.repositories.scheduler_repository import SchedulerRepository
 from app.services.results_service import ResultsService
+from app.services.scheduling_agent import SchedulingAgent
 
 
 def _make_service():
@@ -11,7 +14,9 @@ def _make_service():
     results_repo = ResultsRepository(store)
     quiz_repo = QuizRepository(store)
     behaviour_repo = BehaviourRepository(store)
-    service = ResultsService(results_repo, quiz_repo, behaviour_repo)
+    engine = RecommenderEngine(SchedulerRepository(store), ProgressRepository(store), results_repo)
+    scheduling_agent = SchedulingAgent(engine, results_repo)
+    service = ResultsService(results_repo, quiz_repo, behaviour_repo, scheduling_agent)
     student = store.create_student("Test", "test@edufx.local")
     store.ensure_progress_records(student.id)
     session = store.create_session(student.id, subtopic_id=1)
@@ -89,27 +94,3 @@ def test_get_session_results_after_submit():
     assert dto.correct_answers == 1
     assert len(dto.attempts) == 1
     assert dto.attempts[0].is_correct is True
-
-
-def test_learning_coach_builds_recovery_plan_from_score_concept_and_focus():
-    service, store, student, session = _make_service()
-    q_id = _first_question_for_subtopic(store, 1)
-    question = store.questions[q_id]
-    wrong = next(x for x in ("A", "B", "C", "D") if x != question.correct_answer)
-    session.focus_score = 48
-    session.phone_percent = 30
-    session.away_percent = 45
-    session.webcam_enabled = True
-    service.submit_quiz(
-        student_id=student.id,
-        session_id=session.id,
-        subtopic_id=1,
-        webcam_enabled=True,
-        answers=[{"question_id": q_id, "student_answer": wrong}],
-    )
-
-    coach = LearningCoachService(ResultsRepository(store)).build_session_plan(session.id, student.id)
-
-    assert coach.headline.startswith("Recovery plan")
-    assert {insight.agent for insight in coach.insights} == {"performance", "concept", "focus", "planner"}
-    assert any(action.priority == "high" for action in coach.actions)

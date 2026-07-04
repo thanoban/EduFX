@@ -1,9 +1,9 @@
 from app.presenters.response_presenter import success_response
-from app.services.scheduler_service import SchedulerService
+from app.services.scheduling_agent import SchedulingAgent
 
 
 class SchedulerController:
-    def __init__(self, service: SchedulerService) -> None:
+    def __init__(self, service: SchedulingAgent) -> None:
         self.service = service
 
     def todays_plan(self, student_id: int):

@@ -7,7 +7,6 @@ import type {
   BehaviourSession,
   BehaviourSnapshotPayload,
   BehaviourSummaryPayload,
-  CoachPlan,
   ContentRecord,
   DiagnosticQuestion,
   DiagnosticResult,
@@ -206,9 +205,6 @@ export const resultsApi = {
       explanations: Array<{ attempt_id: number; explanation: string }>;
     }>(`/explanation/${sessionId}/${studentId}`);
     return data.explanations;
-  },
-  getCoachPlan(sessionId: number, studentId: number) {
-    return request<CoachPlan>(`/results/session/${sessionId}/${studentId}/coach`);
   }
 };
 

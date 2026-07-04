@@ -226,30 +226,6 @@ class SessionResultsDTO(BaseModel):
     attempts: list[QuestionWithAttemptDTO]
 
 
-class CoachInsightDTO(BaseModel):
-    agent: Literal["performance", "concept", "focus", "planner"]
-    title: str
-    summary: str
-    severity: Literal["success", "info", "warning", "danger"]
-    evidence: list[str] = []
-
-
-class CoachActionDTO(BaseModel):
-    label: str
-    reason: str
-    priority: Literal["high", "medium", "low"]
-    subtopic_id: int | None = None
-
-
-class CoachPlanDTO(BaseModel):
-    session_id: int
-    student_id: int
-    headline: str
-    confidence: Literal["high", "medium", "low"]
-    insights: list[CoachInsightDTO]
-    actions: list[CoachActionDTO]
-
-
 class ProgressHistoryItemDTO(BaseModel):
     id: int
     session_date: date

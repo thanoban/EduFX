@@ -172,30 +172,6 @@ export type SessionResults = {
   attempts: SessionAttempt[];
 };
 
-export type CoachInsight = {
-  agent: "performance" | "concept" | "focus" | "planner";
-  title: string;
-  summary: string;
-  severity: "success" | "info" | "warning" | "danger";
-  evidence: string[];
-};
-
-export type CoachAction = {
-  label: string;
-  reason: string;
-  priority: "high" | "medium" | "low";
-  subtopic_id: number | null;
-};
-
-export type CoachPlan = {
-  session_id: number;
-  student_id: number;
-  headline: string;
-  confidence: "high" | "medium" | "low";
-  insights: CoachInsight[];
-  actions: CoachAction[];
-};
-
 export type ProgressRecord = {
   id: number;
   subtopic_id: number;

@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 
 from app.core.store import DemoDataStore
+from app.ml.recommender_engine import RecommenderEngine
 from app.repositories.progress_repository import ProgressRepository
 from app.repositories.results_repository import ResultsRepository
 from app.repositories.scheduler_repository import SchedulerRepository
-from app.services.scheduler_service import SchedulerService
+from app.services.scheduling_agent import SchedulingAgent
 
 
 def _make_service():
@@ -12,7 +13,8 @@ def _make_service():
     scheduler_repo = SchedulerRepository(store)
     progress_repo = ProgressRepository(store)
     results_repo = ResultsRepository(store)
-    service = SchedulerService(scheduler_repo, progress_repo, results_repo)
+    engine = RecommenderEngine(scheduler_repo, progress_repo, results_repo)
+    service = SchedulingAgent(engine, results_repo)
     student = store.create_student("Test", "test@edufx.local")
     store.ensure_progress_records(student.id)
     return service, store, student
@@ -71,3 +73,34 @@ def test_get_todays_plan_respects_cap_end_to_end():
 
     plan = service.get_todays_plan(student.id)
     assert len(plan) <= 2
+
+
+def test_register_study_session_starts_and_persists_streak():
+    service, store, student = _make_service()
+    assert student.current_streak == 0
+
+    service.register_study_session(student.id)
+    saved = store.students[student.id]
+    assert saved.current_streak == 1
+    assert saved.longest_streak == 1
+    assert saved.last_study_date == date.today()
+
+
+def test_register_study_session_continues_streak_from_yesterday():
+    service, store, student = _make_service()
+    student.last_study_date = date.today() - timedelta(days=1)
+    student.current_streak = 4
+    student.longest_streak = 4
+    store.students[student.id] = student
+
+    service.register_study_session(student.id)
+    saved = store.students[student.id]
+    assert saved.current_streak == 5
+    assert saved.longest_streak == 5
+
+
+def test_register_study_session_twice_same_day_is_idempotent():
+    service, store, student = _make_service()
+    service.register_study_session(student.id)
+    service.register_study_session(student.id)
+    assert store.students[student.id].current_streak == 1

@@ -26,8 +26,9 @@ class DiagnosticServiceContract(Protocol):
     def submit(self, student_id: int, answers: list[dict[str, str | int]]) -> list[DiagnosticResultDTO]: ...
 
 
-class SchedulerServiceContract(Protocol):
+class SchedulingAgentContract(Protocol):
     def get_todays_plan(self, student_id: int) -> list[StudyPlanItemDTO]: ...
+    def register_study_session(self, student_id: int) -> None: ...
 
 
 class ContentServiceContract(Protocol):

@@ -120,11 +120,6 @@ def test_scheduler_content_quiz_results_and_progress_flow():
     assert session.status_code == 200
     assert session.json()["data"]["quiz_score"] == 100
 
-    coach = client.get(f"/results/session/{session_id}/{student_id}/coach")
-    assert coach.status_code == 200
-    assert coach.json()["data"]["headline"]
-    assert len(coach.json()["data"]["insights"]) == 4
-
     explanations = client.get(f"/explanation/{session_id}/{student_id}")
     assert explanations.status_code == 200
 

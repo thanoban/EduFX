@@ -1,12 +1,13 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
-from app.core.rules import update_level_after_quiz, update_streak
+from app.core.rules import update_level_after_quiz
 from app.models.domain import QuizAttempt
 from app.models.dto import QuestionWithAttemptDTO, QuizQuestionDTO, QuizResultDTO, SessionResultsDTO
 from app.repositories.contracts import BehaviourRepositoryContract, QuizRepositoryContract, ResultsRepositoryContract
 from app.repositories.behaviour_repository import BehaviourRepository
 from app.repositories.quiz_repository import QuizRepository
 from app.repositories.results_repository import ResultsRepository
+from app.services.contracts import SchedulingAgentContract
 
 
 class ResultsService:
@@ -15,10 +16,12 @@ class ResultsService:
         repository: ResultsRepositoryContract | ResultsRepository,
         quiz_repository: QuizRepositoryContract | QuizRepository,
         behaviour_repository: BehaviourRepositoryContract | BehaviourRepository,
+        scheduling_agent: SchedulingAgentContract,
     ) -> None:
         self.repository = repository
         self.quiz_repository = quiz_repository
         self.behaviour_repository = behaviour_repository
+        self.scheduling_agent = scheduling_agent
 
     def submit_quiz(
         self,
@@ -67,7 +70,7 @@ class ResultsService:
         session.webcam_enabled = webcam_enabled
         self.repository.save_session(session)
 
-        self._update_streak(student_id)
+        self.scheduling_agent.register_study_session(student_id)
 
         return QuizResultDTO(
             session_id=session_id,
@@ -79,16 +82,6 @@ class ResultsService:
             level_changed=previous_level != new_level,
             wrong_count=total_questions - correct_answers,
         )
-
-    def _update_streak(self, student_id: int) -> None:
-        student = self.repository.get_student(student_id)
-        if student is None:
-            return
-        today = date.today()
-        student.current_streak = update_streak(student.last_study_date, student.current_streak, today)
-        student.longest_streak = max(student.longest_streak, student.current_streak)
-        student.last_study_date = today
-        self.repository.save_student(student)
 
     def get_session_results(self, session_id: int, student_id: int) -> SessionResultsDTO:
         session = self.repository.get_session(session_id)

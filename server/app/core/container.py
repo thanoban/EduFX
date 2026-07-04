@@ -16,6 +16,7 @@ from app.controllers.settings_controller import SettingsController
 from app.core.clients import build_external_clients
 from app.core.config import get_settings
 from app.core.repository_factory import build_repository_bundle
+from app.ml.recommender_engine import RecommenderEngine
 from app.repositories.rag_repository import RagRepository
 from app.services.admin_service import AdminService
 from app.services.auth_service import AuthService
@@ -23,12 +24,11 @@ from app.services.behaviour_service import BehaviourService
 from app.services.content_service import ContentService
 from app.services.diagnostic_service import DiagnosticService
 from app.services.explanation_service import ExplanationService
-from app.services.learning_coach_service import LearningCoachService
 from app.services.progress_service import ProgressService
 from app.services.quiz_service import QuizService
 from app.services.reminder_service import ReminderService
 from app.services.results_service import ResultsService
-from app.services.scheduler_service import SchedulerService
+from app.services.scheduling_agent import SchedulingAgent
 from app.services.settings_service import SettingsService
 
 
@@ -59,9 +59,13 @@ def get_container() -> AppContainer:
 
     auth_service = AuthService(repositories.auth_repository)
     diagnostic_service = DiagnosticService(repositories.diagnostic_repository)
-    scheduler_service = SchedulerService(
+    recommender_engine = RecommenderEngine(
         repositories.scheduler_repository,
         repositories.progress_repository,
+        repositories.results_repository,
+    )
+    scheduling_agent = SchedulingAgent(
+        recommender_engine,
         repositories.results_repository,
     )
     content_service = ContentService(repositories.content_repository)
@@ -76,8 +80,8 @@ def get_container() -> AppContainer:
         repositories.results_repository,
         repositories.quiz_repository,
         repositories.behaviour_repository,
+        scheduling_agent,
     )
-    learning_coach_service = LearningCoachService(repositories.results_repository)
     explanation_service = ExplanationService(
         repositories.results_repository,
         rag_repository=rag_repository,
@@ -93,10 +97,10 @@ def get_container() -> AppContainer:
         auth_service=auth_service,
         auth_controller=AuthController(auth_service),
         diagnostic_controller=DiagnosticController(diagnostic_service),
-        scheduler_controller=SchedulerController(scheduler_service),
+        scheduler_controller=SchedulerController(scheduling_agent),
         content_controller=ContentController(content_service),
         quiz_controller=QuizController(quiz_service),
-        results_controller=ResultsController(results_service, learning_coach_service),
+        results_controller=ResultsController(results_service),
         explanation_controller=ExplanationController(explanation_service),
         progress_controller=ProgressController(progress_service),
         behaviour_controller=BehaviourController(behaviour_service),

@@ -19,12 +19,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         return null;
       }
       const sessionId = Number(resolved.id);
-      const [results, explanations, coachPlan] = await Promise.all([
+      const [results, explanations] = await Promise.all([
         resultsApi.getSession(sessionId, student.student_id),
-        resultsApi.getExplanations(sessionId, student.student_id),
-        resultsApi.getCoachPlan(sessionId, student.student_id)
+        resultsApi.getExplanations(sessionId, student.student_id)
       ]);
-      return { results, explanations, coachPlan };
+      return { results, explanations };
     },
     [resolved.id, student?.student_id]
   );
@@ -52,7 +51,6 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     <ResultsScreen
       results={data.results}
       explanations={data.explanations}
-      coachPlan={data.coachPlan}
       lastQuizResult={lastQuizResult}
     />
   );

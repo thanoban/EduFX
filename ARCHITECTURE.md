@@ -359,7 +359,10 @@ server/app/
 |---|---|
 | `auth_service.py` | Validate JWT, upsert student in DB |
 | `diagnostic_service.py` | Score diagnostic answers, assign initial levels |
-| `scheduler_service.py` | Priority-rank subtopics → today's study plan |
+| `ml/recommender_engine.py` | **Model layer** — rank *what* to study (BKT/DKT or rule fallback), uncapped |
+| `scheduling_agent.py` | **Agent layer** — cap the ranking to the student's free time, own streaks |
+| `settings_service.py` | Capture availability + post-session "next free" check-in |
+| `reminder_service.py` | Duolingo-style daily nudges (in-app + email) |
 | `content_service.py` | Fetch level-appropriate content for a subtopic |
 | `quiz_service.py` | Generate personalized quiz (AI or fallback) |
 | `results_service.py` | Score quiz, update progress, record session |

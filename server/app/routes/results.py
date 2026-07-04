@@ -20,8 +20,3 @@ def submit(payload: QuizSubmitRequest, container=Depends(get_container)):
 @router.get("/session/{session_id}/{student_id}")
 def session(session_id: int, student_id: int, container=Depends(get_container)):
     return container.results_controller.session(session_id, student_id)
-
-
-@router.get("/session/{session_id}/{student_id}/coach")
-def coach(session_id: int, student_id: int, container=Depends(get_container)):
-    return container.results_controller.coach(session_id, student_id)
