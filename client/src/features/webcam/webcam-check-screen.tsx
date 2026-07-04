@@ -164,7 +164,7 @@ export function WebcamCheckScreen() {
                 switch to &quot;Skip tracking&quot; to continue immediately.
               </div>
             ) : null}
-            <div className="cluster">
+            <div className="cluster decision-actions">
               <Button icon={<VideoOff size={16} />} variant={enabled ? "secondary" : "primary"} onClick={() => setEnabled(false)}>
                 Skip tracking
               </Button>

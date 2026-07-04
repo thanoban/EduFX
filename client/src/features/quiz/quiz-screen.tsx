@@ -182,8 +182,8 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
               Choose the strongest answer before moving on. You can revisit any question from the navigator
               at any time before submission.
             </div>
-            <div className="cluster" style={{ justifyContent: "space-between" }}>
-              <div className="cluster">
+            <div className="cluster question-actions">
+              <div className="cluster question-actions__group">
                 <Button
                   variant="secondary"
                   icon={<ArrowLeft size={16} />}

@@ -154,8 +154,8 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
                   );
                 })}
               </div>
-              <div className="cluster" style={{ justifyContent: "space-between" }}>
-                <div className="cluster">
+              <div className="cluster question-actions">
+                <div className="cluster question-actions__group">
                   <Button
                     variant="secondary"
                     icon={<ArrowLeft size={16} />}

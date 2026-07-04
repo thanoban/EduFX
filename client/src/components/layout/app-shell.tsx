@@ -66,7 +66,7 @@ export function AppShell({
           })}
         </nav>
 
-        <div style={{ flex: 1 }} />
+        <div className="sidebar-spacer" />
 
         <div className="sidebar-insight">
           <div className="cluster" style={{ justifyContent: "space-between" }}>
@@ -80,7 +80,7 @@ export function AppShell({
         </div>
 
         <div className="sidebar-user stack">
-          <div className="cluster" style={{ alignItems: "center", flexWrap: "nowrap" }}>
+          <div className="sidebar-user__identity cluster">
             <div className="avatar" aria-hidden="true">
               {(student?.name ?? "Student").slice(0, 2).toUpperCase()}
             </div>
@@ -98,7 +98,7 @@ export function AppShell({
       </aside>
       <main className="main-area">
         <header className="workspace-topbar">
-          <div className="stack" style={{ gap: 4 }}>
+          <div className="stack workspace-topbar__summary">
             <span className="eyebrow">
               <ShieldCheck size={13} /> Signed-in workspace
             </span>
@@ -115,12 +115,12 @@ export function AppShell({
         </header>
         <div className="page-panel">
           <header className="page-header">
-            <div className="stack">
+            <div className="stack page-header__copy">
               <span className="eyebrow"><ShieldCheck size={13} /> EduFX workspace</span>
               <h2>{title}</h2>
               <div className="muted">{subtitle}</div>
             </div>
-            {action}
+            {action ? <div className="page-header__actions">{action}</div> : null}
           </header>
           {children}
         </div>

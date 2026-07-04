@@ -41,7 +41,7 @@ export function AdminStudentDetailScreen({ detail: initialDetail }: { detail: Ad
       title={detail.name}
       subtitle={detail.email}
       action={
-        <div className="stack" style={{ gap: 6, alignItems: "flex-end" }}>
+        <div className="stack admin-role-actions">
           <Button
             variant={detail.role === "admin" ? "secondary" : "primary"}
             icon={detail.role === "admin" ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}
