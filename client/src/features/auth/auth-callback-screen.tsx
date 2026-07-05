@@ -16,10 +16,19 @@ import {
 } from "@/features/auth/auth-callback-session";
 import { supabase } from "@/lib/supabase";
 
+// A stale/mismatched PKCE code verifier (e.g. the sign-in flow was retried in
+// another tab) is transient — a fresh signInWithOAuth() call almost always
+// succeeds immediately. Auto-retry once per browser session instead of
+// making the user notice the error and click through "Back to login" again;
+// if the retry also fails, something more persistent is wrong and we show
+// the error card rather than looping forever.
+const AUTO_RETRY_FLAG_KEY = "edufx.mvc.oauth-callback-auto-retried";
+
 export function AuthCallbackScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { student, authenticateWithAccessToken, authError: authContextError } = useAuth();
+  const { student, authenticateWithAccessToken, authError: authContextError, signInWithGoogle } =
+    useAuth();
   const [error, setError] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
 
@@ -46,9 +55,26 @@ export function AuthCallbackScreen() {
       }
     }, 8000);
 
+    function markAuthenticated() {
+      window.sessionStorage.removeItem(AUTO_RETRY_FLAG_KEY);
+    }
+
+    // Returns true if it kicked off a fresh sign-in redirect (caller should
+    // stop and not show an error card), false if the one-shot retry budget
+    // for this browser session is already spent.
+    function autoRetryOnce(): boolean {
+      if (window.sessionStorage.getItem(AUTO_RETRY_FLAG_KEY)) {
+        return false;
+      }
+      window.sessionStorage.setItem(AUTO_RETRY_FLAG_KEY, "1");
+      void signInWithGoogle();
+      return true;
+    }
+
     async function finalizeCallback() {
       if (student) {
         clearTimeout(slowId);
+        markAuthenticated();
         router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic");
         return;
       }
@@ -65,6 +91,9 @@ export function AuthCallbackScreen() {
         }
 
         if (!recoveredSession.accessToken) {
+          if (autoRetryOnce()) {
+            return;
+          }
           setError(getOAuthErrorFallbackMessage(oauthErrorCode, recoveredSession.error ?? oauthError));
           return;
         }
@@ -75,6 +104,7 @@ export function AuthCallbackScreen() {
             return;
           }
           clearTimeout(slowId);
+          markAuthenticated();
           router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
           return;
         } catch (loginError) {
@@ -103,6 +133,12 @@ export function AuthCallbackScreen() {
       }
 
       if (resolution.error || !resolution.accessToken) {
+        // A stale/mismatched PKCE verifier is the recoverable case here — a
+        // fresh signInWithOAuth() call gets a new verifier and almost always
+        // succeeds, so retry automatically before bothering the user with it.
+        if (resolution.error && isRecoverableOAuthError(null, resolution.error) && autoRetryOnce()) {
+          return;
+        }
         setError(
           resolution.error
             ? getOAuthErrorFallbackMessage(null, resolution.error)
@@ -117,6 +153,7 @@ export function AuthCallbackScreen() {
           return;
         }
         clearTimeout(slowId);
+        markAuthenticated();
         router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
       } catch (loginError) {
         if (cancelled) {
