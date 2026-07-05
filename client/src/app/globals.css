@@ -1402,6 +1402,22 @@ p {
   align-items: start;
 }
 
+.diagnostic-workspace {
+  align-items: start;
+}
+
+.diagnostic-sidebar {
+  position: sticky;
+  top: 22px;
+}
+
+.diagnostic-question-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .navigator-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1452,6 +1468,11 @@ p {
   gap: 13px;
   font-weight: 500;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, transform 0.12s ease;
+}
+
+.option-card__body {
+  color: inherit;
+  line-height: 1.45;
 }
 
 .option-card:hover {
@@ -2122,6 +2143,11 @@ p {
     top: auto;
   }
 
+  .diagnostic-sidebar {
+    position: static;
+    top: auto;
+  }
+
   .login-story-stats {
     flex-wrap: wrap;
     gap: 16px;
@@ -2284,6 +2310,10 @@ p {
 
   .navigator-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .diagnostic-question-meta {
+    width: 100%;
   }
 }
 
