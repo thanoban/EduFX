@@ -1,4 +1,3 @@
-from app.core.config import get_settings
 from app.core.store import DemoDataStore
 from app.repositories.content_repository import ContentRepository
 from app.repositories.quiz_repository import QuizRepository
@@ -23,25 +22,35 @@ def _make_service():
     return service, store, student
 
 
-def _reset_settings() -> None:
-    get_settings.cache_clear()
-
-
-def test_personalized_quiz_skips_vertex_only_generation(monkeypatch):
-    monkeypatch.delenv("FINETUNED_MODEL_URL", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("GROQ_API_KEY", raising=False)
-    _reset_settings()
-
+def test_get_quiz_uses_fast_personalized_builder(monkeypatch):
     service, store, student = _make_service()
     progress = store.student_progress[(student.id, 1)]
     progress.total_sessions = 1
     progress.current_level = "intermediate"
+
+    def fail_ai_generation(*args, **kwargs):
+        raise AssertionError("get_quiz should not call AI generation")
+
+    monkeypatch.setattr(service, "_generate_ai_questions", fail_ai_generation)
 
     payload = service.get_quiz(student.id, 1)
 
     assert payload.stage == "personalized"
     assert len(payload.questions) == 15
     assert all(question.source == "live-gen" for question in payload.questions)
-    _reset_settings()
 
+
+def test_generate_quiz_keeps_ai_personalization_path(monkeypatch):
+    service, store, student = _make_service()
+    progress = store.student_progress[(student.id, 1)]
+    progress.total_sessions = 1
+    progress.current_level = "advanced"
+
+    fake_ai_questions = service.repository.get_manual_questions(1)[:15]
+    monkeypatch.setattr(service, "_generate_ai_questions", lambda *args, **kwargs: fake_ai_questions)
+
+    payload = service.generate_quiz(student.id, 1)
+
+    assert payload.stage == "personalized"
+    assert len(payload.questions) == 15
+    assert all(question.id == expected.id for question, expected in zip(payload.questions, fake_ai_questions))
