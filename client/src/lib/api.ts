@@ -38,6 +38,12 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException
+    ? error.name === "AbortError"
+    : error instanceof Error && error.name === "AbortError";
+}
+
 function getApiErrorMessage(path: string, response: Response, payload: ApiResponse<unknown> | null, raw: string) {
   if (payload?.message) {
     return payload.message;
@@ -88,6 +94,9 @@ async function request<T>(
       break;
     } catch (error) {
       lastNetworkError = error;
+      if (isAbortError(error)) {
+        break;
+      }
       if (attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
         await delay(REQUEST_RETRY_DELAYS_MS[attempt]);
       }
@@ -97,11 +106,7 @@ async function request<T>(
   }
 
   if (!response) {
-    const aborted =
-      lastNetworkError instanceof DOMException
-        ? lastNetworkError.name === "AbortError"
-        : lastNetworkError instanceof Error && lastNetworkError.name === "AbortError";
-    if (aborted) {
+    if (isAbortError(lastNetworkError)) {
       throw new Error("EduFX took too long to respond. Please try again.");
     }
 
@@ -176,11 +181,12 @@ export const contentApi = {
 
 export const quizApi = {
   getQuiz(subtopicId: number, studentId: number) {
-    return request<QuizPayload>(`/quiz/${subtopicId}/${studentId}`);
+    return request<QuizPayload>(`/quiz/${subtopicId}/${studentId}`, { timeoutMs: 30000 });
   },
   generate(subtopicId: number, studentId: number) {
     return request<QuizPayload>("/quiz/generate", {
       method: "POST",
+      timeoutMs: 30000,
       body: { subtopic_id: subtopicId, student_id: studentId }
     });
   }

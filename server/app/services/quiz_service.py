@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from app.core.config import get_settings
 from app.models.domain import Question
 from app.models.dto import QuizPayloadDTO, QuizQuestionDTO
 from app.repositories.contracts import ContentRepositoryContract, QuizRepositoryContract, ResultsRepositoryContract
@@ -43,11 +44,25 @@ class QuizService:
         return self._to_payload(session.id, subtopic_id, "personalized", questions)
 
     def _build_personalized(self, student_id: int, subtopic_id: int, level: str) -> list[Question]:
-        if self.vertex_model:
+        if self._should_attempt_ai_generation():
             ai_questions = self._generate_ai_questions(student_id, subtopic_id, level)
             if ai_questions:
                 return ai_questions
         return self.repository.create_personalized_questions(student_id, subtopic_id, level)
+
+    def _should_attempt_ai_generation(self) -> bool:
+        if not self.vertex_model:
+            return False
+
+        settings = get_settings()
+        # Personalized quiz requests should stay interactive. A bare Vertex
+        # project config means we only have the slow dormant fallback rung, so
+        # skip AI generation and use the deterministic personalized builder.
+        return bool(
+            settings.finetuned_model_url
+            or settings.gemini_api_key
+            or settings.groq_api_key
+        )
 
     def _generate_ai_questions(self, student_id: int, subtopic_id: int, level: str) -> list[Question]:
         from app.core.rules import select_weak_concepts
