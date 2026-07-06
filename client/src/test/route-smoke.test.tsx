@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BehaviourLogsScreen } from "@/features/behaviour/behaviour-logs-screen";
 import { DashboardScreen } from "@/features/dashboard/dashboard-screen";
 import { DiagnosticResultsScreen } from "@/features/diagnostic/diagnostic-results-screen";
+import { LandingPage } from "@/features/marketing/landing-page";
 import { LoginScreen } from "@/features/auth/login-screen";
 import { ProgressScreen } from "@/features/progress/progress-screen";
 import { SettingsScreen } from "@/features/settings/settings-screen";
@@ -36,6 +37,13 @@ describe("frontend route smoke coverage", () => {
     renderWithAuth(<LoginScreen />, { student: null });
     expect(screen.getByText("Welcome back")).toBeInTheDocument();
     expect(screen.getByText("Google")).toBeInTheDocument();
+  });
+
+  it("renders the landing page", () => {
+    renderWithAuth(<LandingPage />, { student: null });
+    expect(screen.getByRole("heading", { name: "EduFX" })).toBeInTheDocument();
+    expect(screen.getByText("Technical implementation")).toBeInTheDocument();
+    expect(screen.getByText("Real project numbers are part of the story.")).toBeInTheDocument();
   });
 
   it("renders diagnostic results", () => {

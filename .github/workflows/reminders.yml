@@ -9,8 +9,40 @@ on:
 jobs:
   run-reminders:
     runs-on: ubuntu-latest
+    env:
+      BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      REMINDERS_SHARED_SECRET: ${{ secrets.REMINDERS_SHARED_SECRET }}
     steps:
-      - name: Trigger reminder scan
+      - name: Validate reminder configuration
+        shell: bash
         run: |
-          curl --fail -X POST "${{ secrets.BACKEND_URL }}/internal/reminders/run" \
-            -H "X-Internal-Secret: ${{ secrets.REMINDERS_SHARED_SECRET }}"
+          set -euo pipefail
+
+          if [[ -z "${BACKEND_URL:-}" ]]; then
+            echo "::error title=Missing BACKEND_URL secret::Set BACKEND_URL to the deployed backend Cloud Run URL, for example https://edufx-backend-xxxxx-an.a.run.app"
+            exit 1
+          fi
+
+          if [[ ! "${BACKEND_URL}" =~ ^https?:// ]]; then
+            echo "::error title=Invalid BACKEND_URL secret::BACKEND_URL must start with http:// or https://"
+            exit 1
+          fi
+
+          if [[ -z "${REMINDERS_SHARED_SECRET:-}" ]]; then
+            echo "::error title=Missing REMINDERS_SHARED_SECRET secret::Set REMINDERS_SHARED_SECRET to the same value deployed in the backend Cloud Run service"
+            exit 1
+          fi
+
+          echo "NORMALIZED_BACKEND_URL=${BACKEND_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Trigger reminder scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent \
+            --connect-timeout 20 \
+            --max-time 60 \
+            --retry 3 \
+            --retry-delay 2 \
+            -X POST "${NORMALIZED_BACKEND_URL}/internal/reminders/run" \
+            -H "X-Internal-Secret: ${REMINDERS_SHARED_SECRET}"
