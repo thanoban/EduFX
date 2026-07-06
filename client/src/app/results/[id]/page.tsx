@@ -19,10 +19,13 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         return null;
       }
       const sessionId = Number(resolved.id);
-      const [results, explanations] = await Promise.all([
-        resultsApi.getSession(sessionId, student.student_id),
-        resultsApi.getExplanations(sessionId, student.student_id)
-      ]);
+      const results = await resultsApi.getSession(sessionId, student.student_id);
+      let explanations: Array<{ attempt_id: number; explanation: string }> = [];
+      try {
+        explanations = await resultsApi.getExplanations(sessionId, student.student_id);
+      } catch (explanationError) {
+        console.warn("EduFX explanations were unavailable for this results page.", explanationError);
+      }
       return { results, explanations };
     },
     [resolved.id, student?.student_id]

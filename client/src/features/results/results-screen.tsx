@@ -21,11 +21,11 @@ const NEXT_FREE_OPTIONS: Array<{ value: NextFreeChoice; label: string }> = [
 
 export function ResultsScreen({
   results,
-  explanations,
+  explanations = [],
   lastQuizResult
 }: {
   results: SessionResults;
-  explanations: Array<{ attempt_id: number; explanation: string }>;
+  explanations?: Array<{ attempt_id: number; explanation: string }>;
   lastQuizResult: QuizResultPayload | null;
 }) {
   const { student, updateStudentProfile } = useAuthGuard();
