@@ -2,10 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, ClipboardCheck, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpenCheck,
+  ClipboardCheck,
+  Layers3,
+  Send,
+  Target
+} from "lucide-react";
 
-import { AuthShell } from "@/components/layout/auth-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusPill } from "@/components/ui/status-pill";
 import { diagnosticApi } from "@/lib/api";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { writeStorage } from "@/lib/storage";
@@ -26,9 +37,27 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
     [answers, questions]
   );
   const remaining = questions.length - completed;
+  const completionPercent = Math.round((completed / Math.max(questions.length, 1)) * 100);
   const currentGroupLabel = activeQuestion
     ? `Subtopic ${activeQuestion.subtopic_id}`
     : "Diagnostic";
+  const subtopicQuestionCount = useMemo(
+    () =>
+      activeQuestion
+        ? questions.filter((question) => question.subtopic_id === activeQuestion.subtopic_id).length
+        : 0,
+    [activeQuestion, questions]
+  );
+  const subtopicAnsweredCount = useMemo(
+    () =>
+      activeQuestion
+        ? questions.filter(
+            (question) =>
+              question.subtopic_id === activeQuestion.subtopic_id && Boolean(answers[question.id])
+          ).length
+        : 0,
+    [activeQuestion, answers, questions]
+  );
 
   async function handleSubmit() {
     if (!student) {
@@ -53,82 +82,95 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
   }
 
   return (
-    <AuthShell
-      hero={
-        <div className="stack">
-          <span className="pill"><ClipboardCheck size={15} /> Step 1</span>
-          <h1>Diagnostic assessment</h1>
-          <p>
-            Answer 40 short checks to set your starting level for each S-block subtopic.
-          </p>
-          <div className="hero-metrics">
-            <div className="hero-metric">
-              <strong>{completed}</strong>
-              <span>answered</span>
-            </div>
-            <div className="hero-metric">
-              <strong>{remaining}</strong>
-              <span>remaining</span>
-            </div>
-            <div className="hero-metric">
-              <strong>{activeIndex + 1}</strong>
-              <span>current</span>
-            </div>
-          </div>
-          <div className="progress-bar">
-            <span style={{ width: `${(completed / Math.max(questions.length, 1)) * 100}%` }} />
-          </div>
-          <div className="muted">
-            {completed} of {questions.length} answered
-          </div>
-        </div>
+    <AppShell
+      title="Diagnostic assessment"
+      subtitle="Complete the 40-question placement check once so EduFX can set your starting level for each S-block subtopic."
+      action={
+        <Button
+          icon={<Send size={16} />}
+          onClick={handleSubmit}
+          disabled={busy || completed !== questions.length}
+        >
+          {busy ? "Submitting..." : "Submit diagnostic"}
+        </Button>
       }
     >
-      <div className="stack">
-        <div className="grid-2 diagnostic-layout">
-          <aside className="section-card stack sticky-column">
-            <div className="cluster" style={{ justifyContent: "space-between" }}>
-              <div>
-                <h3>Question map</h3>
-                <div className="muted">{currentGroupLabel}</div>
-              </div>
-              <span className="pill">{completed}/{questions.length}</span>
-            </div>
-            <div className="navigator-grid">
-              {questions.map((question, index) => (
-                <button
-                  key={question.id}
-                  className={`nav-dot ${
-                    activeIndex === index
-                      ? "active"
-                      : answers[question.id]
-                        ? "done"
-                        : ""
-                  }`.trim()}
-                  onClick={() => setActiveIndex(index)}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-            <div className="stack">
-              <div className="list-item">
-                EduFX checks four diagnostic questions per subtopic before assigning a level.
-              </div>
-              <div className="list-item">
-                All 40 answers are required before the adaptive study plan unlocks.
-              </div>
-            </div>
-          </aside>
+      <section className="hero-strip">
+        <div className="hero-strip__copy">
+          <span className="eyebrow">
+            <ClipboardCheck size={14} /> Step 1 of 2
+          </span>
+          <h3>Map your current chemistry level before the adaptive plan unlocks.</h3>
+          <p className="muted">
+            Each subtopic gets four short checks. Once all 40 are complete, EduFX can
+            balance weak zones, revision timing, and next-topic readiness.
+          </p>
+          <div className="progress-bar">
+            <span style={{ width: `${completionPercent}%` }} />
+          </div>
+        </div>
+        <div className="hero-strip__metrics">
+          <div className="metric-box">
+            <strong>{completed}</strong>
+            <span>answered</span>
+          </div>
+          <div className="metric-box">
+            <strong>{remaining}</strong>
+            <span>remaining</span>
+          </div>
+          <div className="metric-box">
+            <strong>{activeIndex + 1}</strong>
+            <span>current question</span>
+          </div>
+        </div>
+      </section>
 
-          {activeQuestion ? (
-            <article className="quiz-card stack">
-              <div className="cluster" style={{ justifyContent: "space-between" }}>
-                <div className="stack" style={{ gap: 6 }}>
-                  <span className="eyebrow">Question {activeIndex + 1}</span>
-                  <strong>{activeQuestion.question_text}</strong>
-                </div>
-                <StatusBadge answered={Boolean(answers[activeQuestion.id])} />
+      <div className="grid-4" style={{ marginTop: 18 }}>
+        <StatCard
+          icon={<BookOpenCheck size={18} />}
+          label="Questions complete"
+          value={`${completed}/${questions.length}`}
+          hint="Every answer is required"
+        />
+        <StatCard
+          icon={<Layers3 size={18} />}
+          label="Current subtopic"
+          value={activeQuestion ? `${activeQuestion.subtopic_id}` : "-"}
+          hint={`${subtopicAnsweredCount}/${subtopicQuestionCount || 0} answered in this lane`}
+        />
+        <StatCard
+          icon={<Target size={18} />}
+          label="Completion"
+          value={`${completionPercent}%`}
+          hint="Live progress through the diagnostic"
+        />
+        <StatCard
+          icon={<ClipboardCheck size={18} />}
+          label="Questions left"
+          value={`${remaining}`}
+          hint="Finish all 40 to unlock the plan"
+        />
+      </div>
+
+      <div className="grid-2 diagnostic-workspace" style={{ marginTop: 24 }}>
+        {activeQuestion ? (
+          <SectionCard
+            title={activeQuestion.question_text}
+            eyebrow={`Question ${activeIndex + 1} of ${questions.length}`}
+            action={
+              <StatusPill
+                label={answers[activeQuestion.id] ? "Answered" : "Pending"}
+                tone={answers[activeQuestion.id] ? "success" : "warning"}
+              />
+            }
+          >
+            <div className="stack">
+              <div className="diagnostic-question-meta">
+                <StatusPill label={currentGroupLabel} />
+                <StatusPill
+                  label={`${subtopicAnsweredCount}/${subtopicQuestionCount || 0} complete in this subtopic`}
+                  tone="default"
+                />
               </div>
               <div className="grid-2">
                 {(["A", "B", "C", "D"] as const).map((option) => {
@@ -149,7 +191,8 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
                         }))
                       }
                     >
-                      {option}. {label}
+                      <span className="option-card__letter">{option}</span>
+                      <span className="option-card__body">{label}</span>
                     </button>
                   );
                 })}
@@ -175,22 +218,56 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
                     Next
                   </Button>
                 </div>
-                <Button icon={<Send size={16} />} onClick={handleSubmit} disabled={busy || completed !== questions.length}>
-                  Submit diagnostic
+                <Button
+                  icon={<Send size={16} />}
+                  onClick={handleSubmit}
+                  disabled={busy || completed !== questions.length}
+                >
+                  {busy ? "Submitting..." : "Submit diagnostic"}
                 </Button>
               </div>
-            </article>
-          ) : null}
+            </div>
+          </SectionCard>
+        ) : null}
+
+        <div className="stack diagnostic-sidebar">
+          <SectionCard
+            title="Question map"
+            eyebrow="Navigator"
+            action={<StatusPill label={`${completed}/${questions.length}`} tone="default" />}
+          >
+            <div className="navigator-grid">
+              {questions.map((question, index) => (
+                <button
+                  key={question.id}
+                  className={`nav-dot ${
+                    activeIndex === index ? "active" : answers[question.id] ? "done" : ""
+                  }`.trim()}
+                  onClick={() => setActiveIndex(index)}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="How EduFX uses this" eyebrow="Before the dashboard">
+            <div className="list">
+              <div className="list-item">
+                Four diagnostic questions are used to estimate a starting level for each
+                subtopic.
+              </div>
+              <div className="list-item">
+                Those starting levels feed the recommender, which later balances weak,
+                overdue, and ready-to-learn topics.
+              </div>
+              <div className="list-item">
+                All 40 answers must be complete before the adaptive study plan unlocks.
+              </div>
+            </div>
+          </SectionCard>
         </div>
       </div>
-    </AuthShell>
-  );
-}
-
-function StatusBadge({ answered }: { answered: boolean }) {
-  return (
-    <span className={`pill ${answered ? "success" : "warning"}`.trim()}>
-      {answered ? "Answered" : "Pending"}
-    </span>
+    </AppShell>
   );
 }
