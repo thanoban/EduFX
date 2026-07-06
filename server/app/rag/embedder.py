@@ -1,4 +1,5 @@
-"""Embed text via Google Gen AI — Gemini API key first, Vertex AI as fallback."""
+"""Embed text via Google Gen AI — Vertex AI first (billing confirmed working),
+Gemini API key as the free fallback."""
 
 
 def _embed_with_client(client, text: str, task_type: str, settings) -> list[float]:
@@ -23,10 +24,9 @@ def embed(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
     the two task types degrades similarity scores, so callers must pass the one
     that matches their side of the search.
 
-    Tries the free Gemini API key first (same model, same output dimensions,
-    no Vertex billing dependency), then falls back to Vertex AI so this starts
-    working again automatically once billing is restored — never a hard
-    dependency on either provider.
+    Tries Vertex AI first (same model, verified working directly), then falls
+    back to the free Gemini API key — never a hard dependency on either
+    provider.
     """
     from google import genai
 
@@ -34,19 +34,19 @@ def embed(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
 
     settings = get_settings()
 
-    if settings.gemini_api_key:
+    if settings.google_cloud_project:
         try:
-            client = genai.Client(api_key=settings.gemini_api_key)
+            client = genai.Client(
+                vertexai=True,
+                project=settings.google_cloud_project,
+                location=settings.google_cloud_location,
+            )
             return _embed_with_client(client, text, task_type, settings)
         except Exception:
             pass
 
-    if not settings.google_cloud_project:
+    if not settings.gemini_api_key:
         return []
 
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location=settings.google_cloud_location,
-    )
+    client = genai.Client(api_key=settings.gemini_api_key)
     return _embed_with_client(client, text, task_type, settings)

@@ -17,6 +17,11 @@ class Student:
     # free day still doesn't dump the whole syllabus in one sitting.
     free_days: set[int] = field(default_factory=set)
     session_length: str = "medium"  # "short" | "medium" | "long"
+    # Per-day free time: weekday (0=Mon..6=Sun) -> that day's session-length
+    # bucket. Lets the agent size each day to how much time the student actually
+    # has on that specific day, like a real teacher. Keys are the free days;
+    # `session_length` above is the fallback for any free day not listed here.
+    day_session_length: dict[int, str] = field(default_factory=dict)
     # Set by the post-session "when are you next free?" check-in; lets the
     # reminder job flag a promised day even if it falls outside free_days.
     next_expected_date: date | None = None

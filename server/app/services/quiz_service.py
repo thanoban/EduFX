@@ -73,21 +73,47 @@ class QuizService:
         except Exception:
             weak_concepts = []
 
-        raw_questions = generate_quiz_questions(
-            vertex_model=self.vertex_model,  # type: ignore[arg-type]
-            subtopic_title=subtopic.title,
-            group_name=subtopic.group_name,
-            level=level,
-            content_body=content.body,
-            context_chunks=chunks if chunks else None,
-            weak_concepts=weak_concepts if weak_concepts else None,
-            count=15,
-        )
-        if not raw_questions:
+        def _generate_batch(count: int) -> list[Question]:
+            raw = generate_quiz_questions(
+                vertex_model=self.vertex_model,  # type: ignore[arg-type]
+                subtopic_title=subtopic.title,
+                group_name=subtopic.group_name,
+                level=level,
+                content_body=content.body,
+                context_chunks=chunks if chunks else None,
+                weak_concepts=weak_concepts if weak_concepts else None,
+                count=count,
+            )
+            return self._raw_to_questions(raw, subtopic_id, student_id)
+
+        questions = _generate_batch(15)
+        if not questions:
             return []
 
+        # Self-check: an examiner agent drops any question whose marked answer is
+        # wrong / options are broken, back-filling from _generate_batch. Never
+        # returns empty for a non-empty input (fail-open), so a flaky reviewer
+        # can't block quizzes.
+        from app.agents.quiz_review import review_quiz_questions
+
+        questions = review_quiz_questions(
+            questions,
+            content_body=content.body,
+            subtopic_title=subtopic.title,
+            regenerate=_generate_batch,
+        )
+        if not questions:
+            return []
+
+        try:
+            stored = self.repository.store_ai_questions(student_id, subtopic_id, questions)
+            return stored if stored else questions
+        except Exception:
+            return questions
+
+    def _raw_to_questions(self, raw_questions: list[dict], subtopic_id: int, student_id: int) -> list[Question]:
         questions: list[Question] = []
-        for i, q in enumerate(raw_questions):
+        for i, q in enumerate(raw_questions or []):
             concept = str(q.get("concept", "")).strip() or None
             questions.append(
                 Question(
@@ -108,11 +134,7 @@ class QuizService:
                     created_at=datetime.now(UTC),
                 )
             )
-        try:
-            stored = self.repository.store_ai_questions(student_id, subtopic_id, questions)
-            return stored if stored else questions
-        except Exception:
-            return questions
+        return questions
 
     def _to_payload(
         self,

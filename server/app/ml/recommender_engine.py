@@ -79,6 +79,32 @@ class RecommenderEngine:
         rule_scored = self._rank_with_rules(progress_records, subtopics_by_id, today)
         return sorted(rule_scored, key=lambda candidate: candidate.score, reverse=True)
 
+    def mastery_by_subtopic(self, student_id: int) -> dict[int, float]:
+        """Blended model mastery (0..1) keyed by subtopic_id, for read-only
+        consumers like the AI-teacher dossier. Reuses the exact same
+        model+level blend as the ranking path; falls back to the level proxy
+        when the model can't be applied, so it always returns a value for each
+        subtopic the student has progress on.
+        """
+        from app.ml import subtopic_id_to_skill
+
+        progress_records = self.scheduler_repository.get_student_progress(student_id)
+        model_mastery: dict[int, float] = {}
+        if self.predictor is not None:
+            sessions = self.progress_repository.get_student_session_history(student_id)
+            if sessions:
+                history = build_interaction_history(sessions, self._get_attempts_by_session(sessions))
+                if len(history) >= 3:
+                    try:
+                        model_mastery = self.predictor.predict_mastery(history)
+                    except Exception:
+                        model_mastery = {}
+        blended = blended_mastery(progress_records, model_mastery)
+        return {
+            progress.subtopic_id: blended.get(subtopic_id_to_skill(progress.subtopic_id), 0.25)
+            for progress in progress_records
+        }
+
     def _rank_with_rules(
         self,
         progress_records: list[StudentProgress],
@@ -108,15 +134,14 @@ class RecommenderEngine:
         (no predictor loaded, no/too-little history, or a prediction error)."""
         if self.predictor is None:
             return []
+        if not any(progress.total_sessions > 0 for progress in progress_records):
+            return []
 
         sessions = self.progress_repository.get_student_session_history(student_id)
         if not sessions:
             return []
 
-        attempts_by_session = {
-            session.id: self.results_repository.get_attempts(session.id)
-            for session in sessions
-        }
+        attempts_by_session = self._get_attempts_by_session(sessions)
         history = build_interaction_history(sessions, attempts_by_session)
         if len(history) < 3:
             return []
@@ -149,6 +174,16 @@ class RecommenderEngine:
             scored.append(ScoredCandidate(bucket, score, overdue, progress, subtopic))
 
         return scored
+
+    def _get_attempts_by_session(self, sessions) -> dict[int, list]:
+        session_ids = [session.id for session in sessions]
+        bulk_loader = getattr(self.results_repository, "get_attempts_for_sessions", None)
+        if callable(bulk_loader):
+            return bulk_loader(session_ids)
+        return {
+            session_id: self.results_repository.get_attempts(session_id)
+            for session_id in session_ids
+        }
 
     @staticmethod
     def _load_predictor():

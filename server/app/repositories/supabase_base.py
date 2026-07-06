@@ -93,6 +93,7 @@ class SupabaseMapper:
             role=str(row.get("role") or "student"),
             free_days=set(row.get("free_days") or []),
             session_length=str(row.get("session_length") or "medium"),
+            day_session_length={int(day): str(length) for day, length in (row.get("day_session_length") or {}).items()},
             next_expected_date=_parse_date(row.get("next_expected_date")),
             email_reminders_enabled=bool(row.get("email_reminders_enabled", True)),
             current_streak=int(row.get("current_streak") or 0),
@@ -108,6 +109,8 @@ class SupabaseMapper:
         return {
             "free_days": sorted(student.free_days),
             "session_length": student.session_length,
+            # jsonb object keys must be strings.
+            "day_session_length": {str(day): length for day, length in student.day_session_length.items()},
             "next_expected_date": student.next_expected_date.isoformat() if student.next_expected_date else None,
             "email_reminders_enabled": student.email_reminders_enabled,
             "current_streak": student.current_streak,

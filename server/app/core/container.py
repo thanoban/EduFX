@@ -13,6 +13,7 @@ from app.controllers.reminder_controller import ReminderController
 from app.controllers.results_controller import ResultsController
 from app.controllers.scheduler_controller import SchedulerController
 from app.controllers.settings_controller import SettingsController
+from app.controllers.teacher_controller import TeacherController
 from app.core.clients import build_external_clients
 from app.core.config import get_settings
 from app.core.repository_factory import build_repository_bundle
@@ -30,6 +31,7 @@ from app.services.reminder_service import ReminderService
 from app.services.results_service import ResultsService
 from app.services.scheduling_agent import SchedulingAgent
 from app.services.settings_service import SettingsService
+from app.services.teacher_service import TeacherService
 
 
 @dataclass(slots=True)
@@ -47,6 +49,7 @@ class AppContainer:
     admin_controller: AdminController
     settings_controller: SettingsController
     reminder_controller: ReminderController
+    teacher_controller: TeacherController
 
 
 @lru_cache
@@ -92,6 +95,13 @@ def get_container() -> AppContainer:
     admin_service = AdminService(repositories.admin_repository)
     settings_service = SettingsService(repositories.auth_repository)
     reminder_service = ReminderService(repositories.admin_repository)
+    teacher_service = TeacherService(
+        repositories.results_repository,
+        repositories.progress_repository,
+        repositories.scheduler_repository,
+        repositories.quiz_repository,
+        recommender_engine,
+    )
 
     return AppContainer(
         auth_service=auth_service,
@@ -107,4 +117,5 @@ def get_container() -> AppContainer:
         admin_controller=AdminController(admin_service),
         settings_controller=SettingsController(settings_service),
         reminder_controller=ReminderController(reminder_service),
+        teacher_controller=TeacherController(teacher_service),
     )

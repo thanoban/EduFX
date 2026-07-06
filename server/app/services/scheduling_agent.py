@@ -72,7 +72,10 @@ class SchedulingAgent:
         is_promised_today = student.next_expected_date == today
         if not is_free_today and not is_promised_today:
             return 0
-        return DURATION_TO_CAP.get(student.session_length, _UNCONFIGURED_DEFAULT_CAP)
+        # Size to how much time the student has on *this* day, falling back to
+        # their default session length for days without a per-day override.
+        bucket = student.day_session_length.get(today.weekday(), student.session_length)
+        return DURATION_TO_CAP.get(bucket, _UNCONFIGURED_DEFAULT_CAP)
 
     def _select_capped(self, scored: list[ScoredCandidate], cap: int) -> list[StudyPlanItemDTO]:
         """Pick `cap` ScoredCandidates, preferring the weak/strong mix for that

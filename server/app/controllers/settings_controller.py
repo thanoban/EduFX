@@ -11,9 +11,12 @@ class SettingsController:
         student_id: int,
         free_days: list[int],
         session_length: str,
+        day_session_length: dict[int, str],
         email_reminders_enabled: bool,
     ):
-        profile = self.service.update_availability(student_id, free_days, session_length, email_reminders_enabled)
+        profile = self.service.update_availability(
+            student_id, free_days, session_length, day_session_length, email_reminders_enabled
+        )
         return success_response(profile, "Availability updated")
 
     def check_in_next_free(self, student_id: int, choice: str):

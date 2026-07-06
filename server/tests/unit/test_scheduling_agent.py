@@ -54,6 +54,30 @@ def test_cap_matches_session_length_on_a_free_day():
     assert service._resolve_cap(student, monday) == 4
 
 
+def test_per_day_length_overrides_default_session_length():
+    service, store, student = _make_service()
+    student.free_days = {0, 2}  # Mon, Wed
+    student.session_length = "medium"  # fallback default
+    student.day_session_length = {0: "long", 2: "short"}  # Mon=1hr+, Wed=15min
+    store.students[student.id] = student
+
+    monday = date(2026, 7, 6)
+    wednesday = date(2026, 7, 8)
+    assert service._resolve_cap(student, monday) == 4  # long
+    assert service._resolve_cap(student, wednesday) == 1  # short
+
+
+def test_per_day_falls_back_to_default_for_unmapped_free_day():
+    service, store, student = _make_service()
+    student.free_days = {0, 2}
+    student.session_length = "medium"
+    student.day_session_length = {0: "long"}  # Wed has no per-day value
+    store.students[student.id] = student
+
+    wednesday = date(2026, 7, 8)
+    assert service._resolve_cap(student, wednesday) == 2  # medium default
+
+
 def test_promised_day_overrides_non_free_weekday():
     service, store, student = _make_service()
     student.free_days = {0, 1, 2, 3, 4}

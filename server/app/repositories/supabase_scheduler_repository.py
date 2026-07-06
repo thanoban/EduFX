@@ -10,8 +10,26 @@ class SupabaseSchedulerRepository:
         self.client = client
 
     def get_student_progress(self, student_id: int) -> list[StudentProgress]:
-        self.mapper.ensure_progress_records(student_id)
+        subtopics = self.mapper.list_subtopics()
         rows = self.client.table("student_progress").select("*").eq("student_id", student_id).execute().data or []
+        existing_ids = {int(row["subtopic_id"]) for row in rows}
+        missing = [
+            {
+                "student_id": student_id,
+                "subtopic_id": subtopic.id,
+                "current_level": "beginner",
+                "last_quiz_score": 0,
+                "total_sessions": 0,
+            }
+            for subtopic in subtopics
+            if subtopic.id not in existing_ids
+        ]
+        if missing:
+            self.client.table("student_progress").upsert(
+                missing,
+                on_conflict="student_id,subtopic_id",
+            ).execute()
+            rows = self.client.table("student_progress").select("*").eq("student_id", student_id).execute().data or []
         return [self.mapper.progress_from_row(row) for row in rows]
 
     def list_subtopics(self) -> list[Subtopic]:

@@ -19,6 +19,9 @@ import type {
   StudentRole,
   StudyPlanItem,
   Subtopic,
+  TeacherChatMessage,
+  TeacherReply,
+  TeacherReport,
   UpdateAvailabilityPayload
 } from "@/types/contracts";
 
@@ -265,6 +268,26 @@ export const settingsApi = {
     return request<StudentProfile>(`/settings/${studentId}/next-free`, {
       method: "POST",
       body: { choice }
+    });
+  }
+};
+
+// The teacher runs a multi-step LangGraph (several sequential LLM calls), so
+// these legitimately take longer than a normal request — give them a generous
+// timeout instead of the 15s default, with the screen showing a loading state.
+const TEACHER_TIMEOUT_MS = 90000;
+
+export const teacherApi = {
+  chat(studentId: number, message: string, history: TeacherChatMessage[]) {
+    return request<TeacherReply>(`/teacher/${studentId}/chat`, {
+      method: "POST",
+      body: { message, history },
+      timeoutMs: TEACHER_TIMEOUT_MS
+    });
+  },
+  getReport(studentId: number) {
+    return request<TeacherReport>(`/teacher/${studentId}/report`, {
+      timeoutMs: TEACHER_TIMEOUT_MS
     });
   }
 };

@@ -9,7 +9,7 @@ router = APIRouter()
 @router.put("/{student_id}/availability")
 def update_availability(student_id: int, body: UpdateAvailabilityRequest, container=Depends(get_container)):
     return container.settings_controller.update_availability(
-        student_id, body.free_days, body.session_length, body.email_reminders_enabled
+        student_id, body.free_days, body.session_length, body.day_session_length, body.email_reminders_enabled
     )
 
 

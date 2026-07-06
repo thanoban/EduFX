@@ -1,4 +1,5 @@
-"""RAG retrieval via Supabase pgvector RPC. Returns empty list in demo/memory mode."""
+"""RAG retrieval via client-side cosine similarity (see app.rag.retriever for
+why this isn't a pgvector RPC call). Returns empty list in demo/memory mode."""
 from __future__ import annotations
 
 from supabase import Client

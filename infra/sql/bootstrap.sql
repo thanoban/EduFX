@@ -6,6 +6,8 @@ create table if not exists students (
   role text default 'student',
   free_days jsonb default '[]',
   session_length text default 'medium',
+  -- Per-day free time: {"0":"long","2":"short",...} weekday(0=Mon)->bucket.
+  day_session_length jsonb default '{}',
   next_expected_date date null,
   email_reminders_enabled boolean default true,
   current_streak int default 0,
@@ -18,6 +20,7 @@ create table if not exists students (
 --   alter table students add column if not exists role text default 'student';
 --   alter table students add column if not exists free_days jsonb default '[]';
 --   alter table students add column if not exists session_length text default 'medium';
+--   alter table students add column if not exists day_session_length jsonb default '{}';
 --   alter table students add column if not exists next_expected_date date null;
 --   alter table students add column if not exists email_reminders_enabled boolean default true;
 --   alter table students add column if not exists current_streak int default 0;
