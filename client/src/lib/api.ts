@@ -27,6 +27,7 @@ type RequestOptions = {
   token?: string | null;
   studentId?: number;
   body?: unknown;
+  timeoutMs?: number;
 };
 
 const REQUEST_RETRY_DELAYS_MS = [700, 1400, 2200];
@@ -51,7 +52,7 @@ function getApiErrorMessage(path: string, response: Response, payload: ApiRespon
 
 async function request<T>(
   path: string,
-  { method = "GET", token, studentId, body }: RequestOptions = {}
+  { method = "GET", token, studentId, body, timeoutMs = REQUEST_TIMEOUT_MS }: RequestOptions = {}
 ): Promise<T> {
   const init: RequestInit = {
     method,
@@ -72,7 +73,7 @@ async function request<T>(
   let lastNetworkError: unknown = null;
   for (let attempt = 0; attempt < REQUEST_RETRY_DELAYS_MS.length; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       response = await fetch(`${API_BASE_URL}${path}`, {
         ...init,
@@ -96,6 +97,14 @@ async function request<T>(
   }
 
   if (!response) {
+    const aborted =
+      lastNetworkError instanceof DOMException
+        ? lastNetworkError.name === "AbortError"
+        : lastNetworkError instanceof Error && lastNetworkError.name === "AbortError";
+    if (aborted) {
+      throw new Error("EduFX took too long to respond. Please try again.");
+    }
+
     throw new Error(
       lastNetworkError instanceof Error
         ? `Could not reach the EduFX server (${lastNetworkError.message}). Please try again.`
@@ -203,7 +212,7 @@ export const resultsApi = {
     const data = await request<{
       session_id: number;
       explanations: Array<{ attempt_id: number; explanation: string }>;
-    }>(`/explanation/${sessionId}/${studentId}`);
+    }>(`/explanation/${sessionId}/${studentId}`, { timeoutMs: 45000 });
     return data.explanations;
   }
 };

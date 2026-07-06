@@ -8,6 +8,7 @@ import { DiagnosticResultsScreen } from "@/features/diagnostic/diagnostic-result
 import { LandingPage } from "@/features/marketing/landing-page";
 import { LoginScreen } from "@/features/auth/login-screen";
 import { ProgressScreen } from "@/features/progress/progress-screen";
+import { ResultsScreen } from "@/features/results/results-screen";
 import { SettingsScreen } from "@/features/settings/settings-screen";
 import { WebcamCheckScreen } from "@/features/webcam/webcam-check-screen";
 import { renderWithAuth } from "@/test/render";
@@ -150,5 +151,55 @@ describe("frontend route smoke coverage", () => {
     expect(screen.getByText("Camera preview")).toBeInTheDocument();
     expect(screen.getByText("Behaviour logs")).toBeInTheDocument();
     expect(screen.getByText("Session controls")).toBeInTheDocument();
+  });
+
+  it("renders the results screen even when explanations are still pending", () => {
+    renderWithAuth(
+      <ResultsScreen
+        results={{
+          id: 6,
+          student_id: 1,
+          subtopic_id: 1,
+          quiz_score: 73,
+          focus_score: 81,
+          phone_percent: 0,
+          drowsy_percent: 5,
+          away_percent: 12,
+          talking_percent: 0,
+          absent_percent: 0,
+          webcam_enabled: true,
+          total_questions: 2,
+          correct_answers: 1,
+          attempts: [
+            {
+              id: 10,
+              question_id: 20,
+              student_answer: "B",
+              correct_answer: "A",
+              is_correct: false,
+              explanation: null,
+              question: {
+                id: 20,
+                subtopic_id: 1,
+                question_text: "What happens to atomic radius down Group 1?",
+                option_a: "Increases",
+                option_b: "Decreases",
+                option_c: "Stays the same",
+                option_d: "No obvious trend",
+                correct_answer: "A",
+                difficulty: "easy",
+                source: "seed",
+                stage: "generated",
+                student_id: null
+              }
+            }
+          ]
+        }}
+        lastQuizResult={null}
+      />
+    );
+
+    expect(screen.getByText("Session complete")).toBeInTheDocument();
+    expect(screen.getByText("Explanation pending")).toBeInTheDocument();
   });
 });
