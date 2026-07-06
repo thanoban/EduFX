@@ -38,6 +38,23 @@ class SupabaseResultsRepository:
         rows = self.client.table("quiz_attempts").select("*").eq("session_id", session_id).order("id").execute().data or []
         return [self.mapper.attempt_from_row(row) for row in rows]
 
+    def get_attempts_for_sessions(self, session_ids: list[int]) -> dict[int, list[QuizAttempt]]:
+        if not session_ids:
+            return {}
+        rows = (
+            self.client.table("quiz_attempts")
+            .select("*")
+            .in_("session_id", session_ids)
+            .order("id")
+            .execute()
+            .data
+        ) or []
+        attempts_by_session = {session_id: [] for session_id in session_ids}
+        for row in rows:
+            attempt = self.mapper.attempt_from_row(row)
+            attempts_by_session.setdefault(attempt.session_id, []).append(attempt)
+        return attempts_by_session
+
     def get_progress(self, student_id: int, subtopic_id: int) -> StudentProgress:
         self.mapper.ensure_progress_records(student_id)
         rows = (

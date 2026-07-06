@@ -25,6 +25,13 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const webcamEnabled = params.get("webcam") === "1";
   const activeQuestion = quiz.questions[activeIndex];
+  const liveFocusLabel = !state
+    ? "Starting..."
+    : !state.ready
+      ? "Unavailable"
+      : !state.calibrated
+        ? `Calibrating ${state.calibrationProgress}%`
+        : `${state.focusScore}%`;
 
   useEffect(() => {
     if (!student) {
@@ -119,28 +126,34 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
             {webcamEnabled ? (
               <div className="metric-inline">
                 <span>Live focus</span>
-                <strong>
-                  {state?.ready ? `${state.focusScore}%` : state?.warning ? "Unavailable" : "Starting…"}
-                </strong>
+                <strong>{liveFocusLabel}</strong>
               </div>
             ) : null}
           </div>
           {webcamEnabled && state?.ready ? (
-            <div className="cluster" style={{ gap: 8, flexWrap: "wrap" }}>
-              {state.absent ? <StatusPill label="Away" tone="danger" /> : null}
-              {state.phoneDetected ? <StatusPill label="Phone" tone="danger" /> : null}
-              {state.drowsy ? <StatusPill label="Drowsy" tone="warning" /> : null}
-              {state.lookingAway ? <StatusPill label="Looking away" tone="warning" /> : null}
-              {state.multiplePersons ? <StatusPill label="Multiple people" tone="warning" /> : null}
-              {state.talking ? <StatusPill label="Talking" tone="warning" /> : null}
-              {!state.absent &&
-              !state.phoneDetected &&
-              !state.drowsy &&
-              !state.lookingAway &&
-              !state.multiplePersons &&
-              !state.talking ? (
-                <StatusPill label="Focused" tone="success" />
-              ) : null}
+            <div className="stack" style={{ gap: 10 }}>
+              <div className="cluster" style={{ gap: 8, flexWrap: "wrap" }}>
+                {!state.calibrated ? (
+                  <StatusPill label={`Calibrating ${state.calibrationProgress}%`} tone="default" />
+                ) : null}
+                {state.absent ? <StatusPill label="Away" tone="danger" /> : null}
+                {state.phoneDetected ? <StatusPill label="Phone" tone="danger" /> : null}
+                {state.drowsy ? <StatusPill label="Drowsy" tone="warning" /> : null}
+                {state.lookingAway ? <StatusPill label="Looking away" tone="warning" /> : null}
+                {state.multiplePersons ? <StatusPill label="Multiple people" tone="warning" /> : null}
+                {state.talking ? <StatusPill label="Talking" tone="warning" /> : null}
+                {state.quality.warning ? <StatusPill label="Quality check" tone="warning" /> : null}
+                {state.calibrated &&
+                !state.absent &&
+                !state.phoneDetected &&
+                !state.drowsy &&
+                !state.lookingAway &&
+                !state.multiplePersons &&
+                !state.talking ? (
+                  <StatusPill label="Focused" tone="success" />
+                ) : null}
+              </div>
+              {state.warning ? <div className="callout">{state.warning}</div> : null}
             </div>
           ) : null}
         </aside>

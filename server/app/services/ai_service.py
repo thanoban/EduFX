@@ -1,14 +1,16 @@
 """AI provider helpers for quiz generation and explanation.
 
-Providers are tried in order, and every candidate is wrapped so an
-unavailable provider (unset key, unreachable endpoint, billing-blocked
-Vertex) never blocks the next one:
+Vertex AI billing is confirmed live (verified with a real call — see project
+notes), so it's the primary provider for every general text-generation path.
+Providers are tried in order, and every candidate is wrapped so an unavailable
+one (unset key, unreachable endpoint, transient Vertex outage) never blocks the
+next — Gemini API key and Groq remain as free, no-billing-dependency fallbacks:
 
     quiz generation: self-hosted fine-tuned endpoint (the actual coursework
                       fine-tune, e.g. hosted on Modal's free GPU credit tier)
-                      -> Gemini API key -> Groq
-                      -> Vertex (dormant until billing restored)
-    explanations:     Gemini API key -> Groq -> Vertex
+                      -> Vertex -> Gemini API key -> Groq
+    explanations:     Vertex -> Gemini API key -> Groq
+    generate_text:    Vertex -> Gemini API key -> Groq
 """
 from __future__ import annotations
 
@@ -192,6 +194,33 @@ def _call_groq(prompt: str, temperature: float, max_tokens: int) -> str:
     )
 
 
+def generate_text(prompt: str, *, temperature: float = 0.3, max_tokens: int = 1024) -> str:
+    """Generic single-shot text generation over the shared provider fallback.
+
+    Used by the LangGraph agent nodes (AI teacher, quiz self-check). Tries
+    Vertex first (billing confirmed working), then the free Gemini API key,
+    then Groq, and skips the fine-tuned box (that adapter was trained only for
+    quiz generation, see docs/finetune-method.md). Returns "" if every provider
+    is unavailable, so callers degrade gracefully rather than raising.
+    """
+    from app.core.config import get_settings
+
+    model = get_settings().vertex_model
+    candidates = (
+        lambda: _call_vertex(model, prompt, temperature, max_tokens),
+        lambda: _call_gemini_api_key(model, prompt, temperature, max_tokens),
+        lambda: _call_groq(prompt, temperature, max_tokens),
+    )
+    for call in candidates:
+        try:
+            text = call()
+        except Exception:
+            continue
+        if text and text.strip():
+            return text.strip()
+    return ""
+
+
 def generate_quiz_questions(
     *,
     vertex_model: str,
@@ -270,16 +299,17 @@ def _quiz_raw_candidates(vertex_model: str, prompt: str):
     """Yield raw model responses to try in order.
 
     The self-hosted fine-tuned endpoint (the actual coursework fine-tune) is
-    tried first when configured; Gemini API key and Groq are the reliable
-    everyday free path; Vertex is a dormant rung kept for when billing is
-    restored. Each candidate is independently wrapped so a failure (unset
-    config, unreachable endpoint, billing block) never blocks the next one.
+    tried first when configured — that's the graded artifact, not a provider
+    fallback. After that, Vertex is primary (billing confirmed working), then
+    the free Gemini API key, then Groq. Each candidate is independently
+    wrapped so a failure (unset config, unreachable endpoint, transient
+    outage) never blocks the next one.
     """
     candidates = (
         lambda: _call_finetuned(prompt, temperature=0.4, max_tokens=4096),
+        lambda: _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096),
         lambda: _call_gemini_api_key(vertex_model, prompt, temperature=0.4, max_tokens=4096),
         lambda: _call_groq(prompt, temperature=0.4, max_tokens=4096),
-        lambda: _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096),
     )
     for call in candidates:
         try:
@@ -319,11 +349,12 @@ def generate_explanation(
     )
 
     # The fine-tune was only trained for quiz generation (see
-    # docs/finetune-method.md), so explanations skip the HF Space rung.
+    # docs/finetune-method.md), so explanations skip that rung. Vertex first
+    # (billing confirmed working), then the free fallbacks.
     candidates = (
+        lambda: _call_vertex(vertex_model, prompt, temperature=0.2, max_tokens=180),
         lambda: _call_gemini_api_key(vertex_model, prompt, temperature=0.2, max_tokens=180),
         lambda: _call_groq(prompt, temperature=0.2, max_tokens=180),
-        lambda: _call_vertex(vertex_model, prompt, temperature=0.2, max_tokens=180),
     )
     for call in candidates:
         try:

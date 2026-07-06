@@ -13,6 +13,7 @@ const defaultStudent: StudentProfile = {
   is_admin: false,
   free_days: [],
   session_length: "medium",
+  day_session_length: {},
   next_expected_date: null,
   email_reminders_enabled: true,
   current_streak: 0,

@@ -29,15 +29,15 @@ class _FakeClient:
         self.models = _FakeModels(values)
 
 
-def test_embed_uses_gemini_api_key_when_configured(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+def test_embed_uses_vertex_when_project_configured(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
     _reset_settings()
 
     import google.genai as real_genai
 
     def fake_client(**kwargs):
-        assert kwargs.get("api_key") == "test-key"
+        assert kwargs.get("vertexai") is True
         return _FakeClient([0.1, 0.2, 0.3])
 
     monkeypatch.setattr(real_genai, "Client", fake_client)
@@ -47,17 +47,17 @@ def test_embed_uses_gemini_api_key_when_configured(monkeypatch):
     _reset_settings()
 
 
-def test_embed_falls_back_to_vertex_when_gemini_key_call_fails(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "bad-key")
+def test_embed_falls_back_to_gemini_api_key_when_vertex_call_fails(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
     _reset_settings()
 
     import google.genai as real_genai
 
     def fake_client(**kwargs):
-        if kwargs.get("api_key"):
-            raise RuntimeError("gemini api key rejected")
-        assert kwargs.get("vertexai") is True
+        if kwargs.get("vertexai"):
+            raise RuntimeError("vertex call rejected")
+        assert kwargs.get("api_key") == "test-key"
         return _FakeClient([0.9, 0.8])
 
     monkeypatch.setattr(real_genai, "Client", fake_client)

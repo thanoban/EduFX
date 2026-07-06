@@ -42,9 +42,9 @@ def test_generate_quiz_uses_finetuned_first_when_configured(monkeypatch):
     ]
 
     monkeypatch.setattr(ai_service, "_call_finetuned", lambda *a, **k: json.dumps(expected))
+    monkeypatch.setattr(ai_service, "_call_vertex", _fail("vertex"))
     monkeypatch.setattr(ai_service, "_call_gemini_api_key", _fail("gemini"))
     monkeypatch.setattr(ai_service, "_call_groq", _fail("groq"))
-    monkeypatch.setattr(ai_service, "_call_vertex", _fail("vertex"))
 
     result = ai_service.generate_quiz_questions(
         vertex_model="gemini",
@@ -59,10 +59,12 @@ def test_generate_quiz_uses_finetuned_first_when_configured(monkeypatch):
     _reset_settings()
 
 
-def test_generate_quiz_falls_back_to_gemini_key_when_finetuned_fails(monkeypatch):
+def test_generate_quiz_falls_back_to_vertex_when_finetuned_fails(monkeypatch):
+    """Vertex is the primary provider (billing confirmed working) once the
+    coursework fine-tune is unavailable — tried before Gemini API key/Groq."""
     expected = [
         {
-            "question_text": "Fallback?",
+            "question_text": "Vertex fallback?",
             "option_a": "A",
             "option_b": "B",
             "option_c": "C",
@@ -73,12 +75,12 @@ def test_generate_quiz_falls_back_to_gemini_key_when_finetuned_fails(monkeypatch
     ]
 
     def fail_finetuned(*args, **kwargs):
-        raise RuntimeError("EC2 box unreachable")
+        raise RuntimeError("fine-tune box unreachable")
 
     monkeypatch.setattr(ai_service, "_call_finetuned", fail_finetuned)
-    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: json.dumps(expected))
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: json.dumps(expected))
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", _fail("gemini"))
     monkeypatch.setattr(ai_service, "_call_groq", _fail("groq"))
-    monkeypatch.setattr(ai_service, "_call_vertex", _fail("vertex"))
 
     result = ai_service.generate_quiz_questions(
         vertex_model="gemini",
@@ -92,10 +94,10 @@ def test_generate_quiz_falls_back_to_gemini_key_when_finetuned_fails(monkeypatch
     assert result == expected
 
 
-def test_generate_quiz_falls_back_to_groq_when_gemini_key_fails(monkeypatch):
+def test_generate_quiz_falls_back_to_gemini_key_when_vertex_fails(monkeypatch):
     expected = [
         {
-            "question_text": "Groq fallback?",
+            "question_text": "Gemini key fallback?",
             "option_a": "A",
             "option_b": "B",
             "option_c": "C",
@@ -106,9 +108,9 @@ def test_generate_quiz_falls_back_to_groq_when_gemini_key_fails(monkeypatch):
     ]
 
     monkeypatch.setattr(ai_service, "_call_finetuned", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: json.dumps(expected))
-    monkeypatch.setattr(ai_service, "_call_vertex", _fail("vertex"))
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: json.dumps(expected))
+    monkeypatch.setattr(ai_service, "_call_groq", _fail("groq"))
 
     result = ai_service.generate_quiz_questions(
         vertex_model="gemini",
@@ -122,7 +124,7 @@ def test_generate_quiz_falls_back_to_groq_when_gemini_key_fails(monkeypatch):
     assert result == expected
 
 
-def test_generate_quiz_falls_back_to_vertex_as_last_resort(monkeypatch):
+def test_generate_quiz_falls_back_to_groq_as_last_resort(monkeypatch):
     expected = [
         {
             "question_text": "Last resort?",
@@ -136,9 +138,9 @@ def test_generate_quiz_falls_back_to_vertex_as_last_resort(monkeypatch):
     ]
 
     monkeypatch.setattr(ai_service, "_call_finetuned", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
     monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: json.dumps(expected))
+    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: json.dumps(expected))
 
     result = ai_service.generate_quiz_questions(
         vertex_model="gemini",
@@ -152,10 +154,10 @@ def test_generate_quiz_falls_back_to_vertex_as_last_resort(monkeypatch):
     assert result == expected
 
 
-def test_generate_explanation_tries_gemini_key_before_vertex(monkeypatch):
-    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "Because X reacts with Y.")
+def test_generate_explanation_tries_vertex_first(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "Because X reacts with Y.")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", _fail("gemini"))
     monkeypatch.setattr(ai_service, "_call_groq", _fail("groq"))
-    monkeypatch.setattr(ai_service, "_call_vertex", _fail("vertex"))
 
     result = ai_service.generate_explanation(
         vertex_model="gemini",
@@ -172,10 +174,10 @@ def test_generate_explanation_tries_gemini_key_before_vertex(monkeypatch):
     assert result == "Because X reacts with Y."
 
 
-def test_generate_explanation_falls_back_to_groq_then_vertex(monkeypatch):
-    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "Vertex explanation.")
+def test_generate_explanation_falls_back_to_gemini_key_when_vertex_fails(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "Gemini key explanation.")
+    monkeypatch.setattr(ai_service, "_call_groq", _fail("groq"))
 
     result = ai_service.generate_explanation(
         vertex_model="gemini",
@@ -189,13 +191,33 @@ def test_generate_explanation_falls_back_to_groq_then_vertex(monkeypatch):
         correct_answer="B",
     )
 
-    assert result == "Vertex explanation."
+    assert result == "Gemini key explanation."
+
+
+def test_generate_explanation_falls_back_to_groq_as_last_resort(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "Groq explanation.")
+
+    result = ai_service.generate_explanation(
+        vertex_model="gemini",
+        level="beginner",
+        question_text="Q?",
+        option_a="A",
+        option_b="B",
+        option_c="C",
+        option_d="D",
+        student_answer="A",
+        correct_answer="B",
+    )
+
+    assert result == "Groq explanation."
 
 
 def test_generate_explanation_returns_none_when_all_providers_fail(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
     monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
     monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "")
-    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
 
     result = ai_service.generate_explanation(
         vertex_model="gemini",
@@ -210,3 +232,27 @@ def test_generate_explanation_returns_none_when_all_providers_fail(monkeypatch):
     )
 
     assert result is None
+
+
+def test_generate_text_tries_vertex_first(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "Vertex text.")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", _fail("gemini"))
+    monkeypatch.setattr(ai_service, "_call_groq", _fail("groq"))
+
+    assert ai_service.generate_text("prompt") == "Vertex text."
+
+
+def test_generate_text_falls_back_through_gemini_then_groq(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "Groq text.")
+
+    assert ai_service.generate_text("prompt") == "Groq text."
+
+
+def test_generate_text_returns_empty_when_all_providers_fail(monkeypatch):
+    monkeypatch.setattr(ai_service, "_call_vertex", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", lambda *a, **k: "")
+    monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "")
+
+    assert ai_service.generate_text("prompt") == ""

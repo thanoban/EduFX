@@ -15,6 +15,7 @@ from app.routes.quiz import router as quiz_router
 from app.routes.results import router as results_router
 from app.routes.scheduler import router as scheduler_router
 from app.routes.settings import router as settings_router
+from app.routes.teacher import router as teacher_router
 
 
 def create_app() -> FastAPI:
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
     app.include_router(settings_router, prefix="/settings", tags=["settings"])
     app.include_router(internal_router, prefix="/internal", tags=["internal"])
+    app.include_router(teacher_router, prefix="/teacher", tags=["teacher"])
 
     @app.get("/")
     def health() -> dict[str, str]:

@@ -24,6 +24,7 @@ class StudentProfileDTO(BaseModel):
     is_admin: bool = False
     free_days: list[int] = []
     session_length: Literal["short", "medium", "long"] = "medium"
+    day_session_length: dict[int, Literal["short", "medium", "long"]] = {}
     next_expected_date: date | None = None
     email_reminders_enabled: bool = True
     current_streak: int = 0
@@ -42,6 +43,7 @@ class StudentProfileDTO(BaseModel):
             is_admin=student.role == "admin",
             free_days=sorted(student.free_days),
             session_length=student.session_length,
+            day_session_length=dict(student.day_session_length),
             next_expected_date=student.next_expected_date,
             email_reminders_enabled=student.email_reminders_enabled,
             current_streak=student.current_streak,
@@ -53,6 +55,10 @@ class StudentProfileDTO(BaseModel):
 class UpdateAvailabilityRequest(BaseModel):
     free_days: list[int]
     session_length: Literal["short", "medium", "long"]
+    # Per-day override map (weekday -> bucket). When non-empty it's the source of
+    # truth for which days are free; free_days/session_length above stay for
+    # backward compatibility with older clients that only send a single length.
+    day_session_length: dict[int, Literal["short", "medium", "long"]] = {}
     email_reminders_enabled: bool = True
 
 
@@ -61,6 +67,26 @@ NextFreeChoice = Literal["tomorrow", "in_2_days", "this_weekend", "not_sure"]
 
 class NextFreeCheckInRequest(BaseModel):
     choice: NextFreeChoice
+
+
+class TeacherChatMessageDTO(BaseModel):
+    role: Literal["student", "teacher"]
+    content: str
+
+
+class TeacherChatRequest(BaseModel):
+    message: str
+    # Prior turns, oldest-first; the server rebuilds the fresh data dossier each
+    # turn so history only needs the conversation text, not any student data.
+    history: list[TeacherChatMessageDTO] = []
+
+
+class TeacherReplyDTO(BaseModel):
+    reply: str
+
+
+class TeacherReportDTO(BaseModel):
+    report: str
 
 
 class DiagnosticQuestionDTO(BaseModel):

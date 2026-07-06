@@ -23,6 +23,9 @@ class ResultsRepository:
     def get_attempts(self, session_id: int) -> list[QuizAttempt]:
         return self.store.quiz_attempts.get(session_id, [])
 
+    def get_attempts_for_sessions(self, session_ids: list[int]) -> dict[int, list[QuizAttempt]]:
+        return {session_id: self.store.quiz_attempts.get(session_id, []) for session_id in session_ids}
+
     def get_progress(self, student_id: int, subtopic_id: int) -> StudentProgress:
         self.store.ensure_progress_records(student_id)
         return self.store.student_progress[(student_id, subtopic_id)]
@@ -42,4 +45,3 @@ class ResultsRepository:
 
     def save_student(self, student: Student) -> None:
         self.store.students[student.id] = student
-

@@ -7,6 +7,7 @@ import {
   Activity,
   BarChart3,
   Flame,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -20,6 +21,7 @@ import { useAuth } from "@/features/auth/use-auth";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/progress", label: "Progress", icon: BarChart3 },
+  { href: "/teacher", label: "AI Teacher", icon: GraduationCap },
   { href: "/behaviour-logs", label: "Behaviour Logs", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings }
 ];

@@ -301,7 +301,7 @@ description of the backend project files and does NOT reference/upload
 copy the cell, run it, watch it train, download the weights. Same spirit as the
 existing `docs/finetune-colab-guide.md`, which has real runnable cells.
 
-**File:** `docs/recommender-colab-training.md`
+**File:** `docs/ml-recommender/recommender-colab-training.md`
 
 **Structure (every code section is a full, self-contained, copy-paste Colab
 cell, preceded by a plain-English "what this does and why"):**
@@ -376,7 +376,7 @@ BKT needs no Colab (pure numpy, trains instantly) — the guide ends with a one
 
 ## Files
 
-- **New now (the immediate ask):** `docs/recommender-colab-training.md` — the
+- **New now (the immediate ask):** `docs/ml-recommender/recommender-colab-training.md` — the
   self-contained Colab training guide with full inline code + explanations.
 - Edited (behaviour-tracking-optional `tracked` flag; keeps the backend copies
   in sync with the guide's encoding, before Colab training):
@@ -406,7 +406,7 @@ BKT needs no Colab (pure numpy, trains instantly) — the guide ends with a one
 
 # Appendix A — Full Colab training code (copy-paste cells)
 
-This is the exact content that will become `docs/recommender-colab-training.md`.
+This is the exact content that will become `docs/ml-recommender/recommender-colab-training.md`.
 Every cell is self-contained: paste into a Colab notebook top-to-bottom and run.
 The model architecture (LSTM hidden=64, `2K+2` input encoding, PyTorch gate
 order) matches the backend `server/app/ml/dkt.py` `DKTInference`, so the weights

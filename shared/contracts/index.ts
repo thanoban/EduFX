@@ -16,6 +16,7 @@ export type StudentProfile = {
   is_admin: boolean;
   free_days: number[];
   session_length: SessionLength;
+  day_session_length: Record<number, SessionLength>;
   next_expected_date: string | null;
   email_reminders_enabled: boolean;
   current_streak: number;
@@ -26,10 +27,24 @@ export type StudentProfile = {
 export type UpdateAvailabilityPayload = {
   free_days: number[];
   session_length: SessionLength;
+  day_session_length: Record<number, SessionLength>;
   email_reminders_enabled: boolean;
 };
 
 export type NextFreeChoice = "tomorrow" | "in_2_days" | "this_weekend" | "not_sure";
+
+export type TeacherChatMessage = {
+  role: "student" | "teacher";
+  content: string;
+};
+
+export type TeacherReply = {
+  reply: string;
+};
+
+export type TeacherReport = {
+  report: string;
+};
 
 export type Subtopic = {
   id: number;

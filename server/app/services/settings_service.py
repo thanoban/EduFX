@@ -28,10 +28,19 @@ class SettingsService:
         student_id: int,
         free_days: list[int],
         session_length: str,
+        day_session_length: dict[int, str],
         email_reminders_enabled: bool,
     ) -> StudentProfileDTO:
         student = self._get_student_or_404(student_id)
-        student.free_days = {day for day in free_days if 0 <= day <= 6}
+        day_map = {
+            day: length
+            for day, length in day_session_length.items()
+            if 0 <= day <= 6 and length in ("short", "medium", "long")
+        }
+        # When a per-day map is provided it's authoritative for which days are
+        # free; fall back to the flat free_days list for older/simple clients.
+        student.day_session_length = day_map
+        student.free_days = set(day_map) if day_map else {day for day in free_days if 0 <= day <= 6}
         student.session_length = session_length
         student.email_reminders_enabled = email_reminders_enabled
         self.repository.save_student(student)

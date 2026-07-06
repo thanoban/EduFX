@@ -17,31 +17,60 @@ const SESSION_LENGTH_OPTIONS: Array<{ value: SessionLength; label: string }> = [
   { value: "long", label: "1hr+" }
 ];
 
+// Build the per-day map from the profile, falling back to the old single
+// session-length (applied to every free day) for students saved before per-day
+// availability existed.
+function initialDayLengths(student: ReturnType<typeof useAuthGuard>["student"]): Record<number, SessionLength> {
+  const stored = student?.day_session_length ?? {};
+  if (Object.keys(stored).length > 0) {
+    const out: Record<number, SessionLength> = {};
+    for (const [day, length] of Object.entries(stored)) {
+      out[Number(day)] = length;
+    }
+    return out;
+  }
+  const fallback: Record<number, SessionLength> = {};
+  for (const day of student?.free_days ?? []) {
+    fallback[day] = student?.session_length ?? "medium";
+  }
+  return fallback;
+}
+
 export function SettingsScreen() {
   const { student, signOut, updateStudentProfile } = useAuthGuard();
-  const [freeDays, setFreeDays] = useState<number[]>(student?.free_days ?? []);
-  const [sessionLength, setSessionLength] = useState<SessionLength>(student?.session_length ?? "medium");
+  const [dayLengths, setDayLengths] = useState<Record<number, SessionLength>>(() => initialDayLengths(student));
   const [emailRemindersEnabled, setEmailRemindersEnabled] = useState(student?.email_reminders_enabled ?? true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  function toggleDay(day: number) {
+  function setDay(day: number, length: SessionLength | null) {
     setSaved(false);
-    setFreeDays((current) =>
-      current.includes(day) ? current.filter((value) => value !== day) : [...current, day].sort()
-    );
+    setDayLengths((current) => {
+      const next = { ...current };
+      if (length === null) {
+        delete next[day];
+      } else {
+        next[day] = length;
+      }
+      return next;
+    });
   }
 
   async function handleSaveAvailability() {
     if (!student) {
       return;
     }
+    const freeDays = Object.keys(dayLengths).map(Number).sort((a, b) => a - b);
+    // `session_length` stays as a fallback default for any day without a
+    // per-day value; use the first selected day's choice, else medium.
+    const defaultLength = freeDays.length > 0 ? dayLengths[freeDays[0]] : "medium";
     setSaving(true);
     setSaved(false);
     try {
       const profile = await settingsApi.updateAvailability(student.student_id, {
         free_days: freeDays,
-        session_length: sessionLength,
+        session_length: defaultLength,
+        day_session_length: dayLengths,
         email_reminders_enabled: emailRemindersEnabled
       });
       updateStudentProfile(profile);
@@ -122,42 +151,41 @@ export function SettingsScreen() {
         >
           <div className="stack">
             <p className="muted">
-              Tell EduFX which days you're usually free and how much time you have — your daily plan
-              is sized to fit, even on a fully-free day, so other subtopics aren't left behind.
+              Tell EduFX how much time you have on each day — your plan for a given day is sized to
+              fit that day, so a busy Tuesday stays light and a free Saturday still doesn't dump the
+              whole syllabus in one sitting.
             </p>
 
             <div className="stack" style={{ gap: 8 }}>
-              <span className="field__label">Which days are you usually free to study?</span>
-              <div className="cluster">
-                {DAY_LABELS.map((label, day) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className={`pill ${freeDays.includes(day) ? "success" : ""}`.trim()}
-                    onClick={() => toggleDay(day)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="stack" style={{ gap: 8 }}>
-              <span className="field__label">On a free day, how much time do you have?</span>
-              <div className="cluster">
-                {SESSION_LENGTH_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`pill ${sessionLength === option.value ? "success" : ""}`.trim()}
-                    onClick={() => {
-                      setSessionLength(option.value);
-                      setSaved(false);
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <span className="field__label">How much time do you have each day?</span>
+              <div className="list">
+                {DAY_LABELS.map((label, day) => {
+                  const selected = dayLengths[day];
+                  return (
+                    <div key={label} className="list-item cluster" style={{ justifyContent: "space-between" }}>
+                      <strong style={{ width: 44 }}>{label}</strong>
+                      <div className="cluster">
+                        <button
+                          type="button"
+                          className={`pill ${selected === undefined ? "success" : ""}`.trim()}
+                          onClick={() => setDay(day, null)}
+                        >
+                          Off
+                        </button>
+                        {SESSION_LENGTH_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`pill ${selected === option.value ? "success" : ""}`.trim()}
+                            onClick={() => setDay(day, option.value)}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

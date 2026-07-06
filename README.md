@@ -68,7 +68,10 @@ npm run build
 
 ## Docs
 
-All project documentation lives in [`docs/`](docs/index.md) — architecture, fine-tuning guide, RAG data format, UI details, and session handoff.
+All project documentation lives in [`docs/`](docs/index.md), organized by
+topic: getting-started guides, architecture, feature documentation, ML
+recommender notes, fine-tuning guides, deployment, data, product UI details,
+and implementation plans.
 
 ## Environment
 

@@ -67,13 +67,13 @@ All 12 routes complete with professional UI (Inter font, indigo design system): 
 `data/notes/s_block_notes.csv` — all 10 subtopics written and ingested. 55 chunks embedded and stored in Supabase `content_chunks`. `match_content_chunks` RPC verified working.
 
 ### Fine-Tuning ✅
-Qwen2.5-7B-Instruct + QLoRA on Colab Enterprise NVIDIA L4. Adapter saved. See [finetune-results.md](finetune-results.md) for metrics and [finetune-colab-guide.md](finetune-colab-guide.md) for the full notebook.
+Qwen2.5-7B-Instruct + QLoRA on Colab Enterprise NVIDIA L4. Adapter saved. See [../finetuning/finetune-results.md](../finetuning/finetune-results.md) for metrics and [../finetuning/finetune-colab-guide.md](../finetuning/finetune-colab-guide.md) for the full notebook.
 
 ### Personalized Quiz Generation ✅
 Concept-mastery loop: `questions.concept` column, `select_weak_concepts()`, `level_difficulty_spread()`, weak-aware AI prompt targeting ~65% of questions at weak concepts.
 
 ### Deployment Config ✅ (added 2026-06-28)
-`server/Dockerfile`, `client/Dockerfile`, `.github/workflows/deploy.yml` — Cloud Run deployment via GitHub Actions. See [deployment.md](deployment.md).
+`server/Dockerfile`, `client/Dockerfile`, `.github/workflows/deploy.yml` — Cloud Run deployment via GitHub Actions. See [../deployment/deployment-plan.md](../deployment/deployment-plan.md).
 
 ## Subtopic IDs
 
@@ -98,4 +98,4 @@ Concept-mastery loop: `questions.concept` column, `select_weak_concepts()`, `lev
 | `server/app/core/store.py` | Demo data structure |
 | `server/app/services/ai_service.py` | Vertex AI integration |
 | `shared/contracts/index.ts` | All TypeScript types |
-| `docs/data-format-guide.md` | RAG CSV + fine-tuning JSONL formats |
+| `docs/data/data-format-guide.md` | RAG CSV + fine-tuning JSONL formats |

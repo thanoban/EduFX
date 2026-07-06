@@ -4,14 +4,18 @@ import Image from "next/image";
 import {
   ArrowRight,
   Atom,
+  BadgeCheck,
+  BarChart3,
   BrainCircuit,
   CalendarClock,
   Database,
   Eye,
   FlaskConical,
   Layers3,
+  Orbit,
   ShieldCheck,
   Sparkles,
+  Target,
   Waypoints
 } from "lucide-react";
 
@@ -92,6 +96,24 @@ const stackItems = [
   "Qwen2.5-7B QLoRA adapter for quiz generation"
 ];
 
+const heroSignals = [
+  {
+    icon: <Target size={16} />,
+    label: "Adaptive loop",
+    value: "Diagnostic to schedule"
+  },
+  {
+    icon: <BarChart3 size={16} />,
+    label: "Measured models",
+    value: "DKT 0.6822 ROC-AUC"
+  },
+  {
+    icon: <Orbit size={16} />,
+    label: "Grounded AI",
+    value: "55 retrieved note chunks"
+  }
+];
+
 export function LandingPage() {
   const { student, loading } = useAuth();
   const workspaceHref = student
@@ -126,6 +148,9 @@ export function LandingPage() {
               <a href="#architecture">Architecture</a>
             </nav>
             <div className="landing-nav__actions">
+              <span className="landing-nav__status">
+                <BadgeCheck size={14} /> Live product flow
+              </span>
               <Button variant="ghost" href="/login">
                 Sign in
               </Button>
@@ -150,8 +175,8 @@ export function LandingPage() {
                 </span>
                 <h1>EduFX</h1>
                 <p className="landing-hero__lead">
-                  Adaptive A-Level chemistry learning built as a real full-stack system,
-                  not a static study dashboard.
+                  Adaptive A-Level chemistry learning with product-grade UX and a
+                  measurable intelligence stack underneath.
                 </p>
                 <p className="landing-hero__body">
                   Students move from diagnostic placement to personalized study plans,
@@ -173,32 +198,64 @@ export function LandingPage() {
                 </div>
               </div>
 
-              <div className="landing-preview">
-                <div className="landing-preview__panel">
-                  <span className="landing-preview__eyebrow">Student loop</span>
-                  <strong>Diagnostic to recommendation in one product path</strong>
-                  <p>
-                    The public story and the internal architecture stay aligned:
-                    placement, retrieval, generation, behaviour logging, and
-                    next-step scheduling all exist in the working app.
-                  </p>
+              <div className="landing-hero__visual">
+                <div className="landing-preview">
+                  <div className="landing-preview__panel">
+                    <span className="landing-preview__eyebrow">Student loop</span>
+                    <strong>Diagnostic to recommendation in one product path</strong>
+                    <p>
+                      The public story and the internal architecture stay aligned:
+                      placement, retrieval, generation, behaviour logging, and
+                      next-step scheduling all exist in the working app.
+                    </p>
+                  </div>
+                  <div className="landing-preview__rail">
+                    <div>
+                      <span>40 questions</span>
+                      <strong>Diagnostic placement</strong>
+                    </div>
+                    <div>
+                      <span>55 chunks</span>
+                      <strong>RAG explanation context</strong>
+                    </div>
+                    <div>
+                      <span>0.6822 AUC</span>
+                      <strong>DKT mastery prediction</strong>
+                    </div>
+                    <div>
+                      <span>QLoRA adapter</span>
+                      <strong>Fine-tuned quiz generation path</strong>
+                    </div>
+                  </div>
                 </div>
-                <div className="landing-preview__rail">
-                  <div>
-                    <span>40 questions</span>
-                    <strong>Diagnostic placement</strong>
+
+                <div className="landing-system-card" aria-label="System overview">
+                  <div className="landing-system-card__header">
+                    <span className="landing-preview__eyebrow">System surface</span>
+                    <strong>How EduFX turns raw study events into next actions</strong>
                   </div>
-                  <div>
-                    <span>55 chunks</span>
-                    <strong>RAG explanation context</strong>
+                  <div className="landing-system-card__grid">
+                    {heroSignals.map((item) => (
+                      <div key={item.label} className="landing-system-card__metric">
+                        <span>{item.icon}</span>
+                        <small>{item.label}</small>
+                        <strong>{item.value}</strong>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <span>0.6822 AUC</span>
-                    <strong>DKT mastery prediction</strong>
-                  </div>
-                  <div>
-                    <span>QLoRA adapter</span>
-                    <strong>Fine-tuned quiz generation path</strong>
+                  <div className="landing-system-card__timeline">
+                    <div>
+                      <span>Input</span>
+                      <strong>Diagnostic, quiz attempts, focus summaries</strong>
+                    </div>
+                    <div>
+                      <span>Decision layer</span>
+                      <strong>RAG + generation + KT-driven scheduling</strong>
+                    </div>
+                    <div>
+                      <span>Output</span>
+                      <strong>Study plan, explanations, and review timing</strong>
+                    </div>
                   </div>
                 </div>
               </div>
