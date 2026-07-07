@@ -100,7 +100,7 @@ describe("frontend route smoke coverage", () => {
       />
     );
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByText("Today's study plan")).toBeInTheDocument();
+    expect(screen.getByText("Today's recommended route")).toBeInTheDocument();
   });
 
   it("renders progress, webcam, behaviour, and settings screens", () => {

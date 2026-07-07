@@ -1652,6 +1652,91 @@ p {
   background: #fef8f8;
 }
 
+/* ---------- AI Teacher ---------- */
+
+.teacher-report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.teacher-section-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-message {
+  display: grid;
+  gap: 6px;
+  width: min(860px, 88%);
+  justify-self: start;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.teacher-message--student {
+  justify-self: end;
+  background: var(--green-soft);
+  border-color: #cce9d6;
+}
+
+.teacher-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+}
+
+.teacher-section__header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.teacher-section__header h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 760;
+}
+
+.teacher-section__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.teacher-prose {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  line-height: 1.65;
+}
+
+.teacher-prose p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  .teacher-report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-message {
+    width: 100%;
+  }
+}
+
 .focus-card {
   background: var(--surface-subtle);
 }

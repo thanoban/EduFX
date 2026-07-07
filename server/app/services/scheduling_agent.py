@@ -41,6 +41,10 @@ class SchedulingAgent:
         candidates = self.recommender_engine.rank_candidates(student_id, today)
         return self._select_capped(candidates, cap)
 
+    def get_active_subtopic_id(self, student_id: int) -> int | None:
+        plan = self.get_todays_plan(student_id)
+        return plan[0].subtopic_id if plan else None
+
     def register_study_session(self, student_id: int) -> None:
         """Record that the student completed a study session today and roll the
         streak forward. Called by ResultsService after a quiz is submitted so the

@@ -71,11 +71,12 @@ def get_container() -> AppContainer:
         recommender_engine,
         repositories.results_repository,
     )
-    content_service = ContentService(repositories.content_repository)
+    content_service = ContentService(repositories.content_repository, scheduling_agent)
     quiz_service = QuizService(
         repositories.quiz_repository,
         repositories.content_repository,
         repositories.results_repository,
+        scheduling_agent,
         rag_repository=rag_repository,
         vertex_model=clients.vertex_model,
     )
