@@ -136,6 +136,10 @@ export type BehaviourSnapshotPayload = {
   talking: boolean;
   absent: boolean;
   focus_score: number;
+  sleeping: boolean;
+  other_voice: boolean;
+  object_detected: boolean;
+  tab_hidden: boolean;
 };
 
 export type BehaviourSummaryPayload = {

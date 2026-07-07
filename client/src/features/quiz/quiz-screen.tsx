@@ -137,18 +137,31 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
                   <StatusPill label={`Calibrating ${state.calibrationProgress}%`} tone="default" />
                 ) : null}
                 {state.absent ? <StatusPill label="Away" tone="danger" /> : null}
+                {state.sleeping ? <StatusPill label="Sleeping" tone="danger" /> : null}
+                {state.tabHidden ? <StatusPill label="Tab switched" tone="danger" /> : null}
                 {state.phoneDetected ? <StatusPill label="Phone" tone="danger" /> : null}
-                {state.drowsy ? <StatusPill label="Drowsy" tone="warning" /> : null}
+                {state.drowsy && !state.sleeping ? <StatusPill label="Drowsy" tone="warning" /> : null}
+                {state.otherVoice ? <StatusPill label="Other voice" tone="warning" /> : null}
                 {state.lookingAway ? <StatusPill label="Looking away" tone="warning" /> : null}
-                {state.multiplePersons ? <StatusPill label="Multiple people" tone="warning" /> : null}
+                {state.multiplePersons ? (
+                  <StatusPill
+                    label={state.peopleCount > 1 ? `${state.peopleCount} people` : "Multiple people"}
+                    tone="warning"
+                  />
+                ) : null}
+                {state.objectDetected ? <StatusPill label="Notes/device" tone="warning" /> : null}
                 {state.talking ? <StatusPill label="Talking" tone="warning" /> : null}
                 {state.quality.warning ? <StatusPill label="Quality check" tone="warning" /> : null}
                 {state.calibrated &&
                 !state.absent &&
+                !state.sleeping &&
+                !state.tabHidden &&
                 !state.phoneDetected &&
                 !state.drowsy &&
+                !state.otherVoice &&
                 !state.lookingAway &&
                 !state.multiplePersons &&
+                !state.objectDetected &&
                 !state.talking ? (
                   <StatusPill label="Focused" tone="success" />
                 ) : null}

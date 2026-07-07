@@ -23,6 +23,10 @@ class BehaviourService:
             talking=payload["talking"],
             absent=payload["absent"],
             focus_score=payload.get("focus_score", 0),
+            sleeping=payload.get("sleeping", False),
+            other_voice=payload.get("other_voice", False),
+            object_detected=payload.get("object_detected", False),
+            tab_hidden=payload.get("tab_hidden", False),
         )
         # Server is the source of truth: always derive the focus score from the
         # detected flags rather than trusting the client-sent value.

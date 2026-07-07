@@ -43,14 +43,24 @@ export function useWebcamTracker() {
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 24, max: 30 }
-          }
-        });
+        const videoConstraints = {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 24, max: 30 }
+        };
+        // Ask for mic too (voice-activity detection: talking / other-voice).
+        // If the mic is denied or missing, fall back to video-only — audio is
+        // an enhancement, never a requirement for tracking.
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: videoConstraints,
+            audio: { echoCancellation: true, noiseSuppression: false }
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+        }
         streamRef.current = stream;
 
         const video = document.createElement("video");
@@ -62,7 +72,7 @@ export function useWebcamTracker() {
 
         const tracker = new BrowserBehaviourTracker();
         trackerRef.current = tracker;
-        await tracker.start(video, studentId, sessionId, setState);
+        await tracker.start(video, studentId, sessionId, setState, stream);
 
         snapshotTimerRef.current = window.setInterval(() => {
           const snapshot = tracker.takeSnapshot();

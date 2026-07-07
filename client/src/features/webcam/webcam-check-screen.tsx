@@ -152,11 +152,14 @@ export function WebcamCheckScreen() {
         </SectionCard>
         <SectionCard title="What will be tracked" eyebrow="On-device AI tracker">
           <div className="stack">
-            <div className="list-item">Eye openness and drowsiness signals</div>
-            <div className="list-item">Looking away and presence checks</div>
-            <div className="list-item">Phone, talking, and multi-person indicators</div>
+            <div className="list-item">Eye openness, gaze, drowsiness, and sleep signals</div>
+            <div className="list-item">Looking away, presence, and people-count checks</div>
+            <div className="list-item">Phone, notes/second-device, and talking indicators</div>
+            <div className="list-item">Microphone voice activity (optional — detects another voice in the room)</div>
+            <div className="list-item">Tab switches and window focus during the quiz</div>
             <div className="callout">
-              Video stays local. EduFX stores only derived focus flags and session summary percentages.
+              Video and audio stay local — nothing is recorded or uploaded. EduFX stores only derived
+              focus flags and session summary percentages.
             </div>
             {enabled && !cameraReady ? (
               <div className="callout">

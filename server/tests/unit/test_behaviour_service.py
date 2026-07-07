@@ -50,6 +50,74 @@ def test_save_snapshot_deducts_for_phone_and_drowsy():
     assert result["focus_score"] == 30
 
 
+def test_save_snapshot_deducts_for_new_proctoring_flags():
+    # sleeping (-45) + tab_hidden (-45) + other_voice (-25) + object (-20) floors at 0.
+    service, store, session = _make_service()
+    result = service.save_snapshot(
+        {
+            "student_id": 1,
+            "session_id": session.id,
+            "face_detected": True,
+            "looking_away": False,
+            "phone_detected": False,
+            "drowsy": False,
+            "multiple_persons": False,
+            "talking": False,
+            "absent": False,
+            "focus_score": 0,
+            "sleeping": True,
+            "other_voice": True,
+            "object_detected": True,
+            "tab_hidden": True,
+        }
+    )
+    assert result["focus_score"] == 0
+    saved = store.behaviour_logs[session.id][0]
+    assert saved.sleeping and saved.other_voice and saved.object_detected and saved.tab_hidden
+
+
+def test_save_snapshot_tab_hidden_alone_scores_55():
+    service, _, session = _make_service()
+    result = service.save_snapshot(
+        {
+            "student_id": 1,
+            "session_id": session.id,
+            "face_detected": True,
+            "looking_away": False,
+            "phone_detected": False,
+            "drowsy": False,
+            "multiple_persons": False,
+            "talking": False,
+            "absent": False,
+            "focus_score": 0,
+            "tab_hidden": True,
+        }
+    )
+    assert result["focus_score"] == 55
+
+
+def test_save_snapshot_defaults_new_flags_for_older_clients():
+    # A payload without the new keys (an older client) must still save cleanly.
+    service, store, session = _make_service()
+    result = service.save_snapshot(
+        {
+            "student_id": 1,
+            "session_id": session.id,
+            "face_detected": True,
+            "looking_away": False,
+            "phone_detected": False,
+            "drowsy": False,
+            "multiple_persons": False,
+            "talking": False,
+            "absent": False,
+            "focus_score": 0,
+        }
+    )
+    assert result["focus_score"] == 100
+    saved = store.behaviour_logs[session.id][0]
+    assert not saved.sleeping and not saved.other_voice and not saved.object_detected and not saved.tab_hidden
+
+
 def _snapshot(session_id: int, **flags) -> dict:
     base = {
         "student_id": 1,

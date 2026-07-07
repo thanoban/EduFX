@@ -25,6 +25,10 @@ class SupabaseBehaviourRepository:
                 "talking": log.talking,
                 "absent": log.absent,
                 "focus_score": log.focus_score,
+                "sleeping": log.sleeping,
+                "other_voice": log.other_voice,
+                "object_detected": log.object_detected,
+                "tab_hidden": log.tab_hidden,
             }
         ).execute().data
         return self.mapper.behaviour_log_from_row(self.mapper.ensure_one(rows, "Snapshot not saved", status_code=500))
