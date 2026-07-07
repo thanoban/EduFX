@@ -360,7 +360,8 @@ server/app/
 | `auth_service.py` | Validate JWT, upsert student in DB |
 | `diagnostic_service.py` | Score diagnostic answers, assign initial levels |
 | `ml/recommender_engine.py` | **Model layer** — rank *what* to study (BKT/DKT or rule fallback), uncapped |
-| `scheduling_agent.py` | **Agent layer** — cap the ranking to the student's free time, own streaks |
+| `scheduling_agent.py` | **Deterministic planning agent** — cap the ranking to the student's free time, own streaks |
+| `teacher_service.py` | **Teacher-agent service** — builds dossier and runs LangGraph teacher flows |
 | `settings_service.py` | Capture availability + post-session "next free" check-in |
 | `reminder_service.py` | Duolingo-style daily nudges (in-app + email) |
 | `content_service.py` | Fetch level-appropriate content for a subtopic |
@@ -371,6 +372,21 @@ server/app/
 | `behaviour_service.py` | Store snapshots, compute session behaviour summary |
 | `ai_service.py` | Vertex AI prompt builders + optional vLLM fine-tune |
 | `contracts.py` | Protocol interfaces (for type checking) |
+
+### Agent split
+
+EduFX now has two distinct agent styles:
+
+- **Deterministic agent**:
+  `SchedulingAgent` in `services/` owns practical study-plan decisions and
+  streak state.
+- **LangGraph agents**:
+  `server/app/agents/teacher_graph.py` and
+  `server/app/agents/quiz_review.py` use grounded LLM flows for student
+  coaching and MCQ quality review.
+
+That means "agent" in this repo does not refer to only one implementation
+pattern.
 
 ### Rules layer (`core/rules.py`)
 
@@ -514,6 +530,8 @@ CREATE OR REPLACE FUNCTION match_content_chunks(
 - Difficulty spread: level-aware (beginner=8/5/2, intermediate=4/7/4, advanced=2/5/8)
 - Weak-concept targeting: ~65% of questions reinforce the student's weakest concepts with new wording; ~35% broad coverage
 - Output: JSON array of `{text, options, correct_answer, explanation, difficulty, concept}`
+- Post-processing safety: generated MCQs can be checked by the LangGraph
+  `quiz_review` loop before they are returned to a student
 
 **Explanation generation (`generate_explanation`)**
 - For each wrong answer in a session
@@ -541,6 +559,23 @@ ExplanationService — includes top-k chunks in Gemini prompt
 `FINETUNED_MODEL_URL` env var points to a vLLM endpoint hosting the Qwen 2.5 7B QLoRA adapter. When set, `ai_service.py` routes explanation requests to the fine-tuned model rather than Gemini. Quiz generation stays on Gemini.
 
 Training: QLoRA on Colab Enterprise L4, ChatML format, on domain-specific A-Level chemistry Q&A pairs.
+
+### LangGraph agent layer (`server/app/agents/`)
+
+| File | Purpose |
+|---|---|
+| `dossier.py` | Build deterministic grounded student snapshot for teacher prompts |
+| `teacher_graph.py` | Supervisor-style teacher graph with analyst, diagnostician, coach, synthesis, grounding guard |
+| `quiz_review.py` | Verify -> regenerate loop for checking generated MCQ validity |
+| `prompts.py` | Shared system prompts for teacher specialists and quiz reviewer |
+
+Teacher endpoints:
+
+- `POST /teacher/{student_id}/chat`
+- `GET /teacher/{student_id}/report`
+
+The teacher graph is read-only and never touches scheduling.
+The quiz review graph is a safety layer inside quiz generation.
 
 ### In-browser ML (`client/src/features/webcam/`)
 

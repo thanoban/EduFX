@@ -1,56 +1,146 @@
 # EduFX Agent Learning Guide
 
-This document is only about the EduFX agent layer.
+This guide explains the real agent structure that exists in EduFX today.
 
-In this project, "agent" means the backend scheduling logic that turns model
-predictions into a daily study plan. It is not an autonomous multi-agent system
-and it is not the fine-tuned LLM.
+The important update is this:
 
-The current agent class is:
+EduFX no longer has only one "agent" idea.
 
-- [server/app/services/scheduling_agent.py](../server/app/services/scheduling_agent.py)
+It now has **two agent families**:
 
-## The First Basic Idea
+1. **Deterministic planning agent**
+   - `SchedulingAgent`
+   - decides how much study content to serve today
+   - never calls an LLM
+2. **LangGraph AI agent layer**
+   - AI teacher graph
+   - quiz self-check graph
+   - both use LLMs, but both are grounded and read-only
 
-Separate these two responsibilities:
+So if someone asks, "What are the agents in EduFX?", the correct answer is:
 
-1. Prediction:
-   what topic seems important next?
-2. Product decision:
-   how many topics should we actually show today?
+> EduFX has one deterministic scheduling agent for planning, and a separate
+> LangGraph agent layer for AI teacher responses and quiz-quality review.
 
-EduFX keeps those responsibilities separate:
+---
 
-- `RecommenderEngine` predicts topic priority
-- `SchedulingAgent` applies real app rules and returns today's plan
+## 1. The Three Actual Agents
 
-That separation is the main design idea.
+### A. `SchedulingAgent`
 
-## Agent Folder Structure
+File:
 
-The agent is not in one folder only. It spans a few backend layers:
+- [server/app/services/scheduling_agent.py](../../server/app/services/scheduling_agent.py)
+
+Purpose:
+
+- take the recommender's ranked subtopics
+- cap them by student availability and session length
+- keep weak/strong balance
+- update streak data after completed study sessions
+
+This is **not** an LLM agent.
+It is a deterministic product-policy agent.
+
+### B. AI Teacher Graph
+
+Files:
+
+- [server/app/agents/teacher_graph.py](../../server/app/agents/teacher_graph.py)
+- [server/app/agents/dossier.py](../../server/app/agents/dossier.py)
+- [server/app/services/teacher_service.py](../../server/app/services/teacher_service.py)
+- [server/app/routes/teacher.py](../../server/app/routes/teacher.py)
+
+Purpose:
+
+- answer student questions about their own progress
+- generate an auto-written progress report
+- use the student's real study data as grounding context
+
+This is a **LangGraph supervisor-style agent**.
+
+### C. Quiz Self-Check Graph
+
+Files:
+
+- [server/app/agents/quiz_review.py](../../server/app/agents/quiz_review.py)
+- [server/app/services/quiz_service.py](../../server/app/services/quiz_service.py)
+
+Purpose:
+
+- check whether generated MCQ answer keys are actually correct
+- drop invalid questions
+- optionally regenerate replacement questions
+- fail open if the reviewer output is unusable
+
+This is a **LangGraph verify -> fix reflection loop**.
+
+---
+
+## 2. High-Level Architecture
 
 ```text
-server/app/
-  routes/scheduler.py
-  controllers/scheduler_controller.py
-  services/scheduling_agent.py
-  ml/recommender_engine.py
-  ml/recommender.py
-  repositories/
-    scheduler_repository.py
-    progress_repository.py
-    results_repository.py
-    supabase_scheduler_repository.py
-    supabase_progress_repository.py
-    supabase_results_repository.py
-  core/container.py
-  core/rules.py
+EduFX agent layer
+  |
+  +-- Deterministic planning
+  |     SchedulingAgent
+  |       -> uses RecommenderEngine output
+  |       -> applies free-day/session-length caps
+  |       -> updates streaks
+  |
+  +-- AI teacher
+  |     dossier builder
+  |       -> build grounded student snapshot
+  |     teacher graph
+  |       -> analyst
+  |       -> diagnostician
+  |       -> coach
+  |       -> synthesis
+  |       -> grounding guard
+  |
+  +-- Quiz self-check
+        review graph
+          -> verify generated MCQs
+          -> regenerate if needed
+          -> return safe final set
 ```
 
-## Exact Request Flow
+---
 
-When the frontend asks for today's plan, the path is:
+## 3. SchedulingAgent — The Planning Agent
+
+### What it does
+
+`SchedulingAgent` is the practical planning layer.
+
+It does not decide topic importance from scratch.
+Instead:
+
+1. `RecommenderEngine` ranks subtopics
+2. `SchedulingAgent` decides what is realistic for **today**
+
+### Main methods
+
+- `get_todays_plan(student_id)`
+- `register_study_session(student_id)`
+- `_resolve_cap(student, today)`
+- `_select_capped(scored, cap)`
+
+### Core idea
+
+Separate these responsibilities:
+
+1. **Prediction**:
+   what seems important next?
+2. **Product decision**:
+   how much should the student actually see today?
+
+EduFX keeps that split clean:
+
+- `RecommenderEngine` -> ranking and model use
+- `SchedulingAgent` -> availability, caps, weak/strong mix, streaks
+
+### Request flow
 
 ```text
 Frontend dashboard
@@ -59,339 +149,269 @@ Frontend dashboard
   -> SchedulerController
   -> SchedulingAgent.get_todays_plan()
   -> RecommenderEngine.rank_candidates()
-  -> return ranked list
-  -> SchedulingAgent caps and formats list
-  -> JSON response to frontend
+  -> SchedulingAgent caps/fills result
+  -> StudyPlanItemDTO list returned
 ```
 
-Files involved:
+### Why this matters
 
-- Route:
-  [server/app/routes/scheduler.py](../server/app/routes/scheduler.py)
-- Controller:
-  [server/app/controllers/scheduler_controller.py](../server/app/controllers/scheduler_controller.py)
-- Agent:
-  [server/app/services/scheduling_agent.py](../server/app/services/scheduling_agent.py)
+This is why EduFX feels like a real learning product instead of a plain model
+demo. The model can rank many things as useful, but the agent decides:
 
-## What Each File Does
+- is today even a study day?
+- how many topics fit today's time budget?
+- should we mix weak and strong items?
 
-### `routes/scheduler.py`
+---
 
-Purpose:
+## 4. AI Teacher Graph — The Read-Only LangGraph Agent
 
-- expose the HTTP endpoint
-- receive `student_id`
-- pass control into the container/controller layer
+### What it does
 
-It should stay thin. It should not contain agent logic.
+The AI teacher is used for:
 
-### `controllers/scheduler_controller.py`
+- student chat about their own performance
+- auto-generated progress reports
 
-Purpose:
+It is **read-only**:
 
-- call the agent service
-- wrap the result in the standard response format
+- it does not change student data
+- it does not change schedules
+- it does not write new progress records
 
-This file is intentionally tiny because the controller should coordinate, not
-decide.
-
-### `services/scheduling_agent.py`
-
-Purpose:
-
-- get today's plan
-- decide whether today should have a plan at all
-- decide how many items to show
-- mix weak and strong topics
-- update streak after study session completion
-
-Main methods:
-
-- `get_todays_plan(student_id)`
-- `register_study_session(student_id)`
-- `_resolve_cap(student, today)`
-- `_select_capped(scored, cap)`
-
-### `ml/recommender_engine.py`
-
-Purpose:
-
-- rank every subtopic for a student
-- choose model path or fallback path
-
-Main logic:
-
-- load student progress
-- load subtopics
-- try DKT/BKT model scoring
-- if not possible, use rules
-- return a full ranked list
-
-Important idea:
-
-This file does not care about free days or session length. It is intentionally
-availability-agnostic.
-
-### `ml/recommender.py`
-
-Purpose:
-
-- convert stored quiz history into model-ready interaction sequences
-- blend model mastery with level-based proxy
-- compute scoring features such as:
-  weak topic pressure, due-ness, ZPD fit, prerequisite penalty
-
-This is the bridge between raw student data and ranking policy.
-
-### `core/rules.py`
-
-Purpose:
-
-- shared deterministic scheduling rules
-- cooldown checks
-- due calculations
-- level progression rules
-- weak-concept extraction
-
-This file is where the "product policy" constants live.
-
-### `repositories/*`
-
-Purpose:
-
-- fetch data for the agent from either memory or Supabase
-
-Important split:
-
-- `memory` repositories:
-  local/demo backend
-- `supabase_*` repositories:
-  live backend
-
-This lets the same agent logic run on two storage backends.
-
-### `core/container.py`
-
-Purpose:
-
-- dependency wiring
-
-This is where the agent is actually constructed:
+### The real flow
 
 ```text
-RecommenderEngine(...)
-SchedulingAgent(...)
-SchedulerController(...)
-ResultsService(..., scheduling_agent)
+/teacher/{student_id}/chat
+or
+/teacher/{student_id}/report
+
+  -> TeacherController
+  -> TeacherService
+  -> build_student_dossier(...)
+  -> dossier_to_prompt_context(...)
+  -> teacher_graph.invoke(...)
+  -> grounded teacher reply/report
 ```
 
-That means the same agent is used both for:
+### The specialist nodes
 
-- planning
-- post-quiz streak updates
+Inside
+[server/app/agents/teacher_graph.py](../../server/app/agents/teacher_graph.py),
+the graph can run three specialist roles:
 
-## Data Flow Inside the Agent
+- `analyst`
+  - what the student has done
+  - scores, activity, streak
+- `diagnostician`
+  - weak concepts
+  - recurring mistakes
+  - focus issues if visible
+- `coach`
+  - what to improve next
+  - study advice
+  - not scheduling advice
 
-### Input data
+Then a synthesis node combines them into one final answer.
 
-The agent itself does not train models and does not create embeddings.
+### Routing logic
 
-It consumes data already stored by the rest of the app:
+- for `report` mode:
+  all specialists run
+- for `chat` mode:
+  a lightweight router classifies which specialists are needed
 
-- `students`
-  availability, free days, streak data
-- `student_progress`
-  level, last score, sessions count
-- `session_summary`
-  previous study sessions
-- `quiz_attempts`
-  correct/wrong history
+That means the agent is more efficient for normal chat than for report
+generation.
 
-### Transformation steps
+### Grounding guard
 
-```text
-student_progress + session_summary + quiz_attempts
-  -> interaction history
-  -> DKT/BKT prediction
-  -> topic score per subtopic
-  -> weak/strong bucket
-  -> cap by availability
-  -> StudyPlanItemDTO list
-```
+One of the best design details in this repo is the **grounding guard**.
 
-### Output
+The teacher graph may generate a reply that mentions a score or percentage that
+was not actually present in the student's data.
 
-The final output is a list of `StudyPlanItemDTO` objects with fields such as:
+So EduFX does this:
 
-- `subtopic_id`
-- `subtopic_title`
-- `group_name`
-- `current_level`
-- `is_overdue`
-- `last_quiz_score`
-- `last_studied_date`
-- `type`
+1. generate answer
+2. detect invented percentages
+3. ask for a correction pass
+4. if invented figures still remain, strip those sentences
 
-So the frontend receives ready-to-render plan items, not raw model numbers.
+This makes the teacher safer and more credible for education use.
 
-## Model Path vs Rule Path
+---
 
-The agent can work in three modes.
-
-### Mode 1: DKT
-
-If `dkt.npz` exists and the student has enough history:
-
-- DKT is loaded
-- history is scored
-- predicted `P(correct)` per skill is produced
-
-This is the preferred path.
-
-### Mode 2: BKT
-
-If DKT is not available but `bkt.json` exists:
-
-- BKT is loaded
-- per-skill mastery and `P(correct)` are computed
-
-This is the interpretable fallback.
-
-### Mode 3: Rules only
-
-If no model is available, or the student has too little history:
-
-- the engine uses deterministic priority rules only
-
-This is how cold-start students still get a useful plan.
-
-## Why the Agent Uses History
-
-The model input history is built from quiz sessions and attempts.
-
-Each interaction includes:
-
-- skill / subtopic
-- correct or wrong
-- focus
-- tracked flag
-
-That means the recommender is not purely score-based. It is
-behaviour-aware.
-
-Example:
-
-- a correct answer with low focus should count less strongly than a correct
-  answer with high focus
-
-That idea enters the system in:
-
-- [server/app/ml/recommender.py](../server/app/ml/recommender.py)
-- [server/app/ml/dkt.py](../server/app/ml/dkt.py)
-- [server/app/ml/bkt.py](../server/app/ml/bkt.py)
-
-## Agent Integration With Quiz Results
-
-The agent is not only called by the scheduler route.
-
-After a quiz is submitted:
-
-1. `ResultsService` stores the attempts
-2. progress is updated
-3. level may change
-4. session summary is saved
-5. `SchedulingAgent.register_study_session()` is called
+## 5. Student Dossier — The Data Foundation For The Teacher Agent
 
 File:
 
-- [server/app/services/results_service.py](../server/app/services/results_service.py)
+- [server/app/agents/dossier.py](../../server/app/agents/dossier.py)
 
-This is important because it means the agent owns cadence data such as:
+This file is extremely important because it is the bridge between raw backend
+data and the teacher LLM.
 
-- `current_streak`
-- `longest_streak`
-- `last_study_date`
+### What it does
 
-So the agent affects both planning and engagement tracking.
+It builds a deterministic `StudentDossier` containing:
 
-## Availability Logic
+- student identity
+- diagnostic state
+- current streak / longest streak
+- total sessions
+- average quiz score
+- average focus
+- per-subtopic snapshot
+- weak concepts
+- behaviour summary
 
-One of the most important agent features is that it does not blindly return the
-top-ranked topics.
+### Why it matters
 
-It checks:
+The dossier means the teacher graph does **not** fetch or derive business logic
+for itself.
 
-- does the student have free days configured?
-- is today one of those days?
-- did the student explicitly promise to study today?
-- how long is their usual session?
+Instead:
 
-Then it converts session length into a cap.
+- repositories fetch data
+- recommender engine supplies mastery estimates
+- rules helpers compute weak concepts
+- dossier packages everything into one grounded snapshot
 
-That is why the agent feels like a product feature, not just a model wrapper.
+That is a strong architecture choice because it keeps agent prompting separate
+from domain computation.
 
-## Weak and Strong Mix
+---
 
-The recommender returns a full ranked list.
+## 6. Quiz Self-Check Graph — The Safety Agent
 
-The agent then tries to create a balanced plan:
+### What it does
 
-- more weak topics
-- some stronger maintenance topics
+This graph exists for one reason:
 
-If one bucket is too small, it fills from the top-ranked remaining topics.
+> Never send a student a question whose marked answer is actually wrong.
 
-This logic is in `_select_capped(...)`.
+That is one of the worst possible education bugs.
 
-## Performance Lesson From This Project
+So after MCQs are generated, EduFX can run them through
+`review_quiz_questions(...)`.
 
-A useful engineering lesson from this repo:
+### Flow
 
-The slow part was not the DKT math.
+```text
+QuizService generates questions
+  -> quiz_review graph verify node
+  -> examiner-style verdicts
+  -> keep valid questions
+  -> if shortfall and regenerate callback exists
+       regenerate replacements
+       verify again
+  -> final reviewed question set
+```
 
-The slow part was database access.
+### Important design choice: fail open
 
-Originally the live route loaded quiz attempts one session at a time. That made
-Supabase planning slow for students with many sessions.
+If the reviewer:
 
-The fix was:
+- is unavailable
+- returns invalid JSON
+- returns something unusable
 
-- bulk-load attempts for many session IDs in one query
+the system keeps the original questions instead of silently deleting
+everything.
 
-That change reduced scheduler-route latency significantly while keeping the same
-agent behaviour.
+That means the reviewer acts like a **safety net**, not a hard blocker that can
+destroy quiz availability.
 
-So a good viva point is:
+### Why this is useful in a viva
 
-> The recommender math was already fast. The real optimization work was in the
-> repository layer, especially reducing repeated Supabase round trips.
+This is a good engineering talking point:
 
-## How To Learn This Agent Step By Step
+> We added a reflection-style quality check to reduce answer-key hallucinations
+> in generated MCQs, but we designed it to fail open so the app stays usable if
+> the reviewer model has a bad response.
 
-Use this order:
+---
 
-1. Read [server/app/routes/scheduler.py](../server/app/routes/scheduler.py)
-2. Read [server/app/controllers/scheduler_controller.py](../server/app/controllers/scheduler_controller.py)
-3. Read [server/app/services/scheduling_agent.py](../server/app/services/scheduling_agent.py)
-4. Read [server/app/ml/recommender_engine.py](../server/app/ml/recommender_engine.py)
-5. Read [server/app/ml/recommender.py](../server/app/ml/recommender.py)
-6. Read [server/app/core/container.py](../server/app/core/container.py)
-7. Read [server/app/services/results_service.py](../server/app/services/results_service.py)
+## 7. Where These Agents Enter The Product
 
-When reading, ask:
+### Scheduling agent
 
-- where does the data come from?
-- where is the ranking decided?
-- where is the daily cap decided?
-- where does the DTO get created?
+- dashboard daily plan
+- post-quiz streak updates
 
-If you answer those four questions, you understand the agent structure.
+### Teacher agent
 
-## Short Viva Version
+- `/teacher/{student_id}/chat`
+- `/teacher/{student_id}/report`
 
-> The EduFX agent is the SchedulingAgent in the service layer. It does not
-> directly train or host AI models. Instead, it asks the RecommenderEngine to
-> rank subtopics using DKT first, BKT second, and deterministic rules as a
-> fallback. Then it applies student availability, session-length caps, and a
-> weak/strong topic mix to generate today's study plan. The same agent also
-> updates streak data after a quiz is submitted through ResultsService.
+### Quiz review agent
+
+- inside quiz generation flow
+- before generated questions reach the student
+
+So the agent layer affects:
+
+- planning
+- coaching
+- reporting
+- content quality
+
+not just one screen.
+
+---
+
+## 8. Files To Study
+
+If you want to learn the real agent layer through the code, read in this order.
+
+### First: planning agent
+
+1. [server/app/routes/scheduler.py](../../server/app/routes/scheduler.py)
+2. [server/app/controllers/scheduler_controller.py](../../server/app/controllers/scheduler_controller.py)
+3. [server/app/services/scheduling_agent.py](../../server/app/services/scheduling_agent.py)
+4. [server/app/ml/recommender_engine.py](../../server/app/ml/recommender_engine.py)
+
+### Then: LangGraph teacher agent
+
+5. [server/app/routes/teacher.py](../../server/app/routes/teacher.py)
+6. [server/app/controllers/teacher_controller.py](../../server/app/controllers/teacher_controller.py)
+7. [server/app/services/teacher_service.py](../../server/app/services/teacher_service.py)
+8. [server/app/agents/dossier.py](../../server/app/agents/dossier.py)
+9. [server/app/agents/teacher_graph.py](../../server/app/agents/teacher_graph.py)
+10. [server/app/agents/prompts.py](../../server/app/agents/prompts.py)
+
+### Then: quiz safety agent
+
+11. [server/app/services/quiz_service.py](../../server/app/services/quiz_service.py)
+12. [server/app/agents/quiz_review.py](../../server/app/agents/quiz_review.py)
+
+### Finally: dependency wiring and tests
+
+13. [server/app/core/container.py](../../server/app/core/container.py)
+14. [server/tests/unit/test_agents.py](../../server/tests/unit/test_agents.py)
+
+---
+
+## 9. What To Say In A Viva
+
+Short version:
+
+> EduFX has two kinds of agents. First, the deterministic SchedulingAgent turns
+> recommender rankings into a realistic daily plan using availability and
+> streak rules. Second, the LangGraph agent layer provides an AI teacher and a
+> quiz self-check loop. The teacher graph is grounded in a deterministic
+> student dossier and uses specialist nodes plus a grounding guard. The quiz
+> review graph verifies generated MCQs and optionally regenerates invalid ones.
+> This keeps scheduling deterministic while using LLM agents only where they
+> add value: coaching and content safety.
+
+---
+
+## 10. One-Line Mental Model
+
+Remember it like this:
+
+> `SchedulingAgent` decides **when and how much** to study,
+> the teacher graph explains **how the student is doing**,
+> and the quiz review graph checks **whether generated questions are safe to
+> trust**.

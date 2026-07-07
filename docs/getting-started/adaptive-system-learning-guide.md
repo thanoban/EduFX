@@ -14,9 +14,11 @@ different jobs:
 
 1. The recommender models estimate what a student likely knows.
 2. The scheduling agent turns those estimates into a realistic daily plan.
-3. The quiz generation layer creates new questions for a student's level.
-4. The explanation layer explains wrong answers using notes plus an LLM.
-5. The RAG layer supplies topic-specific grounding text to the LLM features.
+3. The AI teacher agent answers questions and writes grounded student reports.
+4. The quiz generation layer creates new questions for a student's level.
+5. The quiz review agent checks those generated MCQs before students see them.
+6. The explanation layer explains wrong answers using notes plus an LLM.
+7. The RAG layer supplies topic-specific grounding text to the LLM features.
 
 So the system is adaptive in two different ways:
 
@@ -24,6 +26,8 @@ So the system is adaptive in two different ways:
   decide what to study next
 - Adaptive content generation:
   decide what kind of quiz or explanation to generate
+- Adaptive teaching/support:
+  explain student performance with grounded AI teacher responses
 
 ## The Big Picture
 
@@ -72,6 +76,18 @@ Relevant files:
 - [server/app/ml/dkt.py](../server/app/ml/dkt.py)
 - [server/app/ml/bkt.py](../server/app/ml/bkt.py)
 
+### 1B. Teacher and Review Agents
+
+This is the "coach the student safely" part.
+
+Relevant files:
+
+- [server/app/agents/dossier.py](../server/app/agents/dossier.py)
+- [server/app/agents/teacher_graph.py](../server/app/agents/teacher_graph.py)
+- [server/app/agents/quiz_review.py](../server/app/agents/quiz_review.py)
+- [server/app/services/teacher_service.py](../server/app/services/teacher_service.py)
+- [server/app/routes/teacher.py](../server/app/routes/teacher.py)
+
 ### 2. Quiz Generation
 
 This is the "generate questions for this student" part.
@@ -80,6 +96,7 @@ Relevant files:
 
 - [server/app/services/quiz_service.py](../server/app/services/quiz_service.py)
 - [server/app/services/ai_service.py](../server/app/services/ai_service.py)
+- [server/app/agents/quiz_review.py](../server/app/agents/quiz_review.py)
 - [../finetuning/finetune-method.md](../finetuning/finetune-method.md)
 - [../finetuning/finetune-results.md](../finetuning/finetune-results.md)
 
@@ -197,6 +214,62 @@ That separation is good design:
 
 - `RecommenderEngine` decides what is important
 - `SchedulingAgent` decides what is practical today
+
+## Teacher Agent Role
+
+EduFX also has a separate teacher-agent path.
+
+This agent does not change progress or planning.
+It is read-only and grounded on student data.
+
+Its flow is:
+
+```text
+/teacher/{student_id}/chat or /teacher/{student_id}/report
+  -> TeacherController
+  -> TeacherService
+  -> build_student_dossier(...)
+  -> teacher graph
+  -> grounding guard
+  -> teacher reply/report
+```
+
+The teacher graph uses three specialist roles:
+
+- analyst
+- diagnostician
+- coach
+
+Then it synthesizes them into one final answer.
+
+The grounding guard removes invented percentages that do not appear in the
+student dossier.
+
+This is a strong safety feature because educational feedback should not invent
+performance numbers.
+
+## Quiz Review Agent Role
+
+EduFX also has a quiz self-check agent.
+
+Its purpose is to verify LLM-generated MCQs before they reach a student.
+
+Flow:
+
+```text
+QuizService generates questions
+  -> quiz_review.verify
+  -> keep valid questions
+  -> optionally regenerate missing replacements
+  -> final reviewed set
+```
+
+This means EduFX does not blindly trust generated answer keys.
+
+Important design detail:
+
+- if the reviewer output is unusable, the system keeps the original quiz
+- this is a fail-open safety net, not a hard blocker
 
 ## Recommender Results and Measured Performance
 
@@ -332,6 +405,9 @@ For personalized quizzes it combines:
 
 Then it asks the LLM for exactly 15 questions.
 
+Before the questions are finally served, EduFX can pass them through the quiz
+review graph so obviously invalid answer keys are filtered or replaced.
+
 ## Explanation Integration Method
 
 Explanations are handled differently from quiz generation.
@@ -395,10 +471,16 @@ server/app/
     artifacts/
   services/
     scheduling_agent.py
+    teacher_service.py
     quiz_service.py
     explanation_service.py
     results_service.py
     ai_service.py
+  agents/
+    dossier.py
+    teacher_graph.py
+    quiz_review.py
+    prompts.py
   rag/
     embedder.py
     retriever.py
@@ -437,10 +519,13 @@ If you are new to this kind of development, study in this order:
 4. Read [server/app/services/scheduling_agent.py](../server/app/services/scheduling_agent.py)
 5. Read [server/app/ml/recommender_engine.py](../server/app/ml/recommender_engine.py)
 6. Read [server/app/ml/recommender.py](../server/app/ml/recommender.py)
-7. Read [../finetuning/finetune-method.md](../finetuning/finetune-method.md)
-8. Read [../finetuning/finetune-results.md](../finetuning/finetune-results.md)
-9. Read [server/app/services/quiz_service.py](../server/app/services/quiz_service.py)
-10. Read [server/app/services/explanation_service.py](../server/app/services/explanation_service.py)
+7. Read [server/app/agents/dossier.py](../server/app/agents/dossier.py)
+8. Read [server/app/agents/teacher_graph.py](../server/app/agents/teacher_graph.py)
+9. Read [server/app/agents/quiz_review.py](../server/app/agents/quiz_review.py)
+10. Read [../finetuning/finetune-method.md](../finetuning/finetune-method.md)
+11. Read [../finetuning/finetune-results.md](../finetuning/finetune-results.md)
+12. Read [server/app/services/quiz_service.py](../server/app/services/quiz_service.py)
+13. Read [server/app/services/explanation_service.py](../server/app/services/explanation_service.py)
 
 ## Short Viva Version
 
@@ -450,8 +535,11 @@ If you need a short explanation in a viva, say this:
 > backend builds a student interaction history from quiz attempts and focus
 > signals, then runs DKT first, BKT second, and rule-based fallback if there is
 > not enough data. The SchedulingAgent converts that ranking into a realistic
-> daily plan using availability and session length. For quiz generation, a
-> fine-tuned Qwen adapter is tried first, then general LLM fallbacks. For wrong
-> answer explanations, the system retrieves note chunks and generates a short
-> explanation with a live LLM. So recommendation, generation, and explanation
-> are separate adaptive layers, not one single model.
+> daily plan using availability and session length. The repo also has a
+> LangGraph teacher agent that answers grounded progress questions and writes
+> student reports, plus a quiz-review agent that checks generated MCQs before
+> delivery. For quiz generation, a fine-tuned Qwen adapter is tried first, then
+> general LLM fallbacks. For wrong answer explanations, the system retrieves
+> note chunks and generates a short explanation with a live LLM. So planning,
+> teaching, generation, and explanation are separate adaptive layers, not one
+> single model.
