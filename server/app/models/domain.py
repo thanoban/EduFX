@@ -112,6 +112,18 @@ class BehaviourLog:
     talking: bool
     absent: bool
     focus_score: int
+    # Second-generation proctoring signals (browser-side detectors). Defaulted
+    # so older snapshots and clients that don't send them still deserialize:
+    #   sleeping        - sustained eye-closure / head-drop (distinct from a blink-level `drowsy`)
+    #   other_voice     - speech heard while the student's mouth is still (someone else talking)
+    #   object_detected - a book / notes / second device found in frame by the object detector
+    sleeping: bool = False
+    other_voice: bool = False
+    object_detected: bool = False
+    # Deterministic integrity signal: the quiz tab was hidden or the window
+    # unfocused at some point since the previous snapshot (exact browser event,
+    # not CV inference).
+    tab_hidden: bool = False
 
 
 @dataclass

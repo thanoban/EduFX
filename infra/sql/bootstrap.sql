@@ -109,8 +109,17 @@ create table if not exists behaviour_logs (
   multiple_persons boolean default false,
   talking boolean default false,
   absent boolean default false,
-  focus_score int default 100
+  focus_score int default 100,
+  sleeping boolean default false,
+  other_voice boolean default false,
+  object_detected boolean default false,
+  tab_hidden boolean default false
 );
+-- Migration for existing databases (safe to re-run):
+--   alter table behaviour_logs add column if not exists sleeping boolean default false;
+--   alter table behaviour_logs add column if not exists other_voice boolean default false;
+--   alter table behaviour_logs add column if not exists object_detected boolean default false;
+--   alter table behaviour_logs add column if not exists tab_hidden boolean default false;
 
 create table if not exists quiz_attempts (
   id bigint generated always as identity primary key,

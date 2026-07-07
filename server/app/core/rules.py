@@ -102,11 +102,15 @@ def compute_priority(progress: StudentProgress, today: date) -> tuple[float, boo
 
 def calculate_focus_score(log: BehaviourLog) -> int:
     score = 100
-    score -= 40 if log.phone_detected else 0
     score -= 50 if log.absent else 0
+    score -= 45 if getattr(log, "sleeping", False) else 0
+    score -= 45 if getattr(log, "tab_hidden", False) else 0
+    score -= 40 if log.phone_detected else 0
     score -= 30 if log.drowsy else 0
+    score -= 25 if getattr(log, "other_voice", False) else 0
     score -= 20 if log.looking_away else 0
     score -= 20 if log.multiple_persons else 0
+    score -= 20 if getattr(log, "object_detected", False) else 0
     score -= 10 if log.talking else 0
     return max(score, 0)
 

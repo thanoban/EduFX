@@ -203,6 +203,10 @@ class SupabaseMapper:
             talking=bool(row.get("talking", False)),
             absent=bool(row.get("absent", False)),
             focus_score=int(row.get("focus_score") or 0),
+            sleeping=bool(row.get("sleeping", False)),
+            other_voice=bool(row.get("other_voice", False)),
+            object_detected=bool(row.get("object_detected", False)),
+            tab_hidden=bool(row.get("tab_hidden", False)),
         )
 
     @staticmethod

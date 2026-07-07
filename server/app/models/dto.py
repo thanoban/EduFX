@@ -179,6 +179,11 @@ class BehaviourSnapshotRequest(BaseModel):
     talking: bool
     absent: bool
     focus_score: int
+    # New proctoring flags; defaulted so older clients stay compatible.
+    sleeping: bool = False
+    other_voice: bool = False
+    object_detected: bool = False
+    tab_hidden: bool = False
 
 
 class BehaviourSummaryRequest(BaseModel):
@@ -292,6 +297,10 @@ class BehaviourSnapshotDTO(BaseModel):
     talking: bool
     absent: bool
     focus_score: int
+    sleeping: bool = False
+    other_voice: bool = False
+    object_detected: bool = False
+    tab_hidden: bool = False
 
 
 class BehaviourSessionDTO(BaseModel):
