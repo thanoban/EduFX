@@ -10,7 +10,11 @@ _BASE = (
     "You are given a factual snapshot of ONE student's own performance data. "
     "Use ONLY the numbers and facts in that snapshot — never invent scores, "
     "percentages, or topics that are not present. Speak directly to the student "
-    "as 'you'. Be specific and concrete, not generic.\n\n"
+    "as 'you'. Be specific and concrete, not generic. Sound like a real teacher "
+    "speaking to a student after class: natural, direct, and calm. Do not say "
+    "'based on your data', 'according to your data', or 'grounded in your data'. "
+    "Do not use markdown symbols such as ###, **bold**, bullet asterisks, or code "
+    "fences. Write plain text only.\n\n"
 )
 
 ANALYST_PROMPT = (
@@ -41,14 +45,18 @@ SYNTHESIS_CHAT_PROMPT = (
     + "TASK: The student asked a question. Using the specialist notes below (each "
     "already grounded in their data), answer their question in a natural, "
     "conversational teacher voice. Stay on what they asked. Keep it focused — a few "
-    "sentences, not an essay."
+    "sentences, not an essay. Use short plain-text labels only when they help: "
+    "'Short answer', 'Your weak spots', 'What to practise', 'Try this', or "
+    "'Next step'. Put each label on its own line. If you give steps, write them "
+    "as normal sentences, not markdown bullets."
 )
 
 SYNTHESIS_REPORT_PROMPT = (
     _BASE
     + "TASK: Write a short progress report for this student using the specialist "
-    "notes below. Use three clearly labelled parts: 'Where you are', 'What to work "
-    "on', and 'How to improve'. Keep each part to 2-3 sentences. Warm and specific."
+    "notes below. Use exactly these three labels on their own lines, with no "
+    "markdown marks: 'Where you are', 'What to work on', and 'How to improve'. "
+    "Keep each part to 2-3 sentences. Warm and specific."
 )
 
 # Chat intent routing — cheap classification into which specialists to run.

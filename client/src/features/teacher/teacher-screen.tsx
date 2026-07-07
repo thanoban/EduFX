@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import { teacherApi } from "@/lib/api";
 import type { TeacherChatMessage } from "@/types/contracts";
+import { TeacherResponse } from "./teacher-response";
 
 const SUGGESTIONS = [
   "What are my weaknesses?",
@@ -34,7 +35,7 @@ export function TeacherScreen() {
       const data = await teacherApi.getReport(studentId);
       setReport(data.report);
     } catch {
-      setReport("The teacher couldn't put together a report right now. Please try again in a moment.");
+      setReport("I couldn't put your report together just now. Try again in a moment.");
     } finally {
       setReportLoading(false);
     }
@@ -63,7 +64,7 @@ export function TeacherScreen() {
     } catch {
       setMessages([
         ...nextMessages,
-        { role: "teacher", content: "Sorry — I couldn't answer just now. Please try again." }
+        { role: "teacher", content: "I couldn't answer just now. Please try again in a moment." }
       ]);
     } finally {
       setSending(false);
@@ -73,25 +74,23 @@ export function TeacherScreen() {
   return (
     <AppShell
       title="AI Teacher"
-      subtitle="A teacher that knows your full performance — ask about your progress, weaknesses, and how to improve."
+      subtitle="Ask about your progress, weak spots, and what to practise next."
       action={
         <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={loadReport} disabled={reportLoading}>
           {reportLoading ? "Refreshing…" : "Refresh report"}
         </Button>
       }
     >
-      <SectionCard title="Your progress report" eyebrow="Auto-generated" action={<Sparkles size={18} />}>
+      <SectionCard title="Your progress report" eyebrow="Teacher summary" action={<Sparkles size={18} />}>
         {reportLoading && !report ? (
-          <div className="muted">Reading your performance and writing your report…</div>
+          <div className="muted">Reading your recent work and preparing your report...</div>
         ) : (
-          <div className="stack" style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-            {report}
-          </div>
+          <TeacherResponse content={report ?? ""} variant="report" />
         )}
       </SectionCard>
 
       <div style={{ marginTop: 24 }}>
-        <SectionCard title="Ask your teacher" eyebrow="Grounded in your data" action={<GraduationCap size={18} />}>
+        <SectionCard title="Ask your teacher" eyebrow="Teacher guidance" action={<GraduationCap size={18} />}>
           <div className="stack">
             <div
               ref={threadRef}
@@ -110,16 +109,15 @@ export function TeacherScreen() {
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`list-item ${m.role === "student" ? "review-card--correct" : ""}`.trim()}
-                  style={{ alignSelf: m.role === "student" ? "flex-end" : "flex-start", maxWidth: "85%" }}
+                  className={`teacher-message ${m.role === "student" ? "teacher-message--student" : ""}`.trim()}
                 >
                   <div className="muted small-text" style={{ marginBottom: 4 }}>
                     {m.role === "student" ? "You" : "Teacher"}
                   </div>
-                  <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{m.content}</div>
+                  <TeacherResponse content={m.content} />
                 </div>
               ))}
-              {sending ? <div className="muted">Teacher is thinking…</div> : null}
+              {sending ? <div className="muted">Teacher is thinking...</div> : null}
             </div>
 
             <form
@@ -133,7 +131,7 @@ export function TeacherScreen() {
               <input
                 className="field__input"
                 style={{ flex: 1 }}
-                placeholder="Ask about your progress, mistakes, or how to improve…"
+                placeholder="Ask about your progress, mistakes, or how to improve..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={sending}

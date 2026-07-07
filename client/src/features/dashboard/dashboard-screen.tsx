@@ -101,6 +101,7 @@ export function DashboardScreen({
       )
     : 0;
   const nextTopic = plan[0];
+  const queuedTopics = plan.slice(1);
   const banner = buildDashboardBanner(student, plan.length);
 
   return (
@@ -122,7 +123,7 @@ export function DashboardScreen({
           <h3>{nextTopic?.subtopic_title ?? "Diagnostic required"}</h3>
           <p className="muted">
             {nextTopic
-              ? "Prioritised from recent performance, deadline pressure, and reinforcement balance."
+              ? "EduFX selected this as your active study recommendation from recent performance, DKT or BKT mastery signals, and reinforcement balance."
               : "Complete the diagnostic once to unlock your first adaptive study route."}
           </p>
         </div>
@@ -163,7 +164,7 @@ export function DashboardScreen({
       </div>
 
       <div className="grid-2" style={{ marginTop: 24 }}>
-        <SectionCard title="Today's study plan" eyebrow="2 weak + 1 strong">
+        <SectionCard title="Today's recommended route" eyebrow="Performance-ranked by EduFX">
           <div className="list">
             {plan.length === 0 ? (
               <div className="list-item stack">
@@ -176,7 +177,36 @@ export function DashboardScreen({
                 </Button>
               </div>
             ) : null}
-            {plan.map((item) => (
+            {nextTopic ? (
+              <div key={nextTopic.subtopic_id} className="list-item focus-card">
+                <div className="cluster" style={{ justifyContent: "space-between" }}>
+                  <div className="stack">
+                    <strong>{nextTopic.subtopic_title}</strong>
+                    <div className="muted">
+                      {nextTopic.group_name} • last quiz {nextTopic.last_quiz_score}% • {nextTopic.type} lane
+                    </div>
+                    <div className="focus-bar">
+                      <span style={{ width: `${Math.max(nextTopic.last_quiz_score, 10)}%` }} />
+                    </div>
+                  </div>
+                  <div className="cluster">
+                    <StatusPill label={nextTopic.current_level} />
+                    <StatusPill label="Recommended now" tone="success" />
+                    {nextTopic.is_overdue ? <StatusPill label="Deadline override" tone="danger" /> : null}
+                  </div>
+                </div>
+                <div className="cluster" style={{ justifyContent: "space-between", marginTop: 14 }}>
+                  <div className="muted">
+                    You cannot manually choose another content lane here. EduFX unlocks the active topic first,
+                    then updates the next recommendation after your quiz result.
+                  </div>
+                  <Button href={`/study/${nextTopic.subtopic_id}`} icon={<ArrowRight size={16} />}>
+                    Start recommended topic
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {queuedTopics.map((item, index) => (
               <div key={item.subtopic_id} className="list-item focus-card">
                 <div className="cluster" style={{ justifyContent: "space-between" }}>
                   <div className="stack">
@@ -190,10 +220,8 @@ export function DashboardScreen({
                   </div>
                   <div className="cluster">
                     <StatusPill label={item.current_level} />
+                    <StatusPill label={`Queued next ${index + 2}`} tone="warning" />
                     {item.is_overdue ? <StatusPill label="Deadline override" tone="danger" /> : null}
-                    <Button href={`/study/${item.subtopic_id}`} icon={<ArrowRight size={16} />}>
-                      Study
-                    </Button>
                   </div>
                 </div>
               </div>

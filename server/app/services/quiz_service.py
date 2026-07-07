@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from app.core.errors import EduFXError
 from app.models.domain import Question
 from app.models.dto import QuizPayloadDTO, QuizQuestionDTO
 from app.repositories.contracts import ContentRepositoryContract, QuizRepositoryContract, ResultsRepositoryContract
@@ -9,6 +10,8 @@ from app.repositories.content_repository import ContentRepository
 from app.repositories.quiz_repository import QuizRepository
 from app.repositories.rag_repository import RagRepository
 from app.repositories.results_repository import ResultsRepository
+from app.services.contracts import SchedulingAgentContract
+from app.services.scheduling_agent import SchedulingAgent
 
 
 class QuizService:
@@ -17,16 +20,19 @@ class QuizService:
         repository: QuizRepositoryContract | QuizRepository,
         content_repository: ContentRepositoryContract | ContentRepository,
         results_repository: ResultsRepositoryContract | ResultsRepository,
+        scheduling_agent: SchedulingAgentContract | SchedulingAgent,
         rag_repository: RagRepository | None = None,
         vertex_model: str | None = None,
     ) -> None:
         self.repository = repository
         self.content_repository = content_repository
         self.results_repository = results_repository
+        self.scheduling_agent = scheduling_agent
         self.rag_repository = rag_repository
         self.vertex_model = vertex_model
 
     def get_quiz(self, student_id: int, subtopic_id: int) -> QuizPayloadDTO:
+        self._assert_active_recommendation(student_id, subtopic_id)
         progress = self.repository.get_progress(student_id, subtopic_id)
         stage = "first" if progress.total_sessions == 0 else "personalized"
         if stage == "first":
@@ -41,6 +47,7 @@ class QuizService:
         return self._to_payload(session.id, subtopic_id, stage, questions)
 
     def generate_quiz(self, student_id: int, subtopic_id: int) -> QuizPayloadDTO:
+        self._assert_active_recommendation(student_id, subtopic_id)
         progress = self.repository.get_progress(student_id, subtopic_id)
         questions = self._build_personalized(student_id, subtopic_id, progress.current_level)
         session = self.repository.create_session(student_id, subtopic_id)
@@ -168,3 +175,20 @@ class QuizService:
                 for item in questions
             ],
         )
+
+    def _assert_active_recommendation(self, student_id: int, subtopic_id: int) -> None:
+        progress = self.repository.get_progress(student_id, subtopic_id)
+        if progress.total_sessions > 0:
+            return
+
+        active_subtopic_id = self.scheduling_agent.get_active_subtopic_id(student_id)
+        if active_subtopic_id is None:
+            raise EduFXError(
+                "No quiz topic is unlocked right now. Return to the dashboard to continue the recommended study route.",
+                status_code=403,
+            )
+        if active_subtopic_id != subtopic_id:
+            raise EduFXError(
+                "This quiz is not the current EduFX recommendation. Open the suggested topic from the dashboard to keep the adaptive sequence intact.",
+                status_code=403,
+            )

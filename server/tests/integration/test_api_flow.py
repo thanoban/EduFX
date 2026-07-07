@@ -147,7 +147,8 @@ def test_repeat_quiz_triggers_personalized_generation():
             ],
         },
     )
-    subtopic_id = 1
+    plan = client.get(f"/scheduler/todays-plan/{student_id}").json()["data"]["plan"]
+    subtopic_id = plan[0]["subtopic_id"]
     first_quiz = client.get(f"/quiz/{subtopic_id}/{student_id}").json()["data"]
     client.post(
         "/results/submit-quiz",
