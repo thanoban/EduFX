@@ -90,7 +90,7 @@ Add these in the repo: **Settings → Secrets and variables → Actions → New 
 | `SUPABASE_KEY` | backend-only key (may be the `sb_secret_…`/service key); used server-side, never sent to the browser | Supabase → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role/secret key used only by the backend | Supabase → Project Settings → API |
 | `SUPABASE_JWT_SECRET` | JWT secret | Supabase → Project Settings → API → JWT Settings |
-| `BACKEND_URL` | deployed backend Cloud Run URL, e.g. `https://edufx-backend-xxxxx-an.a.run.app` | first successful backend deploy output |
+| `BACKEND_URL` | optional deployed backend Cloud Run URL override, e.g. `https://edufx-backend-xxxxx-an.a.run.app`; `reminders.yml` can discover the URL from Cloud Run when this is omitted | first successful backend deploy output, or leave blank if `GCP_PROJECT_ID` + `GCP_SA_KEY` are configured |
 | `FRONTEND_URL` | (blank initially, fill after first deploy) | Cloud Run frontend URL |
 | `RESEND_API_KEY` | Resend API key for real reminder emails | Resend dashboard |
 | `REMINDERS_SHARED_SECRET` | shared secret used by `reminders.yml` to call `/internal/reminders/run` | generate a long random string and reuse it in Actions + Cloud Run |
@@ -148,7 +148,7 @@ The workflow passes the backend's deployed URL into the frontend build automatic
 2. Push to `main` — GitHub Actions runs `deploy.yml` automatically.
 3. Backend builds and deploys → frontend builds (using backend URL) and deploys.
 4. Copy the **backend URL** and **frontend URL** from the Actions log.
-5. Add the backend URL as the `BACKEND_URL` secret. The scheduled `reminders.yml` workflow uses this exact secret and fails immediately if it is missing or malformed.
+5. Optionally add the backend URL as the `BACKEND_URL` secret or repository variable. If it is omitted, the scheduled `reminders.yml` workflow resolves the backend Cloud Run URL from `GCP_PROJECT_ID`, `GCP_SA_KEY`, service `edufx-backend`, and region `asia-northeast1`.
 6. Add the frontend URL as the `FRONTEND_URL` secret.
 7. Re-run the workflow (or push again) so the backend picks up `FRONTEND_ORIGIN` and locks CORS to the real frontend.
 8. Visit the frontend URL — the app is live.
@@ -215,7 +215,7 @@ A GPU VM does **not** scale to zero — it bills continuously while running. For
 - [ ] Supabase schema applied (tables + `content_chunks` + `match_content_chunks` RPC)
 - [ ] RAG notes ingested (55 chunks in `content_chunks`)
 - [ ] First push to `main` succeeds in Actions
-- [ ] `BACKEND_URL` secret added after the first backend deploy (required by `reminders.yml`)
+- [ ] `BACKEND_URL` secret or variable added after the first backend deploy, or `GCP_PROJECT_ID` + `GCP_SA_KEY` available so `reminders.yml` can discover the Cloud Run backend URL
 - [ ] `FRONTEND_URL` secret added after first deploy, workflow re-run
 - [ ] `REMINDERS_SHARED_SECRET` secret added in GitHub and deployed into Cloud Run
 - [ ] `edufx-deploy-key.json` deleted from local machine

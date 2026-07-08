@@ -10,7 +10,11 @@ jobs:
   run-reminders:
     runs-on: ubuntu-latest
     env:
-      BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      GCP_REGION: asia-northeast1
+      BACKEND_SERVICE: edufx-backend
+      BACKEND_URL: ${{ secrets.BACKEND_URL || vars.BACKEND_URL }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      HAS_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
       REMINDERS_SHARED_SECRET: ${{ secrets.REMINDERS_SHARED_SECRET }}
     steps:
       - name: Validate reminder configuration
@@ -18,13 +22,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ -z "${BACKEND_URL:-}" ]]; then
-            echo "::error title=Missing BACKEND_URL secret::Set BACKEND_URL to the deployed backend Cloud Run URL, for example https://edufx-backend-xxxxx-an.a.run.app"
-            exit 1
-          fi
-
-          if [[ ! "${BACKEND_URL}" =~ ^https?:// ]]; then
-            echo "::error title=Invalid BACKEND_URL secret::BACKEND_URL must start with http:// or https://"
+          if [[ -n "${BACKEND_URL:-}" && ! "${BACKEND_URL}" =~ ^https?:// ]]; then
+            echo "::error title=Invalid BACKEND_URL::BACKEND_URL must start with http:// or https://"
             exit 1
           fi
 
@@ -33,7 +32,43 @@ jobs:
             exit 1
           fi
 
-          echo "NORMALIZED_BACKEND_URL=${BACKEND_URL%/}" >> "$GITHUB_ENV"
+          if [[ -z "${BACKEND_URL:-}" ]]; then
+            if [[ -z "${GCP_PROJECT_ID:-}" || "${HAS_GCP_SA_KEY}" != "true" ]]; then
+              echo "::error title=Missing backend target::Set BACKEND_URL, or set GCP_PROJECT_ID and GCP_SA_KEY so the workflow can discover the Cloud Run backend URL"
+              exit 1
+            fi
+            echo "BACKEND_URL was not set; resolving ${BACKEND_SERVICE} from Cloud Run."
+          fi
+
+      - id: auth
+        if: ${{ env.BACKEND_URL == '' }}
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - if: ${{ env.BACKEND_URL == '' }}
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Resolve backend URL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${BACKEND_URL:-}" ]]; then
+            resolved_url="${BACKEND_URL%/}"
+          else
+            resolved_url="$(gcloud run services describe "${BACKEND_SERVICE}" \
+              --project="${GCP_PROJECT_ID}" \
+              --region="${GCP_REGION}" \
+              --format='value(status.url)')"
+          fi
+
+          if [[ -z "${resolved_url:-}" || ! "${resolved_url}" =~ ^https?:// ]]; then
+            echo "::error title=Backend URL not resolved::Could not resolve a valid backend URL for the reminder scan"
+            exit 1
+          fi
+
+          echo "NORMALIZED_BACKEND_URL=${resolved_url%/}" >> "$GITHUB_ENV"
 
       - name: Trigger reminder scan
         shell: bash
