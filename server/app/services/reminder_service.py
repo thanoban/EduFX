@@ -45,21 +45,33 @@ class ReminderService:
 
     def run_daily_scan(self, today: date | None = None) -> dict[str, int]:
         today = today or date.today()
-        sent = {"promised_day": 0, "reengagement": 0, "skipped_opted_out": 0}
+        counts = {
+            "promised_day": 0,
+            "reengagement": 0,
+            "failed": 0,
+            "skipped_opted_out": 0,
+            "skipped_non_student": 0,
+        }
 
         for student in self.repository.list_students():
+            if student.role != "student":
+                counts["skipped_non_student"] += 1
+                continue
+
             if not student.email_reminders_enabled:
-                sent["skipped_opted_out"] += 1
+                counts["skipped_opted_out"] += 1
                 continue
 
             if _promised_today(student, today) and not _studied_today(student, today):
-                send_email(
+                if send_email(
                     student.email,
                     "Ready for today's session?",
                     f"Hi {student.name}, you said you'd be free to study today. "
                     "Your plan is queued and waiting whenever you are.",
-                )
-                sent["promised_day"] += 1
+                ):
+                    counts["promised_day"] += 1
+                else:
+                    counts["failed"] += 1
                 continue  # one email per student per run
 
             days_missed = _days_since_last_study(student, today)
@@ -67,8 +79,10 @@ class ReminderService:
                 continue
             for threshold, subject, message in _REENGAGEMENT_TIERS:
                 if days_missed == threshold:
-                    send_email(student.email, subject, f"Hi {student.name}, {message}")
-                    sent["reengagement"] += 1
+                    if send_email(student.email, subject, f"Hi {student.name}, {message}"):
+                        counts["reengagement"] += 1
+                    else:
+                        counts["failed"] += 1
                     break
 
-        return sent
+        return counts
