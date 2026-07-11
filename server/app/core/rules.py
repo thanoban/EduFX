@@ -183,6 +183,10 @@ def aggregate_behaviour(logs: list[BehaviourLog]) -> dict[str, int]:
             "away_percent": 0,
             "talking_percent": 0,
             "absent_percent": 0,
+            "sleeping_percent": 0,
+            "other_voice_percent": 0,
+            "object_percent": 0,
+            "tab_switch_percent": 0,
             "focus_score": 100,
         }
 
@@ -194,6 +198,10 @@ def aggregate_behaviour(logs: list[BehaviourLog]) -> dict[str, int]:
             "away_percent": sum(1 for item in logs if item.looking_away),
             "talking_percent": sum(1 for item in logs if item.talking),
             "absent_percent": sum(1 for item in logs if item.absent),
+            "sleeping_percent": sum(1 for item in logs if getattr(item, "sleeping", False)),
+            "other_voice_percent": sum(1 for item in logs if getattr(item, "other_voice", False)),
+            "object_percent": sum(1 for item in logs if getattr(item, "object_detected", False)),
+            "tab_switch_percent": sum(1 for item in logs if getattr(item, "tab_hidden", False)),
             "focused": sum(1 for item in logs if item.focus_score >= 80),
         }
     )
@@ -203,6 +211,10 @@ def aggregate_behaviour(logs: list[BehaviourLog]) -> dict[str, int]:
         "away_percent": round((counts["away_percent"] / total) * 100),
         "talking_percent": round((counts["talking_percent"] / total) * 100),
         "absent_percent": round((counts["absent_percent"] / total) * 100),
+        "sleeping_percent": round((counts["sleeping_percent"] / total) * 100),
+        "other_voice_percent": round((counts["other_voice_percent"] / total) * 100),
+        "object_percent": round((counts["object_percent"] / total) * 100),
+        "tab_switch_percent": round((counts["tab_switch_percent"] / total) * 100),
         "focus_score": round((counts["focused"] / total) * 100),
     }
 

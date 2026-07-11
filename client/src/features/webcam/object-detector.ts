@@ -19,7 +19,13 @@ const PERSON_CLASS = "person";
 // A book/laptop/second screen in frame is a strong "notes/second device" signal.
 const OBJECT_CLASSES = new Set(["book", "laptop", "tv", "remote", "keyboard"]);
 
-const MIN_SCORE = 0.5;
+// Per-class confidence floors. A phone in the hand at webcam angle is small,
+// tilted, and half-covered by fingers — COCO-SSD commonly scores it 0.3-0.5,
+// so the phone floor sits well below the others. The tracker's temporal latch
+// (two weak hits or one strong hit) filters the false positives this lets in.
+const PHONE_MIN_SCORE = 0.3;
+const OBJECT_MIN_SCORE = 0.45;
+const PERSON_MIN_SCORE = 0.5;
 
 export type ObjectPrediction = {
   /** Highest cell-phone detection confidence in the frame (0 when none). */
@@ -52,8 +58,10 @@ export class ObjectDetector {
       import("@tensorflow-models/coco-ssd")
     ]);
     await tf.ready();
-    // lite_mobilenet_v2 is the smallest/fastest base — right for real-time on a laptop webcam.
-    this.model = await cocoSsd.load({ base: "lite_mobilenet_v2" });
+    // Full mobilenet_v2 base: noticeably better at small/angled objects (a phone
+    // in the hand) than the lite base, and our ~1.2s inference cadence leaves
+    // plenty of headroom for the extra compute.
+    this.model = await cocoSsd.load({ base: "mobilenet_v2" });
     this.initialised = true;
   }
 
@@ -66,28 +74,26 @@ export class ObjectDetector {
     }
 
     // maxNumBoxes kept modest — we only need a handful of high-confidence boxes.
-    const predictions = await this.model.detect(video, 10, MIN_SCORE);
+    // The overall floor is the lowest per-class floor; classes filter themselves below.
+    const predictions = await this.model.detect(video, 10, PHONE_MIN_SCORE);
 
     let phoneScore = 0;
     let objectDetected = false;
     let personCount = 0;
 
     for (const prediction of predictions) {
-      if (prediction.score < MIN_SCORE) {
-        continue;
-      }
-      if (prediction.class === PHONE_CLASS) {
+      if (prediction.class === PHONE_CLASS && prediction.score >= PHONE_MIN_SCORE) {
         phoneScore = Math.max(phoneScore, prediction.score);
-      } else if (prediction.class === PERSON_CLASS) {
+      } else if (prediction.class === PERSON_CLASS && prediction.score >= PERSON_MIN_SCORE) {
         personCount += 1;
-      } else if (OBJECT_CLASSES.has(prediction.class)) {
+      } else if (OBJECT_CLASSES.has(prediction.class) && prediction.score >= OBJECT_MIN_SCORE) {
         objectDetected = true;
       }
     }
 
     return {
       phoneScore,
-      phoneDetected: phoneScore >= MIN_SCORE,
+      phoneDetected: phoneScore >= PHONE_MIN_SCORE,
       objectDetected,
       personCount
     };

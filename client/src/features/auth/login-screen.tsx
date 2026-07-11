@@ -26,7 +26,7 @@ export function LoginScreen() {
 
   useEffect(() => {
     if (student) {
-      router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic");
+      router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic/self-assessment");
     }
   }, [student, router]);
 

@@ -19,9 +19,9 @@ import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { diagnosticApi } from "@/lib/api";
 import { STORAGE_KEYS } from "@/lib/constants";
-import { writeStorage } from "@/lib/storage";
+import { readStorage, removeStorage, writeStorage } from "@/lib/storage";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
-import type { DiagnosticQuestion } from "@/types/contracts";
+import type { DiagnosticQuestion, DiagnosticSelfAssessment } from "@/types/contracts";
 
 export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[] }) {
   const router = useRouter();
@@ -65,15 +65,18 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
     }
     setBusy(true);
     try {
+      const selfAssessments = readStorage<DiagnosticSelfAssessment[]>(STORAGE_KEYS.selfAssessments, []);
       const payload = await diagnosticApi.submit(
         student.student_id,
         questions.map((question) => ({
           question_id: question.id,
           subtopic_id: question.subtopic_id,
           student_answer: answers[question.id] ?? "A"
-        }))
+        })),
+        selfAssessments
       );
       writeStorage(STORAGE_KEYS.lastDiagnostic, payload.results);
+      removeStorage(STORAGE_KEYS.selfAssessments);
       await refreshStatus();
       router.push("/diagnostic/results");
     } finally {
@@ -98,7 +101,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
       <section className="hero-strip">
         <div className="hero-strip__copy">
           <span className="eyebrow">
-            <ClipboardCheck size={14} /> Step 1 of 2
+            <ClipboardCheck size={14} /> Step 2 of 2
           </span>
           <h3>Map your current chemistry level before the adaptive plan unlocks.</h3>
           <p className="muted">

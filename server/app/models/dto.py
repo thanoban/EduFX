@@ -106,9 +106,21 @@ class DiagnosticAnswerDTO(BaseModel):
     student_answer: str
 
 
+class DiagnosticSelfAssessmentDTO(BaseModel):
+    subtopic_id: int
+    # "weak" is trusted outright (see DiagnosticService.submit): a student who
+    # says they're weak gets beginner regardless of a lucky quiz score.
+    # "confident" is verified against the quiz score instead of taken at face
+    # value, since overconfidence risks placing them in content too hard.
+    rating: Literal["weak", "confident"]
+
+
 class DiagnosticSubmitRequest(BaseModel):
     student_id: int
     answers: list[DiagnosticAnswerDTO]
+    # Optional per-subtopic self-rating collected once before the diagnostic
+    # quiz. Missing/omitted subtopics fall back to the quiz score alone.
+    self_assessments: list[DiagnosticSelfAssessmentDTO] = []
 
 
 class DiagnosticResultDTO(BaseModel):
@@ -313,6 +325,10 @@ class BehaviourSessionDTO(BaseModel):
     away_percent: int
     talking_percent: int
     absent_percent: int
+    sleeping_percent: int = 0
+    other_voice_percent: int = 0
+    object_percent: int = 0
+    tab_switch_percent: int = 0
     focus_score: int | None
     snapshots: list[BehaviourSnapshotDTO]
 
@@ -329,6 +345,10 @@ class BehaviourHistoryItemDTO(BaseModel):
     away_percent: int
     talking_percent: int
     absent_percent: int
+    sleeping_percent: int = 0
+    other_voice_percent: int = 0
+    object_percent: int = 0
+    tab_switch_percent: int = 0
     webcam_enabled: bool
     total_questions: int
     correct_answers: int

@@ -96,6 +96,10 @@ class SessionSummary:
     total_questions: int
     correct_answers: int
     created_at: datetime
+    sleeping_percent: int = 0
+    other_voice_percent: int = 0
+    object_percent: int = 0
+    tab_switch_percent: int = 0
 
 
 @dataclass

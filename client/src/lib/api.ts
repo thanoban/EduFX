@@ -10,6 +10,7 @@ import type {
   ContentRecord,
   DiagnosticQuestion,
   DiagnosticResult,
+  DiagnosticSelfAssessment,
   NextFreeChoice,
   ProgressRecord,
   QuizPayload,
@@ -158,10 +159,14 @@ export const diagnosticApi = {
     );
     return data.questions;
   },
-  submit(studentId: number, answers: Array<{ question_id: number; subtopic_id: number; student_answer: string }>) {
+  submit(
+    studentId: number,
+    answers: Array<{ question_id: number; subtopic_id: number; student_answer: string }>,
+    selfAssessments: DiagnosticSelfAssessment[] = []
+  ) {
     return request<{ results: DiagnosticResult[] }>("/diagnostic/submit", {
       method: "POST",
-      body: { student_id: studentId, answers }
+      body: { student_id: studentId, answers, self_assessments: selfAssessments }
     });
   }
 };

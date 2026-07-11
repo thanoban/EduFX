@@ -94,8 +94,17 @@ create table if not exists session_summary (
   webcam_enabled boolean default false,
   total_questions int default 0,
   correct_answers int default 0,
-  created_at timestamp default now()
+  created_at timestamp default now(),
+  sleeping_percent int default 0,
+  other_voice_percent int default 0,
+  object_percent int default 0,
+  tab_switch_percent int default 0
 );
+-- Migration for existing databases (safe to re-run):
+--   alter table session_summary add column if not exists sleeping_percent int default 0;
+--   alter table session_summary add column if not exists other_voice_percent int default 0;
+--   alter table session_summary add column if not exists object_percent int default 0;
+--   alter table session_summary add column if not exists tab_switch_percent int default 0;
 
 create table if not exists behaviour_logs (
   id bigint generated always as identity primary key,

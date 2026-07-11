@@ -26,7 +26,12 @@ class DiagnosticService:
             for question in self.repository.get_diagnostic_questions()
         ]
 
-    def submit(self, student_id: int, answers: list[dict[str, str | int]]) -> list[DiagnosticResultDTO]:
+    def submit(
+        self,
+        student_id: int,
+        answers: list[dict[str, str | int]],
+        self_assessments: list[dict[str, str | int]] | None = None,
+    ) -> list[DiagnosticResultDTO]:
         student = self.repository.get_student(student_id)
         if student is None:
             raise EduFXError("Student not found", status_code=404)
@@ -48,11 +53,24 @@ class DiagnosticService:
             if str(answer["student_answer"]).upper() == question.correct_answer:
                 subtopic_scores[question.subtopic_id]["correct"] += 1
 
+        # A "weak" self-rating is trusted outright (beginner, no second-guessing —
+        # worst case they get easier content than strictly needed); "confident" or
+        # missing falls through to the quiz score, since overconfidence risks
+        # placing a student in content too hard for them.
+        self_rating_by_subtopic = {
+            int(item["subtopic_id"]): str(item["rating"]) for item in (self_assessments or [])
+        }
+
+        def resolve_level(subtopic_id: int, score_percent: int) -> str:
+            if self_rating_by_subtopic.get(subtopic_id) == "weak":
+                return "beginner"
+            return score_to_level(score_percent)
+
         results: list[DiagnosticResultDTO] = []
         for question in questions.values():
             bucket = subtopic_scores[question.subtopic_id]
             score_percent = round((bucket["correct"] / max(bucket["total"], 1)) * 100)
-            level = score_to_level(score_percent)
+            level = resolve_level(question.subtopic_id, score_percent)
             self.repository.save_student_level(student_id, question.subtopic_id, level, score_percent)
         seen = set()
         for question in questions.values():
@@ -70,7 +88,7 @@ class DiagnosticService:
                     subtopic_id=question.subtopic_id,
                     subtopic_title=subtopic.title,
                     score_percent=score_percent,
-                    assigned_level=score_to_level(score_percent),
+                    assigned_level=resolve_level(question.subtopic_id, score_percent),
                 )
             )
         if len(results) != 10:

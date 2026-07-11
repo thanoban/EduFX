@@ -70,6 +70,13 @@ export type DiagnosticResult = {
   assigned_level: Level;
 };
 
+export type SelfAssessmentRating = "weak" | "confident";
+
+export type DiagnosticSelfAssessment = {
+  subtopic_id: number;
+  rating: SelfAssessmentRating;
+};
+
 export type StudyPlanItem = {
   subtopic_id: number;
   subtopic_title: string;
@@ -152,6 +159,10 @@ export type BehaviourSummaryPayload = {
   away_percent: number;
   talking_percent: number;
   absent_percent: number;
+  sleeping_percent: number;
+  other_voice_percent: number;
+  object_percent: number;
+  tab_switch_percent: number;
   focus_score: number;
 };
 
@@ -220,6 +231,10 @@ export type BehaviourHistoryItem = {
   away_percent: number;
   talking_percent: number;
   absent_percent: number;
+  sleeping_percent: number;
+  other_voice_percent: number;
+  object_percent: number;
+  tab_switch_percent: number;
   webcam_enabled: boolean;
   total_questions: number;
   correct_answers: number;
