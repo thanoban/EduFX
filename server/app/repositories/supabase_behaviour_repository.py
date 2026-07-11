@@ -46,6 +46,10 @@ class SupabaseBehaviourRepository:
                 "away_percent": session.away_percent,
                 "talking_percent": session.talking_percent,
                 "absent_percent": session.absent_percent,
+                "sleeping_percent": session.sleeping_percent,
+                "other_voice_percent": session.other_voice_percent,
+                "object_percent": session.object_percent,
+                "tab_switch_percent": session.tab_switch_percent,
                 "webcam_enabled": session.webcam_enabled,
             }
         ).eq("id", session.id).execute()

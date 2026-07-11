@@ -75,7 +75,7 @@ export function AuthCallbackScreen() {
       if (student) {
         clearTimeout(slowId);
         markAuthenticated();
-        router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic");
+        router.replace(student.diagnostic_completed ? "/dashboard" : "/diagnostic/self-assessment");
         return;
       }
 
@@ -105,7 +105,7 @@ export function AuthCallbackScreen() {
           }
           clearTimeout(slowId);
           markAuthenticated();
-          router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
+          router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic/self-assessment");
           return;
         } catch (loginError) {
           if (cancelled) {
@@ -154,7 +154,7 @@ export function AuthCallbackScreen() {
         }
         clearTimeout(slowId);
         markAuthenticated();
-        router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic");
+        router.replace(profile.diagnostic_completed ? "/dashboard" : "/diagnostic/self-assessment");
       } catch (loginError) {
         if (cancelled) {
           return;

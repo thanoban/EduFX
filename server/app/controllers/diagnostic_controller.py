@@ -13,7 +13,7 @@ class DiagnosticController:
             "Diagnostic questions fetched",
         )
 
-    def submit(self, student_id: int, answers: list[dict]):
-        results = self.service.submit(student_id, answers)
+    def submit(self, student_id: int, answers: list[dict], self_assessments: list[dict] | None = None):
+        results = self.service.submit(student_id, answers, self_assessments)
         return success_response({"results": results}, "Diagnostic submitted")
 

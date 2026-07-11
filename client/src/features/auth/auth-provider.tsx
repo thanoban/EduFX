@@ -106,6 +106,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     removeStorage(STORAGE_KEYS.lastDiagnostic);
     removeStorage(STORAGE_KEYS.lastSession);
     removeStorage(STORAGE_KEYS.lastQuizResult);
+    removeStorage(STORAGE_KEYS.selfAssessments);
   }
 
   function redirectToLogin(reason?: "expired") {

@@ -107,6 +107,10 @@ export function useWebcamTracker() {
           away_percent: 0,
           talking_percent: 0,
           absent_percent: 0,
+          sleeping_percent: 0,
+          other_voice_percent: 0,
+          object_percent: 0,
+          tab_switch_percent: 0,
           focus_score: 0
         });
       }

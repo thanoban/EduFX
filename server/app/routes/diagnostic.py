@@ -16,5 +16,6 @@ def submit(payload: DiagnosticSubmitRequest, container=Depends(get_container)):
     return container.diagnostic_controller.submit(
         payload.student_id,
         [answer.model_dump() for answer in payload.answers],
+        [item.model_dump() for item in payload.self_assessments],
     )
 

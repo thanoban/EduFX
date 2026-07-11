@@ -13,9 +13,15 @@ import { ObjectDetector, type ObjectPrediction } from "@/features/webcam/object-
 
 const LIVE_SAMPLE_INTERVAL_MS = 250;
 const OBJECT_INFERENCE_INTERVAL_MS = 1_200;
-const PHONE_SIGNAL_ALPHA = 0.45;
-const PHONE_ON_THRESHOLD = 0.58;
-const PHONE_OFF_THRESHOLD = 0.45;
+// Event-latch tuning for the sparse COCO-SSD phone signal. Object detections
+// are intermittent (the phone tilts, fingers cover it), so instead of the old
+// EMA hysteresis — which needed ~6 consecutive clean detections and therefore
+// almost never latched — one confident hit or two weak hits close together
+// arm the latch, and it stays armed for a hold window after the last hit.
+const PHONE_STRONG_SCORE = 0.55;
+const PHONE_WEAK_SCORE = 0.3;
+const PHONE_PAIR_WINDOW_MS = 6_000;
+const PHONE_HOLD_MS = 6_000;
 
 const EMPTY_METRICS: FaceMetrics = {
   ear: 0,
@@ -120,6 +126,33 @@ const INITIAL_STATE: TrackerRealtimeState = {
 
 type PhoneSignal = { detected: boolean; confidence: number; rawScore: number };
 
+/** Violation flags OR-accumulated between snapshots, so a brief event (a 5s
+ * phone check, a nod-off) between the 12s snapshots is still recorded instead
+ * of only whatever happened to be true at the snapshot instant. */
+type WindowViolations = {
+  phoneDetected: boolean;
+  absent: boolean;
+  drowsy: boolean;
+  sleeping: boolean;
+  otherVoice: boolean;
+  lookingAway: boolean;
+  multiplePersons: boolean;
+  objectDetected: boolean;
+  talking: boolean;
+};
+
+const EMPTY_VIOLATIONS: WindowViolations = {
+  phoneDetected: false,
+  absent: false,
+  drowsy: false,
+  sleeping: false,
+  otherVoice: false,
+  lookingAway: false,
+  multiplePersons: false,
+  objectDetected: false,
+  talking: false
+};
+
 /**
  * Orchestrates all per-signal detectors against a live <video> + mic stream:
  * MediaPipe FaceLandmarker (pose/gaze/sleep), COCO-SSD (phone/objects/people),
@@ -150,9 +183,10 @@ export class BrowserBehaviourTracker {
   private sessionId = 0;
   private onUpdate?: (state: TrackerRealtimeState) => void;
   private detectorWarning: string | null = null;
-  private phoneSignal = 0;
-  private phonePositiveRuns = 0;
-  private phoneNegativeRuns = 0;
+  private phoneActive = false;
+  private phoneLatchedAt = 0;
+  private lastWeakPhoneHitAt = 0;
+  private windowViolations: WindowViolations = { ...EMPTY_VIOLATIONS };
 
   async start(
     video: HTMLVideoElement,
@@ -213,24 +247,28 @@ export class BrowserBehaviourTracker {
   }
 
   takeSnapshot(): BehaviourSnapshotPayload {
+    // Consume (and reset) the accumulated window rather than reading the
+    // instantaneous live state, so a violation that already cleared by the
+    // snapshot instant (a 5s phone check, a short nod-off) is still recorded.
+    const violations = this.windowViolations;
+    this.windowViolations = { ...EMPTY_VIOLATIONS };
+    const tabHidden = this.integrityMonitor.consumeHiddenSinceLast();
+
     const snapshot: BehaviourSnapshotPayload = {
       student_id: this.studentId,
       session_id: this.sessionId,
       face_detected: this.latestState.faceDetected,
-      looking_away: this.latestState.lookingAway,
-      phone_detected: this.latestState.phoneDetected,
-      drowsy: this.latestState.drowsy,
-      multiple_persons: this.latestState.multiplePersons,
-      talking: this.latestState.talking,
-      absent: this.latestState.absent,
-      focus_score: this.latestState.focusScore,
-      sleeping: this.latestState.sleeping,
-      other_voice: this.latestState.otherVoice,
-      object_detected: this.latestState.objectDetected,
-      // Consume (and reset) the latch so each snapshot reports "was the tab
-      // hidden at any point since the previous snapshot" — a 2s switch between
-      // snapshots is still recorded.
-      tab_hidden: this.integrityMonitor.consumeHiddenSinceLast()
+      looking_away: violations.lookingAway,
+      phone_detected: violations.phoneDetected,
+      drowsy: violations.drowsy,
+      multiple_persons: violations.multiplePersons,
+      talking: violations.talking,
+      absent: violations.absent,
+      focus_score: computeFocusScore({ ...violations, tabHidden }),
+      sleeping: violations.sleeping,
+      other_voice: violations.otherVoice,
+      object_detected: violations.objectDetected,
+      tab_hidden: tabHidden
     };
     this.snapshots.push(snapshot);
     return snapshot;
@@ -259,6 +297,10 @@ export class BrowserBehaviourTracker {
       away_percent: percentage("looking_away"),
       talking_percent: percentage("talking"),
       absent_percent: percentage("absent"),
+      sleeping_percent: percentage("sleeping"),
+      other_voice_percent: percentage("other_voice"),
+      object_percent: percentage("object_detected"),
+      tab_switch_percent: percentage("tab_hidden"),
       focus_score: Math.round((focused / (snapshots.length || 1)) * 100)
     };
   }
@@ -278,19 +320,16 @@ export class BrowserBehaviourTracker {
     if (quality.usable && Date.now() - this.lastObjectRunAt > OBJECT_INFERENCE_INTERVAL_MS) {
       try {
         this.latestObjects = await this.objectDetector.detect(this.video);
-        this.latestPhone = this.stabilisePhone({
-          detected: this.latestObjects.phoneDetected,
-          confidence: this.latestObjects.phoneScore,
-          rawScore: this.latestObjects.phoneScore
-        });
+        this.latestPhone = this.updatePhoneLatch(this.latestObjects.phoneScore);
         this.lastObjectRunAt = Date.now();
         this.detectorWarning = null;
       } catch (objectError) {
         this.detectorWarning =
           objectError instanceof Error ? objectError.message : "Object detection unavailable";
       }
-    } else if (!quality.usable) {
-      this.latestPhone = this.decayPhoneSignal();
+    } else {
+      // No new inference this tick — just let the hold window expire naturally.
+      this.latestPhone = this.expirePhoneLatch(this.latestPhone.rawScore);
     }
 
     this.latestAudio = this.audioMonitor.read();
@@ -323,6 +362,21 @@ export class BrowserBehaviourTracker {
       multiplePersons,
       objectDetected: quality.usable && this.latestObjects.objectDetected,
       talking
+    };
+
+    // OR every flag into the running window so a violation that fires and
+    // clears between two 12s snapshots (a phone flash, a brief nod-off) still
+    // gets recorded — takeSnapshot() consumes and resets this.
+    this.windowViolations = {
+      phoneDetected: this.windowViolations.phoneDetected || flags.phoneDetected,
+      absent: this.windowViolations.absent || flags.absent,
+      drowsy: this.windowViolations.drowsy || flags.drowsy,
+      sleeping: this.windowViolations.sleeping || flags.sleeping,
+      otherVoice: this.windowViolations.otherVoice || flags.otherVoice,
+      lookingAway: this.windowViolations.lookingAway || flags.lookingAway,
+      multiplePersons: this.windowViolations.multiplePersons || flags.multiplePersons,
+      objectDetected: this.windowViolations.objectDetected || flags.objectDetected,
+      talking: this.windowViolations.talking || flags.talking
     };
 
     this.latestState = {
@@ -386,52 +440,40 @@ export class BrowserBehaviourTracker {
     return null;
   }
 
-  private stabilisePhone(prediction: PhoneSignal): PhoneSignal {
-    this.phoneSignal =
-      this.phoneSignal + (prediction.rawScore - this.phoneSignal) * PHONE_SIGNAL_ALPHA;
-
-    if (this.phoneSignal >= PHONE_ON_THRESHOLD) {
-      this.phonePositiveRuns += 1;
-      this.phoneNegativeRuns = 0;
-      if (this.phonePositiveRuns >= 2) {
-        this.latestPhone.detected = true;
+  /** Feed one COCO-SSD phone score into the event latch (see constants above). */
+  private updatePhoneLatch(score: number): PhoneSignal {
+    const now = Date.now();
+    if (score >= PHONE_STRONG_SCORE) {
+      this.phoneActive = true;
+      this.phoneLatchedAt = now;
+    } else if (score >= PHONE_WEAK_SCORE) {
+      // A weak hit confirms an already-armed latch, or pairs with another
+      // recent weak hit — a single weak hit alone never fires.
+      if (this.phoneActive || now - this.lastWeakPhoneHitAt <= PHONE_PAIR_WINDOW_MS) {
+        this.phoneActive = true;
+        this.phoneLatchedAt = now;
       }
-    } else if (this.phoneSignal <= PHONE_OFF_THRESHOLD) {
-      this.phonePositiveRuns = 0;
-      this.phoneNegativeRuns += 1;
-      if (this.phoneNegativeRuns >= 2) {
-        this.latestPhone.detected = false;
-      }
+      this.lastWeakPhoneHitAt = now;
     }
-
-    return {
-      detected: this.latestPhone.detected,
-      confidence: clamp(this.latestPhone.detected ? this.phoneSignal : 1 - this.phoneSignal, 0, 1),
-      rawScore: clamp(this.phoneSignal, 0, 1)
-    };
+    return this.expirePhoneLatch(score);
   }
 
-  private decayPhoneSignal() {
-    this.phoneSignal *= 0.7;
-    if (this.phoneSignal <= PHONE_OFF_THRESHOLD) {
-      this.phoneNegativeRuns += 1;
-      this.phonePositiveRuns = 0;
-      if (this.phoneNegativeRuns >= 2) {
-        this.latestPhone.detected = false;
-      }
+  /** Release the latch once the hold window passes with no new hit. */
+  private expirePhoneLatch(score: number): PhoneSignal {
+    if (this.phoneActive && Date.now() - this.phoneLatchedAt > PHONE_HOLD_MS) {
+      this.phoneActive = false;
     }
-
     return {
-      detected: this.latestPhone.detected,
-      confidence: clamp(this.latestPhone.detected ? this.phoneSignal : 1 - this.phoneSignal, 0, 1),
-      rawScore: clamp(this.phoneSignal, 0, 1)
+      detected: this.phoneActive,
+      confidence: clamp(this.phoneActive ? Math.max(score, PHONE_WEAK_SCORE) : 1 - score, 0, 1),
+      rawScore: clamp(score, 0, 1)
     };
   }
 
   private resetPhoneSignal() {
-    this.phoneSignal = 0;
-    this.phonePositiveRuns = 0;
-    this.phoneNegativeRuns = 0;
+    this.phoneActive = false;
+    this.phoneLatchedAt = 0;
+    this.lastWeakPhoneHitAt = 0;
     this.latestPhone = { detected: false, confidence: 0, rawScore: 0 };
   }
 }

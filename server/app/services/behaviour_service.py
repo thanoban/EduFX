@@ -49,6 +49,10 @@ class BehaviourService:
             session.away_percent = 0
             session.talking_percent = 0
             session.absent_percent = 0
+            session.sleeping_percent = 0
+            session.other_voice_percent = 0
+            session.object_percent = 0
+            session.tab_switch_percent = 0
             session.focus_score = None
         else:
             aggregate = aggregate_behaviour(snapshots)
@@ -57,6 +61,10 @@ class BehaviourService:
             session.away_percent = aggregate["away_percent"]
             session.talking_percent = aggregate["talking_percent"]
             session.absent_percent = aggregate["absent_percent"]
+            session.sleeping_percent = aggregate["sleeping_percent"]
+            session.other_voice_percent = aggregate["other_voice_percent"]
+            session.object_percent = aggregate["object_percent"]
+            session.tab_switch_percent = aggregate["tab_switch_percent"]
             session.focus_score = aggregate["focus_score"]
 
         self.repository.save_session(session)
@@ -75,6 +83,10 @@ class BehaviourService:
             away_percent=session.away_percent,
             talking_percent=session.talking_percent,
             absent_percent=session.absent_percent,
+            sleeping_percent=session.sleeping_percent,
+            other_voice_percent=session.other_voice_percent,
+            object_percent=session.object_percent,
+            tab_switch_percent=session.tab_switch_percent,
             focus_score=session.focus_score,
             snapshots=snapshots,
         )
@@ -100,6 +112,10 @@ class BehaviourService:
                     away_percent=session.away_percent,
                     talking_percent=session.talking_percent,
                     absent_percent=session.absent_percent,
+                    sleeping_percent=session.sleeping_percent,
+                    other_voice_percent=session.other_voice_percent,
+                    object_percent=session.object_percent,
+                    tab_switch_percent=session.tab_switch_percent,
                     webcam_enabled=session.webcam_enabled,
                     total_questions=session.total_questions,
                     correct_answers=session.correct_answers,

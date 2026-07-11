@@ -113,12 +113,24 @@ export function BehaviourLogsScreen({ sessions }: { sessions: BehaviourHistoryIt
               </div>
               <div className="cluster" style={{ gap: 8 }}>
                 {session.absent_percent > 0 ? <StatusPill label={`Absent ${session.absent_percent}%`} tone="danger" /> : null}
+                {session.sleeping_percent > 0 ? <StatusPill label={`Sleeping ${session.sleeping_percent}%`} tone="danger" /> : null}
+                {session.tab_switch_percent > 0 ? (
+                  <StatusPill label={`Tab switched ${session.tab_switch_percent}%`} tone="danger" />
+                ) : null}
                 {session.talking_percent > 0 ? <StatusPill label={`Talking ${session.talking_percent}%`} tone="warning" /> : null}
+                {session.other_voice_percent > 0 ? (
+                  <StatusPill label={`Other voice ${session.other_voice_percent}%`} tone="warning" />
+                ) : null}
+                {session.object_percent > 0 ? <StatusPill label={`Notes/device ${session.object_percent}%`} tone="warning" /> : null}
                 {session.drowsy_percent > 0 ? <StatusPill label={`Drowsy ${session.drowsy_percent}%`} tone="warning" /> : null}
                 {session.phone_percent === 0 &&
                 session.away_percent <= 20 &&
                 session.absent_percent === 0 &&
                 session.talking_percent === 0 &&
+                session.other_voice_percent === 0 &&
+                session.object_percent === 0 &&
+                session.sleeping_percent === 0 &&
+                session.tab_switch_percent === 0 &&
                 session.drowsy_percent === 0 ? (
                   <StatusPill label="Steady session" tone="success" />
                 ) : null}
