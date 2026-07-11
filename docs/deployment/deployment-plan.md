@@ -93,10 +93,41 @@ Add these in the repo: **Settings → Secrets and variables → Actions → New 
 | `BACKEND_URL` | optional deployed backend Cloud Run URL override, e.g. `https://edufx-backend-xxxxx-an.a.run.app`; `reminders.yml` can discover the URL from Cloud Run when this is omitted | first successful backend deploy output, or leave blank if `GCP_PROJECT_ID` + `GCP_SA_KEY` are configured |
 | `FRONTEND_URL` | (blank initially, fill after first deploy) | Cloud Run frontend URL |
 | `RESEND_API_KEY` | Resend API key for real reminder emails | Resend dashboard |
-| `REMINDERS_SHARED_SECRET` | shared secret used by `reminders.yml` to call `/internal/reminders/run` | generate a long random string and reuse it in Actions + Cloud Run |
+| `REMINDERS_SHARED_SECRET` | optional GitHub override for the reminder shared secret; the workflow now falls back to Google Secret Manager if this is omitted | only needed when you do not want Actions to read `edufx-reminders-shared-secret` from GCP |
 | `FINETUNED_MODEL_URL` | optional, e.g. `http://<vm-ip>:8080` | vLLM VM URL, only when the GPU model server is running |
 
 These map directly into the Cloud Run service env vars in `.github/workflows/deploy.yml`. Nothing secret lives in the repo — `.env` stays gitignored.
+
+### Reminder secret source of truth
+
+Use **Google Secret Manager** as the single source of truth for scheduled reminder auth. Create one secret named `edufx-reminders-shared-secret`, let the Cloud Run runtime account read it, and let the GitHub deploy/reminder workflows read the same secret through `GCP_SA_KEY`.
+
+```bash
+PROJECT=responsive-sun-491204-e0
+REMINDER_SECRET_NAME=edufx-reminders-shared-secret
+
+openssl rand -base64 32 | tr -d '\n' > reminder-secret.txt
+
+gcloud secrets create $REMINDER_SECRET_NAME \
+  --project=$PROJECT \
+  --replication-policy=automatic
+
+gcloud secrets versions add $REMINDER_SECRET_NAME \
+  --project=$PROJECT \
+  --data-file=reminder-secret.txt
+
+gcloud secrets add-iam-policy-binding $REMINDER_SECRET_NAME \
+  --project=$PROJECT \
+  --member="serviceAccount:edufx-runtime@$PROJECT.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding $REMINDER_SECRET_NAME \
+  --project=$PROJECT \
+  --member="serviceAccount:edufx-deploy@$PROJECT.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+The backend deploy uses `--update-secrets REMINDERS_SHARED_SECRET=edufx-reminders-shared-secret:latest`, so future deploys keep the backend and reminder workflow aligned even when the GitHub `REMINDERS_SHARED_SECRET` secret is absent.
 
 ---
 
@@ -217,7 +248,9 @@ A GPU VM does **not** scale to zero — it bills continuously while running. For
 - [ ] First push to `main` succeeds in Actions
 - [ ] `BACKEND_URL` secret or variable added after the first backend deploy, or `GCP_PROJECT_ID` + `GCP_SA_KEY` available so `reminders.yml` can discover the Cloud Run backend URL
 - [ ] `FRONTEND_URL` secret added after first deploy, workflow re-run
-- [ ] `REMINDERS_SHARED_SECRET` secret added in GitHub and deployed into Cloud Run
+- [ ] `edufx-reminders-shared-secret` created in Google Secret Manager
+- [ ] `edufx-runtime` and `edufx-deploy` have `roles/secretmanager.secretAccessor` on `edufx-reminders-shared-secret`
+- [ ] `REMINDERS_SHARED_SECRET` added in GitHub only if you want to override the Secret Manager value
 - [ ] `edufx-deploy-key.json` deleted from local machine
 - [ ] (Optional) GPU VM + vLLM for the fine-tuned model
 - [ ] (Optional) `FINETUNED_MODEL_URL` secret added only while the vLLM VM is running

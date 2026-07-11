@@ -12,6 +12,7 @@ jobs:
     env:
       GCP_REGION: asia-northeast1
       BACKEND_SERVICE: edufx-backend
+      REMINDERS_SECRET_NAME: edufx-reminders-shared-secret
       BACKEND_URL: ${{ secrets.BACKEND_URL || vars.BACKEND_URL }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       HAS_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
@@ -27,27 +28,47 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "${REMINDERS_SHARED_SECRET:-}" ]]; then
-            echo "::error title=Missing REMINDERS_SHARED_SECRET secret::Set REMINDERS_SHARED_SECRET to the same value deployed in the backend Cloud Run service"
-            exit 1
+          if [[ -z "${BACKEND_URL:-}" || -z "${REMINDERS_SHARED_SECRET:-}" ]]; then
+            if [[ -z "${GCP_PROJECT_ID:-}" || "${HAS_GCP_SA_KEY}" != "true" ]]; then
+              echo "::error title=Missing GCP credentials::Set GCP_PROJECT_ID and GCP_SA_KEY so the workflow can resolve the backend URL and reminder secret from Google Cloud"
+              exit 1
+            fi
           fi
 
           if [[ -z "${BACKEND_URL:-}" ]]; then
-            if [[ -z "${GCP_PROJECT_ID:-}" || "${HAS_GCP_SA_KEY}" != "true" ]]; then
-              echo "::error title=Missing backend target::Set BACKEND_URL, or set GCP_PROJECT_ID and GCP_SA_KEY so the workflow can discover the Cloud Run backend URL"
-              exit 1
-            fi
             echo "BACKEND_URL was not set; resolving ${BACKEND_SERVICE} from Cloud Run."
           fi
 
+          if [[ -z "${REMINDERS_SHARED_SECRET:-}" ]]; then
+            echo "REMINDERS_SHARED_SECRET was not set in GitHub; resolving ${REMINDERS_SECRET_NAME} from Secret Manager."
+          fi
+
       - id: auth
-        if: ${{ env.BACKEND_URL == '' }}
+        if: ${{ env.BACKEND_URL == '' || env.REMINDERS_SHARED_SECRET == '' }}
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - if: ${{ env.BACKEND_URL == '' }}
+      - if: ${{ env.BACKEND_URL == '' || env.REMINDERS_SHARED_SECRET == '' }}
         uses: google-github-actions/setup-gcloud@v3
+
+      - name: Resolve reminder secret
+        if: ${{ env.REMINDERS_SHARED_SECRET == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resolved_secret="$(gcloud secrets versions access latest \
+            --project="${GCP_PROJECT_ID}" \
+            --secret="${REMINDERS_SECRET_NAME}")"
+
+          if [[ -z "${resolved_secret:-}" ]]; then
+            echo "::error title=Reminder secret not resolved::Could not load ${REMINDERS_SECRET_NAME} from Secret Manager"
+            exit 1
+          fi
+
+          echo "::add-mask::${resolved_secret}"
+          echo "REMINDERS_SHARED_SECRET=${resolved_secret}" >> "$GITHUB_ENV"
 
       - name: Resolve backend URL
         shell: bash
