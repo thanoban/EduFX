@@ -10,7 +10,12 @@ jobs:
   run-reminders:
     runs-on: ubuntu-latest
     env:
-      BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      GCP_REGION: asia-northeast1
+      BACKEND_SERVICE: edufx-backend
+      REMINDERS_SECRET_NAME: edufx-reminders-shared-secret
+      BACKEND_URL: ${{ secrets.BACKEND_URL || vars.BACKEND_URL }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      HAS_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
       REMINDERS_SHARED_SECRET: ${{ secrets.REMINDERS_SHARED_SECRET }}
     steps:
       - name: Validate reminder configuration
@@ -18,22 +23,73 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ -z "${BACKEND_URL:-}" ]]; then
-            echo "::error title=Missing BACKEND_URL secret::Set BACKEND_URL to the deployed backend Cloud Run URL, for example https://edufx-backend-xxxxx-an.a.run.app"
+          if [[ -n "${BACKEND_URL:-}" && ! "${BACKEND_URL}" =~ ^https?:// ]]; then
+            echo "::error title=Invalid BACKEND_URL::BACKEND_URL must start with http:// or https://"
             exit 1
           fi
 
-          if [[ ! "${BACKEND_URL}" =~ ^https?:// ]]; then
-            echo "::error title=Invalid BACKEND_URL secret::BACKEND_URL must start with http:// or https://"
-            exit 1
+          if [[ -z "${BACKEND_URL:-}" || -z "${REMINDERS_SHARED_SECRET:-}" ]]; then
+            if [[ -z "${GCP_PROJECT_ID:-}" || "${HAS_GCP_SA_KEY}" != "true" ]]; then
+              echo "::error title=Missing GCP credentials::Set GCP_PROJECT_ID and GCP_SA_KEY so the workflow can resolve the backend URL and reminder secret from Google Cloud"
+              exit 1
+            fi
+          fi
+
+          if [[ -z "${BACKEND_URL:-}" ]]; then
+            echo "BACKEND_URL was not set; resolving ${BACKEND_SERVICE} from Cloud Run."
           fi
 
           if [[ -z "${REMINDERS_SHARED_SECRET:-}" ]]; then
-            echo "::error title=Missing REMINDERS_SHARED_SECRET secret::Set REMINDERS_SHARED_SECRET to the same value deployed in the backend Cloud Run service"
+            echo "REMINDERS_SHARED_SECRET was not set in GitHub; resolving ${REMINDERS_SECRET_NAME} from Secret Manager."
+          fi
+
+      - id: auth
+        if: ${{ env.BACKEND_URL == '' || env.REMINDERS_SHARED_SECRET == '' }}
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - if: ${{ env.BACKEND_URL == '' || env.REMINDERS_SHARED_SECRET == '' }}
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Resolve reminder secret
+        if: ${{ env.REMINDERS_SHARED_SECRET == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resolved_secret="$(gcloud secrets versions access latest \
+            --project="${GCP_PROJECT_ID}" \
+            --secret="${REMINDERS_SECRET_NAME}")"
+
+          if [[ -z "${resolved_secret:-}" ]]; then
+            echo "::error title=Reminder secret not resolved::Could not load ${REMINDERS_SECRET_NAME} from Secret Manager"
             exit 1
           fi
 
-          echo "NORMALIZED_BACKEND_URL=${BACKEND_URL%/}" >> "$GITHUB_ENV"
+          echo "::add-mask::${resolved_secret}"
+          echo "REMINDERS_SHARED_SECRET=${resolved_secret}" >> "$GITHUB_ENV"
+
+      - name: Resolve backend URL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${BACKEND_URL:-}" ]]; then
+            resolved_url="${BACKEND_URL%/}"
+          else
+            resolved_url="$(gcloud run services describe "${BACKEND_SERVICE}" \
+              --project="${GCP_PROJECT_ID}" \
+              --region="${GCP_REGION}" \
+              --format='value(status.url)')"
+          fi
+
+          if [[ -z "${resolved_url:-}" || ! "${resolved_url}" =~ ^https?:// ]]; then
+            echo "::error title=Backend URL not resolved::Could not resolve a valid backend URL for the reminder scan"
+            exit 1
+          fi
+
+          echo "NORMALIZED_BACKEND_URL=${resolved_url%/}" >> "$GITHUB_ENV"
 
       - name: Trigger reminder scan
         shell: bash

@@ -15,6 +15,7 @@ env:
   BACKEND_SERVICE: edufx-backend
   FRONTEND_SERVICE: edufx-frontend
   REPO: edufx
+  REMINDERS_SECRET_NAME: edufx-reminders-shared-secret
 
 jobs:
   # ── 1. Build + deploy FastAPI backend ──────────────────────────────────────
@@ -56,6 +57,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --service-account=edufx-runtime@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+            --update-secrets=REMINDERS_SHARED_SECRET=${{ env.REMINDERS_SECRET_NAME }}:latest
           env_vars: |
             SUPABASE_URL=${{ secrets.SUPABASE_URL }}
             SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
@@ -74,7 +76,6 @@ jobs:
             GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
             FRONTEND_ORIGIN=${{ secrets.FRONTEND_URL }}
             RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
-            REMINDERS_SHARED_SECRET=${{ secrets.REMINDERS_SHARED_SECRET }}
 
   # ── 2. Build + deploy Next.js frontend ────────────────────────────────────
   deploy-frontend:
