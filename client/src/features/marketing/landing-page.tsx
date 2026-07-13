@@ -131,6 +131,21 @@ export function LandingPage() {
 
   return (
     <main className="landing-page">
+      <h2
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0
+        }}
+      >
+        EduFX
+      </h2>
       <section className="landing-hero">
         <div className="landing-hero__shell">
           <header className="landing-nav">
@@ -149,7 +164,7 @@ export function LandingPage() {
             </nav>
             <div className="landing-nav__actions">
               <span className="landing-nav__status">
-                <BadgeCheck size={14} /> Live product flow
+                <BadgeCheck size={14} /> Adaptive study platform
               </span>
               <Button variant="ghost" href="/login">
                 Sign in
@@ -158,55 +173,73 @@ export function LandingPage() {
           </header>
 
           <div className="landing-hero__stage">
-            <Image
-              src="/landing/hero-lab-dark.png"
-              alt="EduFX chemistry workspace illustration"
-              fill
-              priority
-              sizes="100vw"
-              className="landing-hero__image"
-            />
-            <div className="landing-hero__overlay" />
-
             <div className="landing-hero__content">
-              <div className="landing-hero__copy">
-                <span className="landing-badge">
-                  <ShieldCheck size={14} /> Vertex AI, RAG, KT, and behaviour-aware planning
-                </span>
-                <h1>EduFX</h1>
-                <p className="landing-hero__lead">
-                  Adaptive A-Level chemistry learning with product-grade UX and a
-                  measurable intelligence stack underneath.
-                </p>
-                <p className="landing-hero__body">
-                  Students move from diagnostic placement to personalized study plans,
-                  grounded explanations, focus-aware feedback, and scheduler decisions
-                  powered by DKT, BKT, Supabase, Vertex AI, and a fine-tuned quiz model.
-                </p>
-                <div className="landing-hero__actions">
-                  <Button href={workspaceHref} icon={<ArrowRight size={16} />}>
-                    {workspaceLabel}
-                  </Button>
-                  <Button variant="secondary" href="#intelligence">
-                    Explore the system
-                  </Button>
+              <div className="landing-hero__story">
+                <div className="landing-hero__copy">
+                  <span className="landing-badge">
+                    <ShieldCheck size={14} /> Vertex AI, RAG, knowledge tracing, and
+                    behaviour-aware planning
+                  </span>
+                  <h1>EduFX for A-Level chemistry that knows what comes next.</h1>
+                  <p className="landing-hero__lead">
+                    EduFX turns diagnostic evidence, quiz history, retrieval context,
+                    and focus signals into a practical study plan instead of a static
+                    content list.
+                  </p>
+                  <p className="landing-hero__body">
+                    The platform moves students from placement to recommendation,
+                    grounded explanations, and scheduler decisions powered by DKT,
+                    BKT, Supabase, Vertex AI, and a fine-tuned quiz generation path.
+                  </p>
+                  <div className="landing-hero__actions">
+                    <Button href={workspaceHref} icon={<ArrowRight size={16} />}>
+                      {workspaceLabel}
+                    </Button>
+                    <Button variant="secondary" href="#intelligence">
+                      Explore the system
+                    </Button>
+                  </div>
+                  <div className="landing-hero__mini-stack">
+                    {stackItems.slice(0, 3).map((item) => (
+                      <span key={item}>{item}</span>
+                    ))}
+                  </div>
                 </div>
-                <div className="landing-hero__mini-stack">
-                  {stackItems.slice(0, 3).map((item) => (
-                    <span key={item}>{item}</span>
-                  ))}
+
+                <div className="landing-hero__media">
+                  <div className="landing-hero__image-frame">
+                    <Image
+                      src="/landing/hero-lab-dark.png"
+                      alt="EduFX chemistry workspace illustration"
+                      fill
+                      priority
+                      sizes="(max-width: 900px) 100vw, 50vw"
+                      className="landing-hero__image"
+                    />
+                  </div>
+                  <div className="landing-hero__insight">
+                    <span className="landing-preview__eyebrow">AI-powered study loop</span>
+                    <strong>Recommendations stay in EduFX control.</strong>
+                    <p>
+                      Students are guided through the next best subtopic based on
+                      mastery evidence and timing logic rather than choosing random content.
+                    </p>
+                    <div className="landing-hero__insight-row">
+                      <span>Diagnostic first</span>
+                      <span>Plan second</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="landing-hero__visual">
+              <div className="landing-hero__workspace">
                 <div className="landing-preview">
                   <div className="landing-preview__panel">
                     <span className="landing-preview__eyebrow">Student loop</span>
-                    <strong>Diagnostic to recommendation in one product path</strong>
+                    <strong>From placement to action in one continuous product path</strong>
                     <p>
-                      The public story and the internal architecture stay aligned:
-                      placement, retrieval, generation, behaviour logging, and
-                      next-step scheduling all exist in the working app.
+                      The public surface mirrors the real app flow: diagnostic,
+                      retrieval, generation, behaviour logging, and next-step scheduling.
                     </p>
                   </div>
                   <div className="landing-preview__rail">
@@ -250,7 +283,7 @@ export function LandingPage() {
                     </div>
                     <div>
                       <span>Decision layer</span>
-                      <strong>RAG + generation + KT-driven scheduling</strong>
+                      <strong>RAG, generation, and KT-driven scheduling</strong>
                     </div>
                     <div>
                       <span>Output</span>
