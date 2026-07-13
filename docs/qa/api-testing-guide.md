@@ -206,16 +206,16 @@ curl -s -X POST "$BASE_URL/results/submit-quiz" \
   }'
 ```
 
-**⚠️ Known gap, worth re-testing after the linked fix lands:**
-`GET /results/session/{session_id}/{student_id}` does not currently verify
-that `session_id` actually belongs to `student_id` — any `student_id` value
-in the URL is accepted and just echoed back into the response, while the
-underlying session data returned is whoever really owns that `session_id`.
-Try requesting a session with a `student_id` that isn't its real owner; see
-[bug-report-samples.md](bug-report-samples.md#bug_results_002) for the full
-write-up. There's a `pytest.mark.xfail(strict=True)` regression test for
-this at `server/tests/integration/test_api_negative_cases.py::test_results_session_for_wrong_student_is_rejected`
-— once it starts passing, that's your confirmation the fix landed.
+**Fixed defect, good regression-testing target:** `GET
+/results/session/{session_id}/{student_id}` previously did not verify that
+`session_id` actually belonged to `student_id` — see
+[BUG_RESULTS_002](bug-report-samples.md#bug_results_002) for the full
+write-up. It's fixed now (`ResultsService.get_session_results()` returns a
+`404` on mismatch), with a regression test at
+`server/tests/integration/test_api_negative_cases.py::test_results_session_for_wrong_student_is_rejected`.
+Worth re-testing by hand after any future change to that service, since
+it's exactly the kind of check that's easy to accidentally remove during a
+refactor.
 
 ### Explanation (`/explanation`)
 
@@ -223,8 +223,10 @@ this at `server/tests/integration/test_api_negative_cases.py::test_results_sessi
 |---|---|
 | GET | `/explanation/{session_id}/{student_id}` |
 
-AI-generated per-question explanations for a completed session. Same
-ownership-check gap as `/results/session` is worth probing here too.
+AI-generated per-question explanations for a completed session. Had the
+same ownership-check gap as `/results/session`
+([BUG_RESULTS_002](bug-report-samples.md#bug_results_002)), fixed
+alongside it.
 
 ### Progress (`/progress`)
 
@@ -333,7 +335,7 @@ should always be set in production; if it isn't, this is a real finding).
 | TC_API_QUIZ_02 | `GET /quiz/{id}/{student}` | Second visit, after a submitted attempt | `200`, `stage: "personalized"`, `source: "live-gen"` |
 | TC_API_QUIZ_03 | `GET /quiz/{bad_id}/{student}` | Subtopic id that doesn't exist | `404` |
 | TC_API_RESULTS_01 | `POST /results/submit-quiz` | All correct answers | `200`, `quiz_score: 100`, `level_changed` reflects rule |
-| TC_API_RESULTS_02 | `GET /results/session/{id}/{other_student}` | Real session, wrong `student_id` | **Should** `403`/`404` — currently doesn't, see [BUG_RESULTS_002](bug-report-samples.md#bug_results_002) |
+| TC_API_RESULTS_02 | `GET /results/session/{id}/{other_student}` | Real session, wrong `student_id` | `404` (fixed — see [BUG_RESULTS_002](bug-report-samples.md#bug_results_002)) |
 | TC_API_ADMIN_01 | `GET /admin/students` | No token | `401` |
 | TC_API_ADMIN_02 | `GET /admin/students` | Non-admin token | `403` |
 | TC_API_ADMIN_03 | `PATCH /admin/students/{id}/role` | Non-admin token, `{"role":"admin"}` | `403` (self-promotion blocked) |
@@ -385,9 +387,12 @@ are specific to how this backend is built:
 This list exists so testing effort finds *real, already-suspected* issues
 first rather than starting from zero:
 
-1. **Session/resource ownership isn't consistently enforced** — see
-   `BUG_RESULTS_002` above. Likely affects `/explanation` too; worth
-   confirming which other routes share the pattern.
+1. **Session/resource ownership isn't consistently enforced everywhere** —
+   `/results/session` and `/explanation` had this gap
+   ([BUG_RESULTS_002](bug-report-samples.md#bug_results_002), now fixed).
+   Other routes that take `student_id` as a path param
+   (`/progress`, `/behaviour`, `/settings`, `/teacher`) haven't been
+   individually audited for the same pattern — worth checking each one.
 2. **`/internal/reminders/run` has no auth if `REMINDERS_SHARED_SECRET` is
    unset** — confirm this env var is actually set in the deployed
    environment (it should be a GitHub Actions secret, not something a

@@ -7,7 +7,6 @@ writes right after the golden-path flow is green, because a passing happy
 path says nothing about how the API behaves under bad input.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -91,24 +90,16 @@ def test_quiz_for_unknown_subtopic_returns_404():
 # ── Results — cross-student access ─────────────────────────────────────────
 
 
-@pytest.mark.xfail(
-    reason=(
-        "BUG_RESULTS_002 (known, not yet fixed): GET /results/session/{session_id}/{student_id} "
-        "never checks that the session actually belongs to student_id — ResultsService."
-        "get_session_results() looks the session up by session_id alone. Any student_id in the "
-        "path currently gets the real owner's quiz data back. See docs/qa/bug-report-samples.md."
-    ),
-    strict=True,
-)
-def test_results_session_for_wrong_student_is_rejected():
-    """Session ownership must be enforced: student B must not be able to
-    read student A's quiz session just by guessing the session_id."""
-    student_a = create_student("owner")
+def _complete_a_quiz(suffix: str) -> tuple[int, int, int]:
+    """Creates a student, completes their first quiz, and returns
+    (student_id, subtopic_id, session_id) — shared setup for the
+    session-ownership tests below."""
+    student_id = create_student(suffix)
     questions = client.get("/diagnostic/questions").json()["data"]["questions"]
     client.post(
         "/diagnostic/submit",
         json={
-            "student_id": student_a,
+            "student_id": student_id,
             "answers": [
                 {
                     "question_id": q["id"],
@@ -119,13 +110,13 @@ def test_results_session_for_wrong_student_is_rejected():
             ],
         },
     )
-    plan = client.get(f"/scheduler/todays-plan/{student_a}").json()["data"]["plan"]
+    plan = client.get(f"/scheduler/todays-plan/{student_id}").json()["data"]["plan"]
     subtopic_id = plan[0]["subtopic_id"]
-    quiz = client.get(f"/quiz/{subtopic_id}/{student_a}").json()["data"]
+    quiz = client.get(f"/quiz/{subtopic_id}/{student_id}").json()["data"]
     results = client.post(
         "/results/submit-quiz",
         json={
-            "student_id": student_a,
+            "student_id": student_id,
             "session_id": quiz["session_id"],
             "subtopic_id": subtopic_id,
             "webcam_enabled": False,
@@ -135,11 +126,30 @@ def test_results_session_for_wrong_student_is_rejected():
             ],
         },
     )
-    session_id = results.json()["data"]["session_id"]
+    return student_id, subtopic_id, results.json()["data"]["session_id"]
 
+
+def test_results_session_for_wrong_student_is_rejected():
+    """Session ownership must be enforced: student B must not be able to
+    read student A's quiz session just by guessing the session_id.
+    Regression test for BUG_RESULTS_002 (see docs/qa/bug-report-samples.md),
+    fixed in ResultsService.get_session_results()."""
+    _student_a, _subtopic_id, session_id = _complete_a_quiz("owner")
     student_b = create_student("intruder")
+
     response = client.get(f"/results/session/{session_id}/{student_b}")
-    assert response.status_code >= 400
+    assert response.status_code == 404
+    assert response.json()["success"] is False
+
+
+def test_explanation_session_for_wrong_student_is_rejected():
+    """Same ownership gap as BUG_RESULTS_002, in the sibling explanation
+    endpoint — fixed in ExplanationService.get_explanations()."""
+    _student_a, _subtopic_id, session_id = _complete_a_quiz("owner-2")
+    student_b = create_student("intruder-2")
+
+    response = client.get(f"/explanation/{session_id}/{student_b}")
+    assert response.status_code == 404
     assert response.json()["success"] is False
 
 

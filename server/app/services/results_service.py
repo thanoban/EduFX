@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from app.core.errors import EduFXError
 from app.core.rules import update_level_after_quiz
 from app.models.domain import QuizAttempt
 from app.models.dto import QuestionWithAttemptDTO, QuizQuestionDTO, QuizResultDTO, SessionResultsDTO
@@ -85,6 +86,10 @@ class ResultsService:
 
     def get_session_results(self, session_id: int, student_id: int) -> SessionResultsDTO:
         session = self.repository.get_session(session_id)
+        if session.student_id != student_id:
+            # Same 404 as "session doesn't exist" rather than 403 — don't
+            # confirm to an unauthorized caller that this session_id is real.
+            raise EduFXError("Session not found", status_code=404)
         answers = self.repository.get_question_answers(session_id)
         attempts = [
             QuestionWithAttemptDTO(

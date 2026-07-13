@@ -62,22 +62,22 @@ Use this format to log defects clearly and consistently.
 - Regression test: `server/tests/integration/test_api_negative_cases.py::test_quiz_for_unknown_subtopic_returns_404`
 - Found via: automated negative-path API testing (see [automated-api-testing-guide.md](automated-api-testing-guide.md)) — this is exactly the kind of bug happy-path testing alone never catches
 
-### BUG_RESULTS_002 (real, open — not yet fixed)
+### BUG_RESULTS_002 (real, found and fixed 2026-07-07)
 
-- Title: `GET /results/session/{session_id}/{student_id}` does not verify that the session actually belongs to `student_id`
-- Environment: Backend integration test suite (`pytest`); applies identically to the deployed backend
+- Title: `GET /results/session/{session_id}/{student_id}` (and the sibling `GET /explanation/{session_id}/{student_id}`) did not verify that the session actually belongs to `student_id`
+- Environment: Backend integration test suite (`pytest`); applied identically to the deployed backend before the fix
 - Steps to Reproduce:
   1. Student A completes a quiz, producing a `session_id`
-  2. Student B (any other authenticated-ish caller — this route has no auth dependency at all beyond trusting the path) calls `GET /results/session/{session_id}/{student_b_id}`
-- Expected Result: `403` or `404` — student B should not be able to read student A's quiz results
-- Actual Result: `200`, with student A's real quiz score, per-question attempts, and correct answers returned (the response DTO's `student_id` field is just echoed back from the URL, not derived from or checked against the actual session owner)
+  2. Student B calls `GET /results/session/{session_id}/{student_b_id}`
+- Expected Result: `404` — student B should not be able to read student A's quiz results
+- Actual Result (before fix): `200`, with student A's real quiz score, per-question attempts, and correct answers returned (the response DTO's `student_id` field was just echoed back from the URL, never derived from or checked against the actual session owner)
 - Severity: Major (real cross-student data exposure — quiz scores and answer history)
 - Priority: High
-- Root cause: `ResultsService.get_session_results()` (`server/app/services/results_service.py`) fetches the session by `session_id` alone and never compares `session.student_id` to the `student_id` argument
-- Suggested fix: after `self.repository.get_session(session_id)`, raise `EduFXError("Session not found", status_code=404)` if `session.student_id != student_id`; check whether `explanation_service.py` (`GET /explanation/{session_id}/{student_id}`) has the identical gap
-- Regression test (currently `xfail(strict=True)`, documenting the known bug rather than silently passing): `server/tests/integration/test_api_negative_cases.py::test_results_session_for_wrong_student_is_rejected` — once fixed, the `strict=True` marker will make the suite fail until the `xfail` decorator itself is removed, so the fix can't land "quietly"
-- Found via: automated negative-path API testing while building out this project's QA test suite
-- Status: flagged as a follow-up task (`task_11f21358`), not fixed in this pass — the fix is architecturally broader than a docs/testing pass should silently make, since the whole app currently trusts `student_id` path params on most routes by design (see [api-testing-guide.md §7](api-testing-guide.md#7-known-gaps-worth-testing-for))
+- Root cause: `ResultsService.get_session_results()` and `ExplanationService.get_explanations()` (`server/app/services/results_service.py`, `explanation_service.py`) fetched the session by `session_id` alone and never compared `session.student_id` to the `student_id` argument
+- Fix: both services now raise `EduFXError("Session not found", status_code=404)` immediately after fetching the session if `session.student_id != student_id` — a 404 rather than 403, so an unauthorized caller can't use the response to confirm a `session_id` is real
+- Regression tests: `server/tests/integration/test_api_negative_cases.py::test_results_session_for_wrong_student_is_rejected` and `::test_explanation_session_for_wrong_student_is_rejected`
+- Found via: automated negative-path API testing while building out this project's QA test suite — this was caught, fixed, and verified *before* the QA docs describing it were published, specifically to avoid publishing exploit details for a live unpatched bug in this public repo
+- Still open, tracked separately: most other non-admin routes in this app trust `student_id` path params by design without deriving them from the auth token (see [api-testing-guide.md §7](api-testing-guide.md#7-known-gaps-worth-testing-for)) — this fix covers the two routes found so far, not a systemic redesign of that pattern
 
 ### BUG_AUTH_001
 

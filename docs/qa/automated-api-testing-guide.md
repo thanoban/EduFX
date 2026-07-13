@@ -63,30 +63,26 @@ completing, this file catches it immediately.
 ### `tests/integration/test_api_negative_cases.py` — what should fail
 
 The complementary suite: missing auth, missing required fields, invalid
-resource IDs, cross-role access, and (see below) a documented known bug.
-Written after the happy path was already green — this is the normal QA
-order: prove the golden path works, *then* go looking for what breaks it.
+resource IDs, and cross-role access. Written after the happy path was
+already green — this is the normal QA order: prove the golden path works,
+*then* go looking for what breaks it. Two real bugs were found this way
+while building this file — see
+[bug-report-samples.md](bug-report-samples.md) for `BUG_QUIZ_002` and
+`BUG_RESULTS_002` — both fixed, with the regression tests in this file now
+passing rather than left `xfail`.
 
-Notable pattern used here — **`pytest.mark.xfail` for a known, unfixed
-bug**:
-
-```python
-@pytest.mark.xfail(
-    reason="BUG_RESULTS_002 (known, not yet fixed): ...",
-    strict=True,
-)
-def test_results_session_for_wrong_student_is_rejected():
-    ...
-```
-
-`xfail` documents "this should pass, currently doesn't, here's why" directly
-in the test suite instead of just in a bug tracker — the test still runs
-every time CI runs, so if someone accidentally fixes the underlying bug as a
-side effect of unrelated work, `strict=True` makes the suite **fail** (not
-silently pass) until the `xfail` marker itself is removed, which forces a
-deliberate acknowledgement that the bug is fixed rather than a fix going
-unnoticed. This is a real technique worth using any time you find a bug
-you're choosing not to fix in the same session that found it.
+**A technique worth knowing even though this suite doesn't currently use
+it**: `pytest.mark.xfail(reason=..., strict=True)` documents "this should
+pass, currently doesn't, here's why" directly in the test suite instead of
+only in a bug tracker, when you find a bug you're deliberately *not* fixing
+in the same session that found it. The test still runs every CI run; if
+someone later fixes the underlying bug as a side effect of unrelated work,
+`strict=True` makes the suite **fail** (not silently pass) until the
+`xfail` marker itself is removed — forcing a deliberate acknowledgement of
+the fix rather than it going unnoticed. `BUG_RESULTS_002` was tracked this
+way for a short time in this project's own history before being fixed;
+reach for the same pattern any time you triage a bug as "real, but not
+today's problem."
 
 ### `tests/unit/*.py` — service and repository logic
 
@@ -173,8 +169,8 @@ manual smoke test before a release.
 | `/scheduler/*` | `test_api_flow.py` |
 | `/content/*` | `test_api_flow.py`, `test_api_negative_cases.py` |
 | `/quiz/*` | `test_api_flow.py`, `test_api_negative_cases.py` |
-| `/results/*` | `test_api_flow.py`, `test_api_negative_cases.py` (incl. one `xfail`) |
-| `/explanation/*` | `test_api_flow.py` |
+| `/results/*` | `test_api_flow.py`, `test_api_negative_cases.py` |
+| `/explanation/*` | `test_api_flow.py`, `test_api_negative_cases.py` |
 | `/progress/*` | `test_api_flow.py` |
 | `/behaviour/*` | `test_api_flow.py` |
 | `/admin/*` | `test_api_negative_cases.py` (auth gating only — no positive-path test yet, since the memory backend's "first student is admin" bootstrap rule is order-dependent across a shared test run and isn't a safe thing to assert on; see `AdminRepository`/`DemoDataStore.create_student`) |

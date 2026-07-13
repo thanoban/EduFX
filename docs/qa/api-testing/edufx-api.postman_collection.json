@@ -214,7 +214,7 @@
           }
         },
         {
-          "name": "Get session results as WRONG student (known bug — see BUG_RESULTS_002)",
+          "name": "Get session results as WRONG student (ownership check — regression for BUG_RESULTS_002)",
           "request": {
             "method": "GET",
             "url": {
@@ -228,10 +228,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "// This SHOULD be 403/404 but currently returns 200 — see docs/qa/bug-report-samples.md#bug_results_002.",
-                  "// Left as a manual test (not a pm.test assertion) so this collection doesn't report a false 'failure'",
-                  "// for a known, already-tracked bug. Re-enable the assertion below once the fix lands.",
-                  "// pm.test('status should not be 200', () => pm.expect(pm.response.code).to.not.equal(200));"
+                  "// Fixed 2026-07-07 — see docs/qa/bug-report-samples.md#bug_results_002.",
+                  "pm.test('status is 404 (session ownership enforced)', () => pm.response.to.have.status(404));"
                 ]
               }
             }
