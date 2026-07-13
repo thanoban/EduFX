@@ -80,6 +80,9 @@ one flat list.
 - [Bug report samples](qa/bug-report-samples.md)
 - [QA summary report](qa/qa-summary-report.md)
 - [API testing checklist](qa/api-testing-checklist.md)
+- [API testing guide (manual, endpoint-by-endpoint)](qa/api-testing-guide.md)
+- [Automated API testing guide](qa/automated-api-testing-guide.md)
+- [Postman collection](qa/api-testing/edufx-api.postman_collection.json)
 - [Exploratory charter](qa/manual-testing/exploratory-charter.md)
 
 ## Product and UI

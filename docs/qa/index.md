@@ -12,11 +12,27 @@ portfolio work, team handoff, and viva discussion.
 - [Test cases](test-cases.md)
   Reusable manual test case format with EduFX examples.
 - [Bug report samples](bug-report-samples.md)
-  Clear issue logging format with example defects.
+  Clear issue logging format — including two real defects found while
+  building this project's automated API test suite (one fixed, one open).
 - [QA summary report](qa-summary-report.md)
   End-of-cycle testing summary for stakeholders.
 - [API testing checklist](api-testing-checklist.md)
   Practical assertions for API functional and negative testing.
+
+## API Testing (grounded in the real EduFX endpoints)
+
+- [API testing guide (manual)](api-testing-guide.md)
+  Endpoint-by-endpoint reference for every EduFX route — auth model, real
+  `curl` examples, expected responses, negative cases, and a manual test
+  case matrix. The primary "how do I test this API by hand" document.
+- [Automated API testing guide](automated-api-testing-guide.md)
+  How the existing `pytest` + FastAPI `TestClient` suite is built, how to
+  run it, how to extend it, and the CI workflow that runs it on every push.
+- [Postman collection](api-testing/edufx-api.postman_collection.json) +
+  [local](api-testing/edufx-local.postman_environment.json) /
+  [deployed](api-testing/edufx-deployed.postman_environment.json)
+  environments
+  Importable, ready-to-run manual API testing artifacts.
 
 ## Manual Testing
 
