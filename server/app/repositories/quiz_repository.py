@@ -1,3 +1,4 @@
+from app.core.errors import EduFXError
 from app.core.store import DemoDataStore
 from app.models.domain import Question, SessionSummary, StudentProgress
 
@@ -8,7 +9,10 @@ class QuizRepository:
 
     def get_progress(self, student_id: int, subtopic_id: int) -> StudentProgress:
         self.store.ensure_progress_records(student_id)
-        return self.store.student_progress[(student_id, subtopic_id)]
+        key = (student_id, subtopic_id)
+        if key not in self.store.student_progress:
+            raise EduFXError("Progress not found", status_code=404)
+        return self.store.student_progress[key]
 
     def get_manual_questions(self, subtopic_id: int) -> list[Question]:
         return [

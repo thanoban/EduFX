@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.core.errors import EduFXError
 from app.repositories.rag_repository import RagRepository
 from app.repositories.results_repository import ResultsRepository
 
@@ -20,6 +21,8 @@ class ExplanationService:
 
         attempts = self.repository.get_attempts(session_id)
         session = self.repository.get_session(session_id)
+        if session.student_id != student_id:
+            raise EduFXError("Session not found", status_code=404)
         progress = self.repository.get_progress(student_id, session.subtopic_id)
         explanations: list[dict[str, str | int]] = []
 

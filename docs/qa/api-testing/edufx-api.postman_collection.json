@@ -1,0 +1,415 @@
+{
+  "info": {
+    "name": "EduFX API",
+    "description": "Manual API testing collection for the EduFX backend. See docs/qa/api-testing-guide.md for the full written guide this collection accompanies. Uses the demo:<name>:<email> bearer-token trick (server/app/core/auth.py) — no real Google/Supabase OAuth needed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8001" },
+    { "key": "demo_email", "value": "qa-tester-001@edufx.demo" },
+    { "key": "demo_token", "value": "demo:QA Tester:{{demo_email}}" },
+    { "key": "student_id", "value": "" },
+    { "key": "subtopic_id", "value": "1" },
+    { "key": "session_id", "value": "" },
+    { "key": "admin_email", "value": "your-real-admin-email@example.com" },
+    { "key": "admin_token", "value": "demo:Real Admin:{{admin_email}}" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login / create student (demo token)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{demo_token}}" }],
+            "url": { "raw": "{{base_url}}/auth/google", "host": ["{{base_url}}"], "path": ["auth", "google"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('success true', () => pm.expect(body.success).to.be.true);",
+                  "pm.collectionVariables.set('student_id', body.data.student_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login without Authorization header (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/auth/google", "host": ["{{base_url}}"], "path": ["auth", "google"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status is 401', () => pm.response.to.have.status(401));"] }
+            }
+          ]
+        },
+        {
+          "name": "Check diagnostic status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Student-Id", "value": "{{student_id}}" }],
+            "url": { "raw": "{{base_url}}/auth/check", "host": ["{{base_url}}"], "path": ["auth", "check"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Diagnostic",
+      "item": [
+        {
+          "name": "Get diagnostic questions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/diagnostic/questions", "host": ["{{base_url}}"], "path": ["diagnostic", "questions"] }
+          }
+        },
+        {
+          "name": "Submit diagnostic (incomplete — expect 422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": {{student_id}},\n  \"answers\": [\n    { \"question_id\": 1, \"subtopic_id\": 1, \"student_answer\": \"A\" }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/diagnostic/submit", "host": ["{{base_url}}"], "path": ["diagnostic", "submit"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status is 422 (needs all 40 answers)', () => pm.response.to.have.status(422));"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scheduler",
+      "item": [
+        {
+          "name": "Today's plan",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/scheduler/todays-plan/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["scheduler", "todays-plan", "{{student_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Content",
+      "item": [
+        {
+          "name": "List subtopics",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/content/subtopics", "host": ["{{base_url}}"], "path": ["content", "subtopics"] }
+          }
+        },
+        {
+          "name": "Get content for unknown subtopic (expect 403 — adaptive gate, not 404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/content/9999999/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["content", "9999999", "{{student_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 403 (adaptive gate runs before existence check)', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Quiz",
+      "item": [
+        {
+          "name": "Get quiz for subtopic",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quiz/{{subtopic_id}}/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["quiz", "{{subtopic_id}}", "{{student_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('session_id', body.data.session_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get quiz for unknown subtopic (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/quiz/9999999/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["quiz", "9999999", "{{student_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status is 404', () => pm.response.to.have.status(404));"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Results",
+      "item": [
+        {
+          "name": "Submit quiz",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": {{student_id}},\n  \"session_id\": {{session_id}},\n  \"subtopic_id\": {{subtopic_id}},\n  \"webcam_enabled\": false,\n  \"answers\": []\n}"
+            },
+            "url": { "raw": "{{base_url}}/results/submit-quiz", "host": ["{{base_url}}"], "path": ["results", "submit-quiz"] }
+          }
+        },
+        {
+          "name": "Get session results",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/results/session/{{session_id}}/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["results", "session", "{{session_id}}", "{{student_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get session results as WRONG student (ownership check — regression for BUG_RESULTS_002)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/results/session/{{session_id}}/999999",
+              "host": ["{{base_url}}"],
+              "path": ["results", "session", "{{session_id}}", "999999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Fixed 2026-07-07 — see docs/qa/bug-report-samples.md#bug_results_002.",
+                  "pm.test('status is 404 (session ownership enforced)', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Explanation",
+      "item": [
+        {
+          "name": "Get session explanations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/explanation/{{session_id}}/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["explanation", "{{session_id}}", "{{student_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Progress",
+      "item": [
+        {
+          "name": "All progress for student",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/progress/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["progress", "{{student_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Behaviour",
+      "item": [
+        {
+          "name": "Save summary",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_id\": {{student_id}},\n  \"session_id\": {{session_id}},\n  \"subtopic_id\": {{subtopic_id}},\n  \"webcam_enabled\": true,\n  \"phone_percent\": 0,\n  \"drowsy_percent\": 0,\n  \"away_percent\": 0,\n  \"talking_percent\": 0,\n  \"absent_percent\": 0,\n  \"focus_score\": 92\n}"
+            },
+            "url": { "raw": "{{base_url}}/behaviour/save-summary", "host": ["{{base_url}}"], "path": ["behaviour", "save-summary"] }
+          }
+        },
+        {
+          "name": "Behaviour history for student",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/behaviour/student/{{student_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["behaviour", "student", "{{student_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "Update availability",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"free_days\": [1, 3, 5],\n  \"session_length\": \"medium\",\n  \"day_session_length\": {},\n  \"email_reminders_enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/settings/{{student_id}}/availability",
+              "host": ["{{base_url}}"],
+              "path": ["settings", "{{student_id}}", "availability"]
+            }
+          }
+        },
+        {
+          "name": "Next-free check-in with invalid enum (expect 422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"choice\": \"next week\" }" },
+            "url": {
+              "raw": "{{base_url}}/settings/{{student_id}}/next-free",
+              "host": ["{{base_url}}"],
+              "path": ["settings", "{{student_id}}", "next-free"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status is 422', () => pm.response.to.have.status(422));"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Teacher",
+      "item": [
+        {
+          "name": "Chat",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"message\": \"Why is atomic radius smaller across a period?\", \"history\": [] }" },
+            "url": {
+              "raw": "{{base_url}}/teacher/{{student_id}}/chat",
+              "host": ["{{base_url}}"],
+              "path": ["teacher", "{{student_id}}", "chat"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List students — no token (expect 401)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/admin/students", "host": ["{{base_url}}"], "path": ["admin", "students"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status is 401', () => pm.response.to.have.status(401));"] }
+            }
+          ]
+        },
+        {
+          "name": "List students — non-admin token (expect 403)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{demo_token}}" }],
+            "url": { "raw": "{{base_url}}/admin/students", "host": ["{{base_url}}"], "path": ["admin", "students"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status is 403', () => pm.response.to.have.status(403));"] }
+            }
+          ]
+        },
+        {
+          "name": "List students — admin token",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/admin/students", "host": ["{{base_url}}"], "path": ["admin", "students"] }
+          }
+        },
+        {
+          "name": "Set student role — invalid role value (expect 422 for an admin caller)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"role\": \"superuser\" }" },
+            "url": {
+              "raw": "{{base_url}}/admin/students/{{student_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "students", "{{student_id}}", "role"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

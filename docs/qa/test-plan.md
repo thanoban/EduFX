@@ -7,10 +7,15 @@ application under test.
 
 ## Project Information
 
-- Project name: `EduFX` or your QA mini-project name
-- Application type: Web application / API / hybrid system
-- Test level: Smoke, functional, exploratory, regression, API
-- Build or environment: Local / staging / demo / production-like
+- Project name: `EduFX` — adaptive A-Level Chemistry study platform
+- Application type: Hybrid — Next.js 15 frontend + FastAPI backend, deployed
+  on GCP Cloud Run, backed by Supabase Postgres
+- Test level: Smoke, functional, exploratory, regression, API (both manual
+  and automated — see [api-testing-guide.md](api-testing-guide.md) and
+  [automated-api-testing-guide.md](automated-api-testing-guide.md))
+- Build or environment: Local (`memory` or `supabase` data backend) and the
+  deployed Cloud Run backend/frontend — see
+  [environment guidance](api-testing-guide.md#6-environment-guidance-what-is-and-isnt-safe-to-test-against)
 
 ## Scope
 
