@@ -147,6 +147,7 @@ jobs:
             --image "$ACR_SERVER/edufx-backend:${{ github.sha }}" \
             --min-replicas 0 \
             --max-replicas 3 \
+            --remove-env-vars GEMINI_API_KEY GOOGLE_CLOUD_PROJECT GOOGLE_CLOUD_LOCATION GOOGLE_APPLICATION_CREDENTIALS \
             --set-env-vars "${ENV_VARS[@]}"
 
           FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
