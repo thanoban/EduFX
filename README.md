@@ -2,7 +2,8 @@
 
 EduFX is an adaptive A-Level Chemistry learning platform focused on the
 S-block syllabus. It combines a Next.js frontend, a layered FastAPI backend,
-Supabase persistence, Vertex AI generation, knowledge-tracing recommenders,
+Supabase persistence, configurable Groq/Gemini/Vertex generation,
+knowledge-tracing recommenders,
 and behaviour-aware study signals into one full-stack learning system.
 
 The project is built to demonstrate more than a single model call. EduFX
@@ -135,8 +136,8 @@ Key backend areas:
 - Supabase PostgreSQL
 - pgvector for retrieval
 - Supabase Auth for Google OAuth and email/password
-- Vertex AI Gemini for generation
-- Vertex embeddings for RAG
+- Groq-first, Gemini, or Vertex AI generation with automatic fallback
+- Vertex or Gemini API embeddings for RAG
 - optional QLoRA fine-tuned endpoint for quiz generation
 
 ## Repository structure
@@ -173,11 +174,11 @@ EduFX_MVC/
 | Frontend | Next.js 15, React 19, TypeScript |
 | Backend | FastAPI, Python 3.12, Pydantic v2 |
 | Database | Supabase PostgreSQL |
-| Retrieval | pgvector + Vertex embeddings |
-| AI generation | Gemini 2.5 Flash, optional fine-tuned endpoint |
+| Retrieval | pgvector + Vertex/Gemini embeddings |
+| AI generation | Groq, Gemini/Vertex fallback, optional fine-tuned endpoint |
 | Knowledge tracing | BKT, DKT |
 | Browser ML | MediaPipe, TensorFlow Lite |
-| Deployment | GCP Cloud Run, Artifact Registry, GitHub Actions |
+| Deployment | GCP Cloud Run or Azure Container Apps, GitHub Actions |
 | Tests | Pytest, Vitest |
 
 ## Local development
@@ -219,6 +220,11 @@ Important backend settings include:
 - `GOOGLE_CLOUD_PROJECT`
 - `GOOGLE_CLOUD_LOCATION`
 - `VERTEX_MODEL`
+- `VERTEX_AI_ENABLED`
+- `AI_PROVIDER_ORDER`
+- `GROQ_API_KEY`
+- `GROQ_MODEL`
+- `GEMINI_API_KEY` (optional text and RAG embedding fallback)
 - `EMBEDDING_MODEL`
 - `FINETUNED_MODEL_URL` (optional)
 
@@ -282,8 +288,9 @@ Recommended entry points:
 
 ## Deployment
 
-EduFX is set up for GitHub Actions based deployment to Google Cloud Run with
-separate frontend and backend services.
+EduFX supports GitHub Actions deployment to Google Cloud Run and a manually
+triggered Azure Container Apps fallback, with separate frontend and backend
+services.
 
 The deployment path includes:
 
@@ -296,6 +303,7 @@ The deployment path includes:
 See:
 
 - [`docs/deployment/deployment-plan.md`](docs/deployment/deployment-plan.md)
+- [`docs/deployment/groq-azure-fallback.md`](docs/deployment/groq-azure-fallback.md)
 - [`.github/workflows/`](.github/workflows)
 
 ## Notes

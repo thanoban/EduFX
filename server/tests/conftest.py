@@ -13,6 +13,11 @@ os.environ["SUPABASE_URL"] = ""
 os.environ["SUPABASE_KEY"] = ""
 os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
 os.environ["GOOGLE_CLOUD_PROJECT"] = ""
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["GROQ_API_KEY"] = ""
+os.environ["FINETUNED_MODEL_URL"] = ""
+os.environ["AI_PROVIDER_ORDER"] = "vertex,gemini,groq"
+os.environ["VERTEX_AI_ENABLED"] = "true"
 
 from app.main import app
 

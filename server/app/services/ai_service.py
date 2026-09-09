@@ -1,21 +1,25 @@
 """AI provider helpers for quiz generation and explanation.
 
-Vertex AI billing is confirmed live (verified with a real call — see project
-notes), so it's the primary provider for every general text-generation path.
-Providers are tried in order, and every candidate is wrapped so an unavailable
-one (unset key, unreachable endpoint, transient Vertex outage) never blocks the
-next — Gemini API key and Groq remain as free, no-billing-dependency fallbacks:
+Text providers are tried in the configured ``AI_PROVIDER_ORDER``. Production
+can therefore prefer Groq and disable Vertex without changing application code.
+Every candidate is isolated so an unset key, rate limit, or provider outage
+never blocks the next configured provider:
 
     quiz generation: self-hosted fine-tuned endpoint (the actual coursework
                       fine-tune, e.g. hosted on Modal's free GPU credit tier)
-                      -> Vertex -> Gemini API key -> Groq
-    explanations:     Vertex -> Gemini API key -> Groq
-    generate_text:    Vertex -> Gemini API key -> Groq
+                      -> configured provider order
+    explanations:     configured provider order
+    generate_text:    configured provider order
 """
 from __future__ import annotations
 
 import json
+import logging
+from collections.abc import Callable, Iterator
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 def _strip_fences(text: str) -> str:
@@ -51,7 +55,7 @@ def _call_vertex(model_name: str, prompt: str, temperature: float, max_tokens: i
     from app.core.config import get_settings
 
     settings = get_settings()
-    if not settings.google_cloud_project:
+    if not settings.vertex_ai_enabled or not settings.google_cloud_project:
         return ""
 
     client = genai.Client(
@@ -99,6 +103,7 @@ def _call_openai_compatible(
     temperature: float,
     max_tokens: int,
     max_output_tokens_cap: int | None = None,
+    timeout_seconds: float = 60.0,
 ) -> str:
     """Call any OpenAI-chat-compatible `/v1/chat/completions` endpoint.
 
@@ -124,7 +129,7 @@ def _call_openai_compatible(
                 "temperature": temperature,
                 "max_tokens": output_budget,
             },
-            timeout=60,
+            timeout=timeout_seconds,
         )
         if response.status_code == 400 and "context length" in response.text.lower():
             # Prompt + requested output exceeded the window: shrink the output
@@ -185,40 +190,72 @@ def _call_groq(prompt: str, temperature: float, max_tokens: int) -> str:
         return ""
 
     return _call_openai_compatible(
-        "https://api.groq.com/openai/v1",
+        settings.groq_base_url,
         api_key=settings.groq_api_key,
         model=settings.groq_model,
         prompt=prompt,
         temperature=temperature,
         max_tokens=max_tokens,
+        timeout_seconds=settings.groq_timeout_seconds,
     )
+
+
+def _provider_order() -> tuple[str, ...]:
+    """Return a validated, de-duplicated text-provider order."""
+    from app.core.config import get_settings
+
+    supported = {"groq", "gemini", "vertex"}
+    providers: list[str] = []
+    for raw_name in get_settings().ai_provider_order.split(","):
+        name = raw_name.strip().lower()
+        if name in supported and name not in providers:
+            providers.append(name)
+    return tuple(providers) or ("vertex", "gemini", "groq")
+
+
+def _text_candidates(
+    vertex_model: str,
+    prompt: str,
+    temperature: float,
+    max_tokens: int,
+) -> Iterator[tuple[str, Callable[[], str]]]:
+    calls = {
+        "groq": lambda: _call_groq(prompt, temperature, max_tokens),
+        "gemini": lambda: _call_gemini_api_key(vertex_model, prompt, temperature, max_tokens),
+        "vertex": lambda: _call_vertex(vertex_model, prompt, temperature, max_tokens),
+    }
+    for provider in _provider_order():
+        yield provider, calls[provider]
+
+
+def _first_text_response(
+    vertex_model: str,
+    prompt: str,
+    temperature: float,
+    max_tokens: int,
+) -> str:
+    for provider, call in _text_candidates(vertex_model, prompt, temperature, max_tokens):
+        try:
+            text = call()
+        except Exception as exc:
+            logger.warning("AI provider %s failed: %s", provider, exc)
+            continue
+        if text and text.strip():
+            return text.strip()
+    return ""
 
 
 def generate_text(prompt: str, *, temperature: float = 0.3, max_tokens: int = 1024) -> str:
     """Generic single-shot text generation over the shared provider fallback.
 
-    Used by the LangGraph agent nodes (AI teacher, quiz self-check). Tries
-    Vertex first (billing confirmed working), then the free Gemini API key,
-    then Groq, and skips the fine-tuned box (that adapter was trained only for
-    quiz generation, see docs/finetune-method.md). Returns "" if every provider
-    is unavailable, so callers degrade gracefully rather than raising.
+    Used by the LangGraph agent nodes (AI teacher, quiz self-check). The
+    fine-tuned box is skipped because its adapter was trained only for quiz
+    generation. Returns "" if every configured provider is unavailable.
     """
     from app.core.config import get_settings
 
     model = get_settings().vertex_model
-    candidates = (
-        lambda: _call_vertex(model, prompt, temperature, max_tokens),
-        lambda: _call_gemini_api_key(model, prompt, temperature, max_tokens),
-        lambda: _call_groq(prompt, temperature, max_tokens),
-    )
-    for call in candidates:
-        try:
-            text = call()
-        except Exception:
-            continue
-        if text and text.strip():
-            return text.strip()
-    return ""
+    return _first_text_response(model, prompt, temperature, max_tokens)
 
 
 def generate_quiz_questions(
@@ -300,21 +337,18 @@ def _quiz_raw_candidates(vertex_model: str, prompt: str):
 
     The self-hosted fine-tuned endpoint (the actual coursework fine-tune) is
     tried first when configured — that's the graded artifact, not a provider
-    fallback. After that, Vertex is primary (billing confirmed working), then
-    the free Gemini API key, then Groq. Each candidate is independently
-    wrapped so a failure (unset config, unreachable endpoint, transient
-    outage) never blocks the next one.
+    fallback. After that, providers follow ``AI_PROVIDER_ORDER``. Each
+    candidate is independently wrapped so a failure never blocks the next.
     """
-    candidates = (
-        lambda: _call_finetuned(prompt, temperature=0.4, max_tokens=4096),
-        lambda: _call_vertex(vertex_model, prompt, temperature=0.4, max_tokens=4096),
-        lambda: _call_gemini_api_key(vertex_model, prompt, temperature=0.4, max_tokens=4096),
-        lambda: _call_groq(prompt, temperature=0.4, max_tokens=4096),
+    candidates: tuple[tuple[str, Callable[[], str]], ...] = (
+        ("finetuned", lambda: _call_finetuned(prompt, temperature=0.4, max_tokens=4096)),
+        *_text_candidates(vertex_model, prompt, temperature=0.4, max_tokens=4096),
     )
-    for call in candidates:
+    for provider, call in candidates:
         try:
             yield call()
-        except Exception:
+        except Exception as exc:
+            logger.warning("AI provider %s failed: %s", provider, exc)
             continue
 
 
@@ -349,18 +383,6 @@ def generate_explanation(
     )
 
     # The fine-tune was only trained for quiz generation (see
-    # docs/finetune-method.md), so explanations skip that rung. Vertex first
-    # (billing confirmed working), then the free fallbacks.
-    candidates = (
-        lambda: _call_vertex(vertex_model, prompt, temperature=0.2, max_tokens=180),
-        lambda: _call_gemini_api_key(vertex_model, prompt, temperature=0.2, max_tokens=180),
-        lambda: _call_groq(prompt, temperature=0.2, max_tokens=180),
-    )
-    for call in candidates:
-        try:
-            text = call()
-        except Exception:
-            continue
-        if text and text.strip():
-            return text.strip()
-    return None
+    # docs/finetune-method.md), so explanations skip that rung.
+    text = _first_text_response(vertex_model, prompt, temperature=0.2, max_tokens=180)
+    return text or None

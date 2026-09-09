@@ -1,5 +1,9 @@
 # EduFX Deployment Plan
 
+> GCP is no longer the only production path. For Groq-first generation with
+> Vertex disabled and a manual Azure Container Apps fallback, follow
+> [Groq AI and Azure deployment fallback](groq-azure-fallback.md).
+
 Complete plan to deploy EduFX to Google Cloud Platform via GitHub Actions, plus serving the fine-tuned Qwen model.
 
 GCP project: `responsive-sun-491204-e0` · Region: `asia-northeast1` (Tokyo, closest to Supabase `ap-northeast-1`).

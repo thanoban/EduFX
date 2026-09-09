@@ -1,0 +1,219 @@
+name: Deploy Azure fallback
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-azure-production
+  cancel-in-progress: false
+
+env:
+  AZURE_CORE_OUTPUT: none
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: azure-production
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate required configuration
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ACR_NAME: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+          CONTAINERAPPS_ENV: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+          BACKEND_APP: ${{ vars.AZURE_BACKEND_APP }}
+          FRONTEND_APP: ${{ vars.AZURE_FRONTEND_APP }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REMINDERS_SHARED_SECRET: ${{ secrets.REMINDERS_SHARED_SECRET }}
+        run: |
+          for name in RESOURCE_GROUP ACR_NAME CONTAINERAPPS_ENV BACKEND_APP FRONTEND_APP SUPABASE_URL SUPABASE_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_JWT_SECRET SUPABASE_ANON_KEY REMINDERS_SHARED_SECRET; do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing Azure deployment setting::$name is required"
+              exit 1
+            fi
+          done
+          if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error title=Missing AI provider::Set GROQ_API_KEY or GEMINI_API_KEY for Azure production"
+            exit 1
+          fi
+
+      - name: Azure login with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Container Apps CLI extension
+        run: az extension add --name containerapp --upgrade --yes
+
+      - name: Build backend image in ACR
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --image "edufx-backend:${{ github.sha }}" \
+            --file Dockerfile \
+            server
+
+      - name: Ensure backend Container App
+        id: backend
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ACR_NAME: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+          CONTAINERAPPS_ENV: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+          APP_NAME: ${{ vars.AZURE_BACKEND_APP }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FINETUNED_MODEL_URL: ${{ secrets.FINETUNED_MODEL_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          ACR_SERVER=$(az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" --query loginServer -o tsv)
+          ACR_ID=$(az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
+
+          if ! az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+            az containerapp create \
+              --name "$APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$CONTAINERAPPS_ENV" \
+              --image mcr.microsoft.com/k8se/quickstart:latest \
+              --ingress external \
+              --target-port 8080 \
+              --min-replicas 0 \
+              --max-replicas 3
+          fi
+
+          PRINCIPAL_ID=$(az containerapp identity assign --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --system-assigned --query principalId -o tsv)
+          az role assignment create --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role AcrPull --scope "$ACR_ID" >/dev/null 2>&1 || true
+          az containerapp registry set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --server "$ACR_SERVER" --identity system
+
+          az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets \
+            supabase-url="${{ secrets.SUPABASE_URL }}" \
+            supabase-key="${{ secrets.SUPABASE_KEY }}" \
+            supabase-service-role-key="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            supabase-jwt-secret="${{ secrets.SUPABASE_JWT_SECRET }}" \
+            reminders-shared-secret="${{ secrets.REMINDERS_SHARED_SECRET }}"
+
+          ENV_VARS=(
+            ENVIRONMENT=production
+            DATA_BACKEND=supabase
+            DEMO_MODE=false
+            SUPABASE_URL=secretref:supabase-url
+            SUPABASE_KEY=secretref:supabase-key
+            SUPABASE_SERVICE_ROLE_KEY=secretref:supabase-service-role-key
+            SUPABASE_JWT_SECRET=secretref:supabase-jwt-secret
+            GROQ_MODEL="${{ vars.GROQ_MODEL || 'llama-3.3-70b-versatile' }}"
+            GROQ_BASE_URL=https://api.groq.com/openai/v1
+            GROQ_TIMEOUT_SECONDS=45
+            AI_PROVIDER_ORDER=groq,gemini,vertex
+            VERTEX_AI_ENABLED=false
+            EMBEDDING_MODEL=gemini-embedding-001
+            EMBEDDING_DIMENSIONS=384
+            FINETUNED_MODEL_NAME=edufx
+            REMINDERS_SHARED_SECRET=secretref:reminders-shared-secret
+          )
+
+          if [ -n "$GEMINI_API_KEY" ]; then
+            az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets gemini-api-key="$GEMINI_API_KEY"
+            ENV_VARS+=(GEMINI_API_KEY=secretref:gemini-api-key)
+          fi
+          if [ -n "$GROQ_API_KEY" ]; then
+            az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets groq-api-key="$GROQ_API_KEY"
+            ENV_VARS+=(GROQ_API_KEY=secretref:groq-api-key)
+          fi
+          if [ -n "$FINETUNED_MODEL_URL" ]; then
+            az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets finetuned-model-url="$FINETUNED_MODEL_URL"
+            ENV_VARS+=(FINETUNED_MODEL_URL=secretref:finetuned-model-url)
+          fi
+          if [ -n "$RESEND_API_KEY" ]; then
+            az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets resend-api-key="$RESEND_API_KEY"
+            ENV_VARS+=(RESEND_API_KEY=secretref:resend-api-key)
+          fi
+
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_SERVER/edufx-backend:${{ github.sha }}" \
+            --min-replicas 0 \
+            --max-replicas 3 \
+            --set-env-vars "${ENV_VARS[@]}"
+
+          FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=https://$FQDN" >> "$GITHUB_OUTPUT"
+
+      - name: Build frontend image in ACR
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --image "edufx-frontend:${{ github.sha }}" \
+            --file client/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=/api/backend \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}" \
+            --build-arg NEXT_PUBLIC_SKIP_LOGIN=false \
+            --build-arg BACKEND_ORIGIN="${{ steps.backend.outputs.url }}" \
+            .
+
+      - name: Ensure frontend Container App
+        id: frontend
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ACR_NAME: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+          CONTAINERAPPS_ENV: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+          APP_NAME: ${{ vars.AZURE_FRONTEND_APP }}
+        run: |
+          ACR_SERVER=$(az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" --query loginServer -o tsv)
+          ACR_ID=$(az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
+
+          if ! az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" >/dev/null 2>&1; then
+            az containerapp create \
+              --name "$APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$CONTAINERAPPS_ENV" \
+              --image mcr.microsoft.com/k8se/quickstart:latest \
+              --ingress external \
+              --target-port 3000 \
+              --min-replicas 0 \
+              --max-replicas 3
+          fi
+
+          PRINCIPAL_ID=$(az containerapp identity assign --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --system-assigned --query principalId -o tsv)
+          az role assignment create --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role AcrPull --scope "$ACR_ID" >/dev/null 2>&1 || true
+          az containerapp registry set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --server "$ACR_SERVER" --identity system
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_SERVER/edufx-frontend:${{ github.sha }}" \
+            --set-env-vars BACKEND_ORIGIN="${{ steps.backend.outputs.url }}"
+
+          FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=https://$FQDN" >> "$GITHUB_OUTPUT"
+
+      - name: Set backend frontend origin
+        run: |
+          az containerapp update \
+            --name "${{ vars.AZURE_BACKEND_APP }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --set-env-vars FRONTEND_ORIGIN="${{ steps.frontend.outputs.url }}"
+
+      - name: Smoke test Azure deployment
+        env:
+          BACKEND_URL: ${{ steps.backend.outputs.url }}
+          FRONTEND_URL: ${{ steps.frontend.outputs.url }}
+        run: |
+          curl --fail --retry 8 --retry-delay 10 --retry-all-errors "$BACKEND_URL/"
+          curl --fail --retry 8 --retry-delay 10 --retry-all-errors "$BACKEND_URL/health/providers"
+          curl --fail --retry 8 --retry-delay 10 --retry-all-errors "$FRONTEND_URL/" >/dev/null
+          echo "Backend:  $BACKEND_URL"
+          echo "Frontend: $FRONTEND_URL"

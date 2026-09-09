@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     groq_api_key: str | None = None
     groq_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_timeout_seconds: float = 45.0
+    ai_provider_order: str = "vertex,gemini,groq"
+    vertex_ai_enabled: bool = True
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")
