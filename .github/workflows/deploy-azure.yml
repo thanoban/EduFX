@@ -35,7 +35,6 @@ jobs:
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           REMINDERS_SHARED_SECRET: ${{ secrets.REMINDERS_SHARED_SECRET }}
         run: |
           for name in RESOURCE_GROUP ACR_NAME CONTAINERAPPS_ENV BACKEND_APP FRONTEND_APP SUPABASE_URL SUPABASE_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_JWT_SECRET SUPABASE_ANON_KEY REMINDERS_SHARED_SECRET; do
@@ -44,8 +43,8 @@ jobs:
               exit 1
             fi
           done
-          if [ -z "$GROQ_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
-            echo "::error title=Missing AI provider::Set GROQ_API_KEY or GEMINI_API_KEY for Azure production"
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "::error title=Missing Groq provider::Set GROQ_API_KEY for Azure production"
             exit 1
           fi
 
@@ -81,7 +80,6 @@ jobs:
           CONTAINERAPPS_ENV: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
           APP_NAME: ${{ vars.AZURE_BACKEND_APP }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FINETUNED_MODEL_URL: ${{ secrets.FINETUNED_MODEL_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
@@ -122,7 +120,7 @@ jobs:
             GROQ_MODEL="${{ vars.GROQ_MODEL || 'llama-3.3-70b-versatile' }}"
             GROQ_BASE_URL=https://api.groq.com/openai/v1
             GROQ_TIMEOUT_SECONDS=45
-            AI_PROVIDER_ORDER=groq,gemini,vertex
+            AI_PROVIDER_ORDER=groq
             VERTEX_AI_ENABLED=false
             EMBEDDING_MODEL=gemini-embedding-001
             EMBEDDING_DIMENSIONS=384
@@ -130,10 +128,6 @@ jobs:
             REMINDERS_SHARED_SECRET=secretref:reminders-shared-secret
           )
 
-          if [ -n "$GEMINI_API_KEY" ]; then
-            az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets gemini-api-key="$GEMINI_API_KEY"
-            ENV_VARS+=(GEMINI_API_KEY=secretref:gemini-api-key)
-          fi
           if [ -n "$GROQ_API_KEY" ]; then
             az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --secrets groq-api-key="$GROQ_API_KEY"
             ENV_VARS+=(GROQ_API_KEY=secretref:groq-api-key)

@@ -12,15 +12,13 @@ EduFX now uses a configurable text-provider chain:
 ```text
 Fine-tuned quiz endpoint (quiz generation only, when configured)
   -> Groq
-  -> Gemini API key
-  -> Vertex AI
   -> deterministic application fallback
 ```
 
 The order after the fine-tuned endpoint comes from `AI_PROVIDER_ORDER`. The
-Azure workflow sets `groq,gemini,vertex` and sets `VERTEX_AI_ENABLED=false`, so
-no Vertex request is attempted. Provider errors and rate limits are logged and
-the next configured provider is tried.
+Azure workflow sets `groq` and `VERTEX_AI_ENABLED=false`, so no Vertex or
+Gemini request is attempted in Azure production. If Groq is unavailable,
+route-specific deterministic fallbacks keep the API available where supported.
 
 The relevant implementation files are:
 
@@ -29,24 +27,25 @@ The relevant implementation files are:
 - `server/app/core/clients.py`: enables AI features in Groq-only deployments
 - `server/app/rag/embedder.py`: independent embedding-provider selection
 - `.github/workflows/deploy-azure.yml`: Azure deployment
-- `.github/workflows/deploy.yml`: GCP deployment with Groq-first generation
+- `.github/workflows/deploy.yml`: manual legacy GCP deployment
 
 ## Important: Generation and Embeddings Are Different
 
 Groq is used for text generation, including the AI teacher, explanations, and
-the general quiz fallback. The current Groq integration does not create the
-`gemini-embedding-001` vectors used by EduFX RAG.
+the general quiz fallback. Groq does not create the `gemini-embedding-001`
+vectors originally used by EduFX RAG.
 
-For Azure production, add an optional `GEMINI_API_KEY`. EduFX then uses the
-Gemini API for embeddings without using the blocked Vertex project. This keeps
-new query vectors compatible with the chemistry chunks already stored in
-Supabase.
+For Azure production, EduFX does not require a Google embedding key. The
+retriever still reads stored chemistry chunks from Supabase; when no embedding
+provider is configured, it ranks those chunks with lexical term overlap. This
+keeps RAG-backed explanations usable without creating another paid Azure OpenAI
+or Google AI resource.
 
 | Configuration | Text generation | RAG embeddings |
 |---|---|---|
-| Groq only | Works | Unavailable; retrieval returns no new query vector |
-| Groq + Gemini API key | Groq first | Gemini API key |
-| Vertex enabled | Configurable | Vertex first, Gemini API key fallback |
+| Azure production | Groq | Lexical fallback over Supabase chunks |
+| Groq + optional Gemini API key | Groq | Gemini vector query |
+| Vertex enabled manually | Configurable | Vertex first, Gemini API-key fallback |
 
 Do not switch to another embedding model unless all stored content chunks are
 re-embedded with the same model and dimensions.
@@ -64,10 +63,9 @@ The default model is `llama-3.3-70b-versatile`. It can be changed without a
 code edit by setting the GitHub variable `GROQ_MODEL` to a currently supported
 production model.
 
-Azure deployment can run before the Groq key is added if `GEMINI_API_KEY` is
-already configured. In that temporary mode the provider order remains
-`groq,gemini,vertex`, Groq is skipped because no key exists, Gemini handles text
-generation and embeddings, and Vertex stays disabled.
+Azure production requires `GROQ_API_KEY`. Keep it in GitHub Environment secrets
+or Azure Container App secrets only; never commit it, expose it to the browser,
+or place it in generated reports.
 
 ## 2. Local Groq-First Configuration
 
@@ -81,12 +79,12 @@ GROQ_API_KEY=gsk_replace_with_your_key
 GROQ_MODEL=llama-3.3-70b-versatile
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_TIMEOUT_SECONDS=45
-AI_PROVIDER_ORDER=groq,gemini,vertex
+AI_PROVIDER_ORDER=groq
 
 VERTEX_AI_ENABLED=false
 GOOGLE_CLOUD_PROJECT=
 
-# Optional but recommended to preserve RAG embeddings without Vertex.
+# Optional only. Leave empty for Google-free Azure production.
 GEMINI_API_KEY=
 EMBEDDING_MODEL=gemini-embedding-001
 EMBEDDING_DIMENSIONS=384
@@ -104,16 +102,16 @@ Expected Groq-first result:
 
 ```json
 {
-  "text_provider_order": ["groq", "gemini", "vertex"],
+  "text_provider_order": ["groq"],
   "groq_configured": true,
   "gemini_configured": false,
   "vertex_enabled": false,
   "finetuned_endpoint_configured": false,
-  "embedding_provider": "none"
+  "embedding_provider": "lexical"
 }
 ```
 
-`embedding_provider` becomes `gemini` when `GEMINI_API_KEY` is configured.
+`embedding_provider` becomes `gemini` only if `GEMINI_API_KEY` is configured.
 No endpoint response contains secret values.
 
 ## 3. Azure Resources
@@ -228,16 +226,16 @@ In GitHub, open **Settings -> Environments**, create
 `SUPABASE_ANON_KEY` is the only Supabase key compiled into the browser. Never
 use an `sb_secret_...` or service-role value for it.
 
-At least one text-generation key must exist: `GROQ_API_KEY` or
-`GEMINI_API_KEY`. Groq is recommended for production text generation, but the
-Azure workflow can deploy with Gemini only until the Groq key is added.
+Azure production requires `GROQ_API_KEY`. Gemini and Vertex are intentionally
+not injected by the Azure workflow because the current production goal is to
+avoid Google AI runtime and GCP billing dependency.
 
 ### Optional secrets
 
 | Secret | Purpose |
 |---|---|
-| `GEMINI_API_KEY` | Recommended existing RAG embedding fallback and secondary text provider |
-| `GROQ_API_KEY` | Recommended Groq production text-generation key |
+| `GROQ_API_KEY` | Required Groq production text-generation key |
+| `GEMINI_API_KEY` | Optional local/manual vector embedding fallback; not used by Azure workflow |
 | `FINETUNED_MODEL_URL` | External OpenAI-compatible QLoRA model endpoint |
 | `RESEND_API_KEY` | Sends real reminder emails; otherwise email sending degrades safely |
 
@@ -268,7 +266,7 @@ The workflow:
 3. creates or updates both Container Apps;
 4. stores backend credentials as Container Apps secrets;
 5. assigns managed identities for private ACR image pulls;
-6. disables Vertex and selects Groq first;
+6. disables Vertex and selects Groq as the Azure text provider;
 7. sets the frontend URL as the backend CORS origin;
 8. checks `/`, `/health/providers`, and the frontend home page.
 
@@ -292,7 +290,7 @@ Then verify authenticated product paths:
 - ask the AI teacher a question and confirm a response;
 - generate a quiz and submit it;
 - request a wrong-answer explanation;
-- when `GEMINI_API_KEY` is set, confirm grounded RAG context is returned;
+- confirm explanations still include retrieved or lexical-ranked Supabase context;
 - inspect Container App logs for provider fallback warnings.
 
 Useful log command:
@@ -309,18 +307,17 @@ az containerapp logs show `
 | Failure | Result |
 |---|---|
 | Vertex blocked | Skipped when `VERTEX_AI_ENABLED=false` |
-| Groq unavailable or rate-limited | Gemini text fallback is attempted when its key exists |
-| Groq and Gemini unavailable | Service returns its existing deterministic fallback where supported |
+| Groq unavailable or rate-limited | Service returns its existing deterministic fallback where supported |
 | Fine-tuned endpoint offline | Quiz generation continues through the configured provider order |
-| No embedding provider | Core API remains available, but RAG retrieval cannot embed new queries |
+| No embedding provider | Retriever uses lexical ranking over stored Supabase chunks |
 | Azure cold start | First request can be slower because minimum replicas is zero |
 
 ## 9. Cost and Rollback
 
 - Azure deployment is manual-only so it does not duplicate every GCP deploy.
 - Both Container Apps use `min-replicas=0` and `max-replicas=3`.
-- ACR image storage, logs, outbound traffic, Supabase, Groq, and optional Gemini
-  API calls can still incur cost.
+- ACR image storage, logs, outbound traffic, Supabase, and Groq API calls can
+  still incur cost.
 - Set budget alerts in Azure Cost Management and Groq usage limits before a
   demonstration.
 - Stop using Azure by disabling ingress or deleting the two Container Apps.
@@ -343,15 +340,15 @@ print the key in Actions logs.
 
 ### Groq returns 429
 
-Check account rate limits, reduce simultaneous requests, or configure
-`GEMINI_API_KEY` as the next provider. The service automatically tries the next
-provider after an exception.
+Check account rate limits, reduce simultaneous requests, or temporarily switch
+to another configured provider in `AI_PROVIDER_ORDER`.
 
 ### RAG answers have no retrieved context
 
-Set `GEMINI_API_KEY` and confirm `/health/providers` reports
-`embedding_provider: gemini`. The Groq text key alone does not provide the
-existing Gemini-compatible embeddings.
+Confirm `content_chunks` exist in Supabase for the requested subtopic. In
+Google-free Azure production, `/health/providers` should report
+`embedding_provider: lexical`, meaning the backend ranks stored chunks without a
+new vector query.
 
 ### Azure cannot pull an ACR image
 

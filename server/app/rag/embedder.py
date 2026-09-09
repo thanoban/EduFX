@@ -1,5 +1,9 @@
-"""Embed text via Google Gen AI — Vertex AI first (billing confirmed working),
-Gemini API key as the free fallback."""
+"""Optional Google Gen AI embeddings for RAG.
+
+Azure production can run without this module returning vectors. When Vertex and
+Gemini API-key embeddings are unavailable, the retriever falls back to lexical
+ranking over stored Supabase chunks.
+"""
 
 
 def _embed_with_client(client, text: str, task_type: str, settings) -> list[float]:
@@ -24,9 +28,9 @@ def embed(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
     the two task types degrades similarity scores, so callers must pass the one
     that matches their side of the search.
 
-    Tries Vertex AI first (same model, verified working directly), then falls
-    back to the free Gemini API key — never a hard dependency on either
-    provider.
+    Tries Vertex AI first when explicitly enabled, then falls back to a Gemini
+    API key. If neither provider is configured, returns [] so callers can use a
+    non-vector fallback.
     """
     from google import genai
 
