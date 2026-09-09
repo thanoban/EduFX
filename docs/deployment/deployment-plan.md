@@ -1,8 +1,9 @@
 # EduFX Deployment Plan
 
-> GCP is no longer the only production path. For Groq-first generation with
-> Vertex disabled and a manual Azure Container Apps fallback, follow
-> [Groq AI and Azure deployment fallback](groq-azure-fallback.md).
+> Azure Container Apps is now the primary production path. For Azure deployment
+> with Vertex disabled and Groq/Gemini provider support, follow
+> [Azure production deployment](azure-production.md). This GCP plan is kept as
+> a manual legacy deployment path.
 
 Complete plan to deploy EduFX to Google Cloud Platform via GitHub Actions, plus serving the fine-tuned Qwen model.
 

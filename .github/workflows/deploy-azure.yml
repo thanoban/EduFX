@@ -1,4 +1,4 @@
-name: Deploy Azure fallback
+name: Deploy Azure production
 
 on:
   workflow_dispatch:

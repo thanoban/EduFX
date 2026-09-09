@@ -288,9 +288,8 @@ Recommended entry points:
 
 ## Deployment
 
-EduFX supports GitHub Actions deployment to Google Cloud Run and a manually
-triggered Azure Container Apps fallback, with separate frontend and backend
-services.
+EduFX now uses GitHub Actions deployment to Azure Container Apps as the primary
+production path, with Google Cloud Run kept as a manual legacy deployment path.
 
 The deployment path includes:
 
@@ -303,7 +302,7 @@ The deployment path includes:
 See:
 
 - [`docs/deployment/deployment-plan.md`](docs/deployment/deployment-plan.md)
-- [`docs/deployment/groq-azure-fallback.md`](docs/deployment/groq-azure-fallback.md)
+- [`docs/deployment/azure-production.md`](docs/deployment/azure-production.md)
 - [`.github/workflows/`](.github/workflows)
 
 ## Notes

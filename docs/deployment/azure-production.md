@@ -1,10 +1,11 @@
-# Groq AI and Azure Deployment Fallback
+# Azure Production Deployment
 
-This guide keeps EduFX usable when Vertex AI is disabled or the GCP project is
-unavailable. Groq becomes the primary text-generation provider, while Azure
-Container Apps provides a separate, manually triggered hosting path.
+This guide is the primary production deployment path for EduFX. Azure Container
+Apps hosts the backend and frontend, Azure Container Registry stores the images,
+Supabase provides the database and auth, and the AI provider chain runs with
+Vertex disabled so the app does not depend on GCP billing.
 
-## What Changed
+## Production Shape
 
 EduFX now uses a configurable text-provider chain:
 
@@ -63,8 +64,8 @@ The default model is `llama-3.3-70b-versatile`. It can be changed without a
 code edit by setting the GitHub variable `GROQ_MODEL` to a currently supported
 production model.
 
-Azure deployment can still run before the Groq key is added if `GEMINI_API_KEY`
-is already configured. In that temporary mode the provider order remains
+Azure deployment can run before the Groq key is added if `GEMINI_API_KEY` is
+already configured. In that temporary mode the provider order remains
 `groq,gemini,vertex`, Groq is skipped because no key exists, Gemini handles text
 generation and embeddings, and Vertex stays disabled.
 
@@ -228,8 +229,8 @@ In GitHub, open **Settings -> Environments**, create
 use an `sb_secret_...` or service-role value for it.
 
 At least one text-generation key must exist: `GROQ_API_KEY` or
-`GEMINI_API_KEY`. Groq is recommended for production fallback, but the Azure
-workflow can deploy with Gemini only until the Groq key is added.
+`GEMINI_API_KEY`. Groq is recommended for production text generation, but the
+Azure workflow can deploy with Gemini only until the Groq key is added.
 
 ### Optional secrets
 
@@ -254,7 +255,7 @@ Add these Environment variables, which are non-sensitive:
 ## 6. Deploy to Azure
 
 1. Open the repository's **Actions** tab.
-2. Select **Deploy Azure fallback**.
+2. Select **Deploy Azure production**.
 3. Select **Run workflow** on the intended branch.
 4. Wait for the backend image, backend app, frontend image, and frontend app
    steps to finish.
@@ -361,4 +362,4 @@ assignment.
 ### Browser reports a CORS error
 
 Confirm `FRONTEND_ORIGIN` matches the exact Azure frontend URL. EduFX also
-allows HTTPS `*.azurecontainerapps.io` origins for Azure fallback deployments.
+allows HTTPS `*.azurecontainerapps.io` origins for Azure deployments.

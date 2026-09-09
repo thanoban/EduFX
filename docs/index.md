@@ -62,8 +62,8 @@ one flat list.
 
 - [Deployment plan](deployment/deployment-plan.md)
   GCP deploy via GitHub Actions, secrets, Cloud Run, and model serving.
-- [Groq and Azure fallback](deployment/groq-azure-fallback.md)
-  Groq-first AI configuration, Vertex shutdown, Azure Container Apps setup,
+- [Azure production deployment](deployment/azure-production.md)
+  Groq/Gemini AI configuration, Vertex shutdown, Azure Container Apps setup,
   GitHub OIDC, production secrets, verification, cost controls, and rollback.
 
 ## Data
@@ -119,6 +119,6 @@ one flat list.
 7. [plans/recommender-implementation-plan.md](plans/recommender-implementation-plan.md)
 8. [finetuning/finetune-method.md](finetuning/finetune-method.md)
 9. [finetuning/finetune-results.md](finetuning/finetune-results.md)
-10. [deployment/groq-azure-fallback.md](deployment/groq-azure-fallback.md)
+10. [deployment/azure-production.md](deployment/azure-production.md)
 11. [deployment/deployment-plan.md](deployment/deployment-plan.md)
 12. [qa/index.md](qa/index.md)
