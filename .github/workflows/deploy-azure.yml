@@ -61,11 +61,17 @@ jobs:
 
       - name: Build backend image in ACR
         run: |
-          az acr build \
-            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
-            --image "edufx-backend:${{ github.sha }}" \
+          ACR_SERVER=$(az acr show \
+            --name "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query loginServer \
+            -o tsv)
+          az acr login --name "${{ vars.AZURE_CONTAINER_REGISTRY }}"
+          docker build \
             --file server/Dockerfile.azure \
+            --tag "$ACR_SERVER/edufx-backend:${{ github.sha }}" \
             .
+          docker push "$ACR_SERVER/edufx-backend:${{ github.sha }}"
 
       - name: Ensure backend Container App
         id: backend
@@ -154,16 +160,22 @@ jobs:
 
       - name: Build frontend image in ACR
         run: |
-          az acr build \
-            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
-            --image "edufx-frontend:${{ github.sha }}" \
+          ACR_SERVER=$(az acr show \
+            --name "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query loginServer \
+            -o tsv)
+          az acr login --name "${{ vars.AZURE_CONTAINER_REGISTRY }}"
+          docker build \
             --file client/Dockerfile \
             --build-arg NEXT_PUBLIC_API_BASE_URL=/api/backend \
             --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}" \
             --build-arg NEXT_PUBLIC_SKIP_LOGIN=false \
             --build-arg BACKEND_ORIGIN="${{ steps.backend.outputs.url }}" \
+            --tag "$ACR_SERVER/edufx-frontend:${{ github.sha }}" \
             .
+          docker push "$ACR_SERVER/edufx-frontend:${{ github.sha }}"
 
       - name: Ensure frontend Container App
         id: frontend
