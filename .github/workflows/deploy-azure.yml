@@ -64,8 +64,8 @@ jobs:
           az acr build \
             --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
             --image "edufx-backend:${{ github.sha }}" \
-            --file Dockerfile \
-            server
+            --file server/Dockerfile.azure \
+            .
 
       - name: Ensure backend Container App
         id: backend
