@@ -37,6 +37,7 @@ type RequestOptions = {
 const REQUEST_RETRY_DELAYS_MS = [700, 1400, 2200];
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 15000;
+const AUTH_REQUEST_TIMEOUT_MS = 60000;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,10 +76,10 @@ async function request<T>(
     cache: "no-store",
   };
 
-  // Cloud Run scales to zero, so the first request after idle can be a cold
-  // start that drops the connection (surfaces as "Failed to fetch" in the
-  // browser). Retry transient network errors a few times with a short backoff
-  // before giving up, so a cold backend doesn't break sign-in.
+  // Production containers scale to zero, so the first request after idle can be
+  // a cold start that drops the connection (surfaces as "Failed to fetch" in
+  // the browser). Retry transient network errors a few times with a short
+  // backoff before giving up, so a cold backend doesn't break sign-in.
   let response: Response | null = null;
   let lastNetworkError: unknown = null;
   for (let attempt = 0; attempt < REQUEST_RETRY_DELAYS_MS.length; attempt += 1) {
@@ -143,7 +144,12 @@ async function request<T>(
 
 export const authApi = {
   login(token: string) {
-    return request<StudentProfile>("/auth/google", { method: "POST", token, body: {} });
+    return request<StudentProfile>("/auth/google", {
+      method: "POST",
+      token,
+      body: {},
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    });
   },
   check(studentId: number) {
     return request<{ student_id: number; diagnostic_completed: boolean }>("/auth/check", {
