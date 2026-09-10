@@ -2,7 +2,8 @@
 
 EduFX is an adaptive A-Level Chemistry learning platform focused on the
 S-block syllabus. It combines a Next.js frontend, a layered FastAPI backend,
-Supabase persistence, configurable Groq/Gemini/Vertex generation,
+Supabase persistence, Groq-first Azure generation with optional Gemini/Vertex
+legacy providers,
 knowledge-tracing recommenders,
 and behaviour-aware study signals into one full-stack learning system.
 
@@ -136,8 +137,8 @@ Key backend areas:
 - Supabase PostgreSQL
 - pgvector for retrieval
 - Supabase Auth for Google OAuth and email/password
-- Groq-first, Gemini, or Vertex AI generation with automatic fallback
-- Vertex or Gemini API embeddings for RAG
+- Groq-first Azure generation with optional Gemini or Vertex legacy providers
+- pgvector retrieval with lexical fallback when embedding providers are unavailable
 - optional QLoRA fine-tuned endpoint for quiz generation
 
 ## Repository structure
@@ -174,8 +175,8 @@ EduFX_MVC/
 | Frontend | Next.js 15, React 19, TypeScript |
 | Backend | FastAPI, Python 3.12, Pydantic v2 |
 | Database | Supabase PostgreSQL |
-| Retrieval | pgvector + Vertex/Gemini embeddings |
-| AI generation | Groq, Gemini/Vertex fallback, optional fine-tuned endpoint |
+| Retrieval | pgvector + optional Vertex/Gemini embeddings + lexical fallback |
+| AI generation | Groq-first Azure path, optional Gemini/Vertex legacy fallback, optional fine-tuned endpoint |
 | Knowledge tracing | BKT, DKT |
 | Browser ML | MediaPipe, TensorFlow Lite |
 | Deployment | GCP Cloud Run or Azure Container Apps, GitHub Actions |
@@ -224,7 +225,7 @@ Important backend settings include:
 - `AI_PROVIDER_ORDER`
 - `GROQ_API_KEY`
 - `GROQ_MODEL`
-- `GEMINI_API_KEY` (optional text and RAG embedding fallback)
+- `GEMINI_API_KEY` (optional legacy text and RAG embedding fallback)
 - `EMBEDDING_MODEL`
 - `FINETUNED_MODEL_URL` (optional)
 
@@ -288,22 +289,21 @@ Recommended entry points:
 
 ## Deployment
 
-EduFX supports GitHub Actions deployment to Google Cloud Run and a manually
-triggered Azure Container Apps fallback, with separate frontend and backend
-services.
+EduFX now uses GitHub Actions deployment to Azure Container Apps as the primary
+production path, with Google Cloud Run kept as a manual legacy deployment path.
 
-The deployment path includes:
+The Azure deployment path includes:
 
 - Docker builds for frontend and backend
-- Artifact Registry pushes
-- Cloud Run deploys
+- Azure Container Registry pushes
+- Azure Container Apps deploys
 - build-time backend-origin injection for same-origin frontend proxying
 - secret-backed runtime configuration
 
 See:
 
 - [`docs/deployment/deployment-plan.md`](docs/deployment/deployment-plan.md)
-- [`docs/deployment/groq-azure-fallback.md`](docs/deployment/groq-azure-fallback.md)
+- [`docs/deployment/azure-production.md`](docs/deployment/azure-production.md)
 - [`.github/workflows/`](.github/workflows)
 
 ## Notes

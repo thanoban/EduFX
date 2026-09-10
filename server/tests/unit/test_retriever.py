@@ -66,6 +66,30 @@ def test_retrieve_returns_empty_list_when_embedding_fails(monkeypatch):
     assert retriever.retrieve("query", subtopic_id=1, client=client) == []
 
 
+def test_retrieve_uses_lexical_fallback_when_embedding_unavailable(monkeypatch):
+    monkeypatch.setattr(retriever, "embed", lambda *_args, **_kwargs: [])
+
+    rows = [
+        {
+            "chunk_text": "Organic chemistry describes homologous series and functional groups.",
+            "embedding": None,
+        },
+        {
+            "chunk_text": "Equilibrium changes when concentration, pressure, or temperature changes.",
+            "embedding": None,
+        },
+        {
+            "chunk_text": "A titration uses a burette and indicator to find concentration.",
+            "embedding": None,
+        },
+    ]
+    client = _FakeClient(rows)
+
+    assert retriever.retrieve("equilibrium pressure", subtopic_id=1, client=client, top_k=1) == [
+        "Equilibrium changes when concentration, pressure, or temperature changes."
+    ]
+
+
 def test_retrieve_returns_empty_list_when_table_select_fails(monkeypatch):
     monkeypatch.setattr(retriever, "embed", lambda query, task_type=None: [1.0, 0.0])
 

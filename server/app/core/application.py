@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
             if vertex_available
             else "gemini"
             if settings.gemini_api_key
-            else "none"
+            else "lexical"
         )
         return {
             "text_provider_order": provider_order,
@@ -80,4 +80,3 @@ def create_app() -> FastAPI:
         }
 
     return app
-

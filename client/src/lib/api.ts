@@ -1,5 +1,4 @@
-import { API_BASE_URL, STORAGE_KEYS } from "@/lib/constants";
-import { readStorage } from "@/lib/storage";
+import { API_BASE_URL } from "@/lib/constants";
 import type {
   AdminStudentDetail,
   AdminStudentSummary,
@@ -66,23 +65,21 @@ async function request<T>(
   path: string,
   { method = "GET", token, studentId, body, timeoutMs = REQUEST_TIMEOUT_MS }: RequestOptions = {}
 ): Promise<T> {
-  const persistedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
-  const accessToken = token ?? persistedToken;
   const init: RequestInit = {
     method,
     headers: {
       "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(studentId ? { "X-Student-Id": String(studentId) } : {})
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   };
 
-  // Cloud Run scales to zero, so the first request after idle can be a cold
-  // start that drops the connection (surfaces as "Failed to fetch" in the
-  // browser). Retry transient network errors a few times with a short backoff
-  // before giving up, so a cold backend doesn't break sign-in.
+  // Production containers scale to zero, so the first request after idle can be
+  // a cold start that drops the connection (surfaces as "Failed to fetch" in
+  // the browser). Retry transient network errors a few times with a short
+  // backoff before giving up, so a cold backend doesn't break sign-in.
   let response: Response | null = null;
   let lastNetworkError: unknown = null;
   for (let attempt = 0; attempt < REQUEST_RETRY_DELAYS_MS.length; attempt += 1) {
@@ -151,7 +148,7 @@ export const authApi = {
       method: "POST",
       token,
       body: {},
-      timeoutMs: AUTH_REQUEST_TIMEOUT_MS
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     });
   },
   check(studentId: number) {

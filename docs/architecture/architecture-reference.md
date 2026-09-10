@@ -363,7 +363,6 @@ server/app/
 | `scheduling_agent.py` | **Deterministic planning agent** — cap the ranking to the student's free time, own streaks |
 | `teacher_service.py` | **Teacher-agent service** — builds dossier and runs LangGraph teacher flows |
 | `settings_service.py` | Capture availability + post-session "next free" check-in |
-| `reminder_service.py` | Duolingo-style daily nudges (in-app + email) |
 | `content_service.py` | Fetch level-appropriate content for a subtopic |
 | `quiz_service.py` | Generate personalized quiz (AI or fallback) |
 | `results_service.py` | Score quiz, update progress, record session |

@@ -22,7 +22,7 @@ CAP_TO_WEAK_STRONG_SPLIT = {1: (1, 0), 2: (1, 1), 3: (2, 1), 4: (3, 1)}
 # Tap-chip choices on the post-session "when are you next free?" check-in,
 # resolved to a concrete date. "this_weekend" lands on the coming Saturday (or
 # today, if today already is Sat/Sun). "not_sure" resolves to None — no
-# specific-day reminder gets scheduled, the student just falls back to their
+# specific next-date preference is recorded, the student falls back to their
 # regular weekly free_days pattern.
 _SATURDAY = 5
 
@@ -217,4 +217,3 @@ def aggregate_behaviour(logs: list[BehaviourLog]) -> dict[str, int]:
         "tab_switch_percent": round((counts["tab_switch_percent"] / total) * 100),
         "focus_score": round((counts["focused"] / total) * 100),
     }
-

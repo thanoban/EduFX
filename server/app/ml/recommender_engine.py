@@ -3,7 +3,7 @@
 This is the recommendation half of the old SchedulerService, extracted so it
 has a single responsibility: rank a student's subtopics best-first. It is
 deliberately **availability-agnostic** — it knows nothing about free days,
-session length, streaks, or reminders. It returns the *full* ranked list; the
+session length, streaks, or notification delivery. It returns the *full* ranked list; the
 SchedulingAgent downstream decides how many of those the student has time for
 today.
 
