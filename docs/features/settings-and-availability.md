@@ -8,7 +8,6 @@ It controls:
 
 - weekly free days
 - session length per day
-- email reminder preference
 - sign-out and account session controls
 
 ## Frontend files
@@ -37,7 +36,10 @@ The settings page allows the student to choose:
 
 - which days they are free
 - how much time they usually have on each free day
-- whether email reminders should be enabled
+
+Daily email reminders are currently disabled because no production email
+delivery provider is configured. Availability remains active and is used by
+the adaptive scheduler.
 
 It also gives:
 

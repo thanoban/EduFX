@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, ShieldOff } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldOff } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,9 @@ export function AdminStudentDetailScreen({ detail: initialDetail }: { detail: Ad
       subtitle={detail.email}
       action={
         <div className="stack admin-role-actions">
+          <Button href="/admin" variant="secondary" icon={<ArrowLeft size={15} />}>
+            Back to students
+          </Button>
           <Button
             variant={detail.role === "admin" ? "secondary" : "primary"}
             icon={detail.role === "admin" ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}

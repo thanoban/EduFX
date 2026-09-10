@@ -18,7 +18,6 @@ export type StudentProfile = {
   session_length: SessionLength;
   day_session_length: Record<number, SessionLength>;
   next_expected_date: string | null;
-  email_reminders_enabled: boolean;
   current_streak: number;
   longest_streak: number;
   last_study_date: string | null;
@@ -28,7 +27,6 @@ export type UpdateAvailabilityPayload = {
   free_days: number[];
   session_length: SessionLength;
   day_session_length: Record<number, SessionLength>;
-  email_reminders_enabled: boolean;
 };
 
 export type NextFreeChoice = "tomorrow" | "in_2_days" | "this_weekend" | "not_sure";

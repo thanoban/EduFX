@@ -22,6 +22,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
   const { start, stop, cancel, state } = useWebcamTracker();
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const webcamEnabled = params.get("webcam") === "1";
   const activeQuestion = quiz.questions[activeIndex];
@@ -54,6 +55,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
       return;
     }
     setBusy(true);
+    setSubmitError(null);
     try {
       await stop(student.student_id, quiz.session_id, quiz.subtopic_id, webcamEnabled);
       const result: QuizResultPayload = await resultsApi.submit(
@@ -72,6 +74,8 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
       });
       writeStorage(STORAGE_KEYS.lastQuizResult, result);
       router.push(`/results/${result.session_id}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Quiz submission failed. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -236,6 +240,7 @@ export function QuizScreen({ quiz }: { quiz: QuizPayload }) {
           </article>
         ) : null}
       </div>
+      {submitError ? <div className="auth-error" role="alert">{submitError}</div> : null}
     </AppShell>
   );
 }

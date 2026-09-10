@@ -1,47 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { PageState } from "@/components/ui/page-state";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
 import { settingsApi } from "@/lib/api";
 import type { SessionLength } from "@/types/contracts";
-import { CalendarClock, Clock3, LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
-
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SESSION_LENGTH_OPTIONS: Array<{ value: SessionLength; label: string }> = [
-  { value: "short", label: "15–20 min" },
-  { value: "medium", label: "30–45 min" },
-  { value: "long", label: "1hr+" }
-];
-
-// Build the per-day map from the profile, falling back to the old single
-// session-length (applied to every free day) for students saved before per-day
-// availability existed.
-function initialDayLengths(student: ReturnType<typeof useAuthGuard>["student"]): Record<number, SessionLength> {
-  const stored = student?.day_session_length ?? {};
-  if (Object.keys(stored).length > 0) {
-    const out: Record<number, SessionLength> = {};
-    for (const [day, length] of Object.entries(stored)) {
-      out[Number(day)] = length;
-    }
-    return out;
-  }
-  const fallback: Record<number, SessionLength> = {};
-  for (const day of student?.free_days ?? []) {
-    fallback[day] = student?.session_length ?? "medium";
-  }
-  return fallback;
-}
+import { CalendarClock, Clock3, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { AvailabilityDayList, buildAvailabilityPayload, initialDayLengths } from "@/features/settings/availability-picker";
 
 export function SettingsScreen() {
-  const { student, signOut, updateStudentProfile } = useAuthGuard();
+  const { student, loading, signOut, updateStudentProfile } = useAuthGuard();
   const [dayLengths, setDayLengths] = useState<Record<number, SessionLength>>(() => initialDayLengths(student));
-  const [emailRemindersEnabled, setEmailRemindersEnabled] = useState(student?.email_reminders_enabled ?? true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!student) {
+      return;
+    }
+    setDayLengths(initialDayLengths(student));
+  }, [student]);
 
   function setDay(day: number, length: SessionLength | null) {
     setSaved(false);
@@ -60,24 +43,32 @@ export function SettingsScreen() {
     if (!student) {
       return;
     }
-    const freeDays = Object.keys(dayLengths).map(Number).sort((a, b) => a - b);
-    // `session_length` stays as a fallback default for any day without a
-    // per-day value; use the first selected day's choice, else medium.
-    const defaultLength = freeDays.length > 0 ? dayLengths[freeDays[0]] : "medium";
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
-      const profile = await settingsApi.updateAvailability(student.student_id, {
-        free_days: freeDays,
-        session_length: defaultLength,
-        day_session_length: dayLengths,
-        email_reminders_enabled: emailRemindersEnabled
-      });
+      const profile = await settingsApi.updateAvailability(
+        student.student_id,
+        buildAvailabilityPayload(dayLengths)
+      );
       updateStudentProfile(profile);
       setSaved(true);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save availability. Please try again.");
     } finally {
       setSaving(false);
     }
+  }
+
+  if (loading || !student) {
+    return (
+      <PageState
+        layout="workspace"
+        title="Loading settings"
+        message="EduFX is restoring your account and study availability."
+        eyebrow="Settings"
+      />
+    );
   }
 
   return (
@@ -158,50 +149,8 @@ export function SettingsScreen() {
 
             <div className="stack" style={{ gap: 8 }}>
               <span className="field__label">How much time do you have each day?</span>
-              <div className="list">
-                {DAY_LABELS.map((label, day) => {
-                  const selected = dayLengths[day];
-                  return (
-                    <div key={label} className="list-item cluster" style={{ justifyContent: "space-between" }}>
-                      <strong style={{ width: 44 }}>{label}</strong>
-                      <div className="cluster">
-                        <button
-                          type="button"
-                          className={`pill ${selected === undefined ? "success" : ""}`.trim()}
-                          onClick={() => setDay(day, null)}
-                        >
-                          Off
-                        </button>
-                        {SESSION_LENGTH_OPTIONS.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            className={`pill ${selected === option.value ? "success" : ""}`.trim()}
-                            onClick={() => setDay(day, option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <AvailabilityDayList dayLengths={dayLengths} onSetDay={setDay} />
             </div>
-
-            <label className="list-item cluster" style={{ justifyContent: "space-between", cursor: "pointer" }}>
-              <span className="cluster">
-                <Mail size={16} /> Email reminders if I miss a planned session
-              </span>
-              <input
-                type="checkbox"
-                checked={emailRemindersEnabled}
-                onChange={(event) => {
-                  setEmailRemindersEnabled(event.target.checked);
-                  setSaved(false);
-                }}
-              />
-            </label>
 
             <div className="cluster" style={{ justifyContent: "space-between" }}>
               <Button onClick={handleSaveAvailability} disabled={saving}>
@@ -209,6 +158,7 @@ export function SettingsScreen() {
               </Button>
               {saved ? <span className="muted small-text">Saved</span> : null}
             </div>
+            {saveError ? <div className="auth-error" role="alert">{saveError}</div> : null}
           </div>
         </SectionCard>
       </div>

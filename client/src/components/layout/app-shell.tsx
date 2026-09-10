@@ -61,8 +61,8 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`nav-link ${pathname === item.href ? "active" : ""}`.trim()}
-                aria-current={pathname === item.href ? "page" : undefined}
+                className={`nav-link ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "active" : ""}`.trim()}
+                aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? "page" : undefined}
               >
                 <Icon size={17} strokeWidth={2.2} />
                 {item.label}

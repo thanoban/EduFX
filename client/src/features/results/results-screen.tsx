@@ -30,15 +30,25 @@ export function ResultsScreen({
 }) {
   const { student, updateStudentProfile } = useAuthGuard();
   const [nextFreeChoice, setNextFreeChoice] = useState<NextFreeChoice | null>(null);
+  const [nextFreeSaving, setNextFreeSaving] = useState(false);
+  const [nextFreeError, setNextFreeError] = useState<string | null>(null);
   const explanationMap = new Map(explanations.map((item) => [item.attempt_id, item.explanation]));
 
   async function handleNextFree(choice: NextFreeChoice) {
     if (!student) {
       return;
     }
-    setNextFreeChoice(choice);
-    const profile = await settingsApi.checkInNextFree(student.student_id, choice);
-    updateStudentProfile(profile);
+    setNextFreeSaving(true);
+    setNextFreeError(null);
+    try {
+      const profile = await settingsApi.checkInNextFree(student.student_id, choice);
+      updateStudentProfile(profile);
+      setNextFreeChoice(choice);
+    } catch (error) {
+      setNextFreeError(error instanceof Error ? error.message : "Could not save your next study day.");
+    } finally {
+      setNextFreeSaving(false);
+    }
   }
   const levelShiftLabel = lastQuizResult?.level_changed
     ? `${lastQuizResult.previous_level} -> ${lastQuizResult.new_level}`
@@ -100,6 +110,7 @@ export function ResultsScreen({
                   key={option.value}
                   type="button"
                   className={`pill ${nextFreeChoice === option.value ? "success" : ""}`.trim()}
+                  disabled={nextFreeSaving}
                   onClick={() => handleNextFree(option.value)}
                 >
                   {option.label}
@@ -107,6 +118,7 @@ export function ResultsScreen({
               ))}
             </div>
             {nextFreeChoice ? <span className="muted small-text">Got it — thanks!</span> : null}
+            {nextFreeError ? <div className="auth-error" role="alert">{nextFreeError}</div> : null}
           </div>
         </SectionCard>
       </div>

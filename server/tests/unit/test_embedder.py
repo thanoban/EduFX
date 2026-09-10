@@ -78,3 +78,22 @@ def test_embed_returns_empty_when_nothing_configured(monkeypatch):
     result = embedder.embed("hello world")
     assert result == []
     _reset_settings()
+
+
+def test_embed_skips_vertex_when_disabled(monkeypatch):
+    monkeypatch.setenv("VERTEX_AI_ENABLED", "false")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "configured-but-disabled")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    _reset_settings()
+
+    import google.genai as real_genai
+
+    def fake_client(**kwargs):
+        assert "vertexai" not in kwargs
+        assert kwargs.get("api_key") == "test-key"
+        return _FakeClient([0.4, 0.5])
+
+    monkeypatch.setattr(real_genai, "Client", fake_client)
+
+    assert embedder.embed("hello world") == [0.4, 0.5]
+    _reset_settings()

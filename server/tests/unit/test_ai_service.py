@@ -1,6 +1,8 @@
 import json
 
 from app.core.config import get_settings
+from app.core.clients import build_external_clients
+from app.core.config import Settings
 from app.services import ai_service
 
 
@@ -256,3 +258,44 @@ def test_generate_text_returns_empty_when_all_providers_fail(monkeypatch):
     monkeypatch.setattr(ai_service, "_call_groq", lambda *a, **k: "")
 
     assert ai_service.generate_text("prompt") == ""
+
+
+def test_generate_text_honors_groq_first_provider_order(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER_ORDER", "groq,vertex,gemini")
+    _reset_settings()
+    calls = []
+
+    def groq(*args, **kwargs):
+        calls.append("groq")
+        return "Groq primary."
+
+    monkeypatch.setattr(ai_service, "_call_groq", groq)
+    monkeypatch.setattr(ai_service, "_call_vertex", _fail("vertex"))
+    monkeypatch.setattr(ai_service, "_call_gemini_api_key", _fail("gemini"))
+
+    assert ai_service.generate_text("prompt") == "Groq primary."
+    assert calls == ["groq"]
+    _reset_settings()
+
+
+def test_vertex_can_be_disabled_even_when_project_is_configured(monkeypatch):
+    monkeypatch.setenv("VERTEX_AI_ENABLED", "false")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "still-configured")
+    _reset_settings()
+
+    assert ai_service._call_vertex("gemini", "prompt", 0.2, 100) == ""
+    _reset_settings()
+
+
+def test_external_clients_enable_generation_for_groq_without_gcp():
+    settings = Settings(
+        _env_file=None,
+        google_cloud_project=None,
+        groq_api_key="test-key",
+        gemini_api_key=None,
+        finetuned_model_url=None,
+    )
+
+    clients = build_external_clients(settings)
+
+    assert clients.vertex_model == settings.vertex_model

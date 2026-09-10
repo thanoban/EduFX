@@ -80,8 +80,8 @@ export function DiagnosticResultsScreen({ results }: { results: DiagnosticResult
             </div>
           </div>
         ))}
-        <Button icon={<ArrowRight size={17} />} onClick={() => router.push("/dashboard")}>
-          Open dashboard
+        <Button icon={<ArrowRight size={17} />} onClick={() => router.push("/diagnostic/availability")}>
+          Continue
         </Button>
       </div>
     </AuthShell>

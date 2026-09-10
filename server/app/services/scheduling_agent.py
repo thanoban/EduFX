@@ -3,8 +3,8 @@
 The scheduling half of the old SchedulerService. It takes the RecommenderEngine's
 ranked list (what to study) and applies the student's free-time/availability caps
 (how much to serve today), then owns the study-cadence state: streaks now, with
-next-free check-ins (SettingsService) and reminders (ReminderService) as its
-sibling collaborators. It never imports the model (bkt/dkt) directly — it only
+ next-free check-ins (SettingsService) as its sibling collaborator. It never
+ imports the model (bkt/dkt) directly — it only
 consumes the engine's ranked candidates.
 """
 from datetime import date

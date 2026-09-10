@@ -34,7 +34,7 @@ def embed(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
 
     settings = get_settings()
 
-    if settings.google_cloud_project:
+    if settings.vertex_ai_enabled and settings.google_cloud_project:
         try:
             client = genai.Client(
                 vertexai=True,

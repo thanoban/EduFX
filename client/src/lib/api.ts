@@ -1,4 +1,5 @@
-import { API_BASE_URL } from "@/lib/constants";
+import { API_BASE_URL, STORAGE_KEYS } from "@/lib/constants";
+import { readStorage } from "@/lib/storage";
 import type {
   AdminStudentDetail,
   AdminStudentSummary,
@@ -37,6 +38,7 @@ type RequestOptions = {
 const REQUEST_RETRY_DELAYS_MS = [700, 1400, 2200];
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 15000;
+const AUTH_REQUEST_TIMEOUT_MS = 60000;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,11 +66,13 @@ async function request<T>(
   path: string,
   { method = "GET", token, studentId, body, timeoutMs = REQUEST_TIMEOUT_MS }: RequestOptions = {}
 ): Promise<T> {
+  const persistedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
+  const accessToken = token ?? persistedToken;
   const init: RequestInit = {
     method,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(studentId ? { "X-Student-Id": String(studentId) } : {})
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -143,7 +147,12 @@ async function request<T>(
 
 export const authApi = {
   login(token: string) {
-    return request<StudentProfile>("/auth/google", { method: "POST", token, body: {} });
+    return request<StudentProfile>("/auth/google", {
+      method: "POST",
+      token,
+      body: {},
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS
+    });
   },
   check(studentId: number) {
     return request<{ student_id: number; diagnostic_completed: boolean }>("/auth/check", {

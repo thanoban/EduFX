@@ -12,9 +12,11 @@ class BehaviourController:
     def save_summary(self, payload: dict):
         return success_response(self.service.save_summary(payload), "Session summary saved")
 
-    def session(self, session_id: int):
-        return success_response(self.service.get_session(session_id), "Behaviour session fetched")
+    def session(self, session_id: int, student_id: int | None = None):
+        return success_response(
+            self.service.get_session_for_student(session_id, student_id),
+            "Behaviour session fetched",
+        )
 
     def history(self, student_id: int):
         return success_response({"student_id": student_id, "sessions": self.service.get_student_history(student_id)}, "Behaviour history fetched")
-

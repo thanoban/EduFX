@@ -307,7 +307,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"free_days\": [1, 3, 5],\n  \"session_length\": \"medium\",\n  \"day_session_length\": {},\n  \"email_reminders_enabled\": true\n}"
+              "raw": "{\n  \"free_days\": [1, 3, 5],\n  \"session_length\": \"medium\",\n  \"day_session_length\": {}\n}"
             },
             "url": {
               "raw": "{{base_url}}/settings/{{student_id}}/availability",

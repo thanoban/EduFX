@@ -12,10 +12,9 @@ class SettingsController:
         free_days: list[int],
         session_length: str,
         day_session_length: dict[int, str],
-        email_reminders_enabled: bool,
     ):
         profile = self.service.update_availability(
-            student_id, free_days, session_length, day_session_length, email_reminders_enabled
+            student_id, free_days, session_length, day_session_length
         )
         return success_response(profile, "Availability updated")
 

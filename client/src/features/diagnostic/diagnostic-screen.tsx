@@ -28,6 +28,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
   const { student, refreshStatus } = useAuthGuard();
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const activeQuestion = questions[activeIndex];
@@ -64,6 +65,7 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
       return;
     }
     setBusy(true);
+    setSubmitError(null);
     try {
       const selfAssessments = readStorage<DiagnosticSelfAssessment[]>(STORAGE_KEYS.selfAssessments, []);
       const payload = await diagnosticApi.submit(
@@ -79,6 +81,8 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
       removeStorage(STORAGE_KEYS.selfAssessments);
       await refreshStatus();
       router.push("/diagnostic/results");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Diagnostic submission failed. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -127,6 +131,8 @@ export function DiagnosticScreen({ questions }: { questions: DiagnosticQuestion[
           </div>
         </div>
       </section>
+
+      {submitError ? <div className="auth-error" role="alert">{submitError}</div> : null}
 
       <div className="grid-4" style={{ marginTop: 18 }}>
         <StatCard

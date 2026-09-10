@@ -16,6 +16,9 @@ class AuthService:
             student = self.repository.create_student(identity.name, identity.email)
         return StudentProfileDTO.from_student(student)
 
+    def get_student_by_email(self, email: str):
+        return self.repository.find_student_by_email(email)
+
     def is_admin(self, email: str) -> bool:
         student = self.repository.find_student_by_email(email)
         return bool(student and student.role == "admin")

@@ -22,10 +22,9 @@ class Student:
     # has on that specific day, like a real teacher. Keys are the free days;
     # `session_length` above is the fallback for any free day not listed here.
     day_session_length: dict[int, str] = field(default_factory=dict)
-    # Set by the post-session "when are you next free?" check-in; lets the
-    # reminder job flag a promised day even if it falls outside free_days.
+    # Set by the post-session "when are you next free?" check-in so the
+    # scheduler can use the student's next planned study date.
     next_expected_date: date | None = None
-    email_reminders_enabled: bool = True
     # Duolingo-style streak, updated whenever a session is finalized.
     current_streak: int = 0
     longest_streak: int = 0

@@ -177,3 +177,39 @@ language sql stable as $$
   order by embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- API hardening:
+-- The application server uses the Supabase service role, while the browser
+-- uses Supabase only for Auth. Keep every public table deny-by-default for
+-- anon/authenticated roles so the Data API cannot expose student records.
+-- The service role bypasses RLS and keeps the server repositories working.
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'students',
+    'subtopics',
+    'content',
+    'questions',
+    'student_progress',
+    'session_summary',
+    'behaviour_logs',
+    'quiz_attempts',
+    'content_chunks'
+  ] loop
+    execute format('alter table public.%I enable row level security', table_name);
+    execute format('revoke all on table public.%I from anon, authenticated', table_name);
+    execute format('drop policy if exists "Deny direct API access" on public.%I', table_name);
+    execute format(
+      'create policy "Deny direct API access" on public.%I for all to anon, authenticated using (false) with check (false)',
+      table_name
+    );
+  end loop;
+end
+$$;
+
+-- Do not expose the retrieval RPC to browser roles. The backend invokes it
+-- with the service role after authenticating the student request.
+revoke execute on function public.match_content_chunks(vector, bigint, integer) from anon, authenticated;
+grant execute on function public.match_content_chunks(vector, bigint, integer) to service_role;

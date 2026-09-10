@@ -6,6 +6,7 @@ import { Eye, Gauge, ShieldCheck, Video, VideoOff } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { PageState } from "@/components/ui/page-state";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -15,7 +16,7 @@ export function WebcamCheckScreen() {
   const router = useRouter();
   const params = useSearchParams();
   const subtopic = params.get("subtopic") ?? "1";
-  const { student } = useAuthGuard();
+  const { student, loading } = useAuthGuard();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [enabled, setEnabled] = useState(true);
@@ -71,6 +72,17 @@ export function WebcamCheckScreen() {
       releasePreview();
     };
   }, [enabled]);
+
+  if (loading || !student) {
+    return (
+      <PageState
+        layout="workspace"
+        title="Preparing session check"
+        message="EduFX is restoring your student session before opening the webcam options."
+        eyebrow="Session check"
+      />
+    );
+  }
 
   return (
     <AppShell

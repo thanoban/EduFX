@@ -43,8 +43,8 @@ describe("frontend route smoke coverage", () => {
   it("renders the landing page", () => {
     renderWithAuth(<LandingPage />, { student: null });
     expect(screen.getByRole("heading", { name: "EduFX" })).toBeInTheDocument();
-    expect(screen.getByText("Technical implementation")).toBeInTheDocument();
-    expect(screen.getByText("Real project numbers are part of the story.")).toBeInTheDocument();
+    expect(screen.getByText("Intelligence with evidence")).toBeInTheDocument();
+    expect(screen.getByText("Built and measured")).toBeInTheDocument();
   });
 
   it("renders diagnostic results", () => {

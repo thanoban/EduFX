@@ -24,15 +24,13 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     groq_api_key: str | None = None
     groq_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_timeout_seconds: float = 45.0
+    ai_provider_order: str = "vertex,gemini,groq"
+    vertex_ai_enabled: bool = True
     demo_mode: bool = True
     response_message_default: str = "Request completed"
     data_backend: str = Field(default="memory", pattern="^(memory|supabase)$")
-    # Reminder emails (server/app/core/email.py). Unset in dev/test — send_email
-    # then just logs instead of calling Resend, so nothing breaks without a key.
-    resend_api_key: str | None = None
-    resend_from_email: str = "EduFX <reminders@edufx.app>"
-    reminders_shared_secret: str | None = None
-
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parents[3] / ".env"),
         env_file_encoding="utf-8",

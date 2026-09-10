@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { GraduationCap, RefreshCw, Send, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { PageState } from "@/components/ui/page-state";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
 import { useAuthGuard } from "@/features/auth/use-auth-guard";
@@ -18,7 +19,7 @@ const SUGGESTIONS = [
 ];
 
 export function TeacherScreen() {
-  const { student } = useAuthGuard();
+  const { student, loading } = useAuthGuard();
   const studentId = student?.student_id;
 
   const [report, setReport] = useState<string | null>(null);
@@ -49,6 +50,17 @@ export function TeacherScreen() {
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
+
+  if (loading || !student) {
+    return (
+      <PageState
+        layout="workspace"
+        title="Opening AI Teacher"
+        message="EduFX is restoring your learning context before loading teacher guidance."
+        eyebrow="AI Teacher"
+      />
+    );
+  }
 
   async function send(text: string) {
     const trimmed = text.trim();

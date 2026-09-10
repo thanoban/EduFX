@@ -1,3 +1,4 @@
+from app.core.errors import EduFXError
 from app.core.rules import aggregate_behaviour, calculate_focus_score
 from app.models.domain import BehaviourLog
 from app.models.dto import BehaviourHistoryItemDTO, BehaviourSessionDTO, SubtopicLiteDTO
@@ -90,6 +91,12 @@ class BehaviourService:
             focus_score=session.focus_score,
             snapshots=snapshots,
         )
+
+    def get_session_for_student(self, session_id: int, student_id: int | None) -> BehaviourSessionDTO:
+        session = self.repository.get_session(session_id)
+        if student_id is not None and session.student_id != student_id:
+            raise EduFXError("Session does not belong to this student", status_code=404)
+        return self.get_session(session_id)
 
     def get_student_history(self, student_id: int) -> list[BehaviourHistoryItemDTO]:
         sessions = self.repository.list_student_sessions(student_id)

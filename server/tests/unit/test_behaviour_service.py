@@ -1,6 +1,9 @@
 from app.core.store import DemoDataStore
+import pytest
+
 from app.repositories.behaviour_repository import BehaviourRepository
 from app.services.behaviour_service import BehaviourService
+from app.core.errors import EduFXError
 
 
 def _make_service():
@@ -233,6 +236,15 @@ def test_get_session_returns_dto_with_snapshots():
     dto = service.get_session(session.id)
     assert dto.session_id == session.id
     assert len(dto.snapshots) == 1
+
+
+def test_get_session_for_wrong_student_is_rejected():
+    service, _, session = _make_service()
+
+    with pytest.raises(EduFXError, match="does not belong") as error:
+        service.get_session_for_student(session.id, 999)
+
+    assert error.value.status_code == 404
 
 
 def test_get_student_history_empty_initially():

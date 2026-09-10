@@ -65,7 +65,6 @@ curl -s -X POST "$BASE_URL/auth/google" \
     "session_length": "medium",
     "day_session_length": {},
     "next_expected_date": null,
-    "email_reminders_enabled": true,
     "current_streak": 0,
     "longest_streak": 0,
     "last_study_date": null
@@ -263,7 +262,6 @@ curl -s -X PUT "$BASE_URL/settings/42/availability" \
     "free_days": [1, 3, 5],
     "session_length": "medium",
     "day_session_length": {},
-    "email_reminders_enabled": true
   }'
 ```
 
@@ -309,18 +307,6 @@ sending any other string is a `422` from Pydantic before it reaches the
 service, but only *after* the `require_admin` auth check runs (auth is
 checked first regardless of body validity — confirm this ordering yourself,
 it's a common thing to get backwards).
-
-### Internal (`/internal`)
-
-| Method | Path | Auth |
-|---|---|---|
-| POST | `/internal/reminders/run` | `X-Internal-Secret` header, if `REMINDERS_SHARED_SECRET` is set |
-
-Triggers the daily reminder-email scan; called by the `reminders.yml`
-scheduled GitHub Action, not by the frontend. Locally, with no secret
-configured, this route has **no auth at all** — worth explicitly confirming
-this is never true in the deployed environment (`REMINDERS_SHARED_SECRET`
-should always be set in production; if it isn't, this is a real finding).
 
 ## 4. Manual Test Case Matrix
 
@@ -393,12 +379,8 @@ first rather than starting from zero:
    Other routes that take `student_id` as a path param
    (`/progress`, `/behaviour`, `/settings`, `/teacher`) haven't been
    individually audited for the same pattern — worth checking each one.
-2. **`/internal/reminders/run` has no auth if `REMINDERS_SHARED_SECRET` is
-   unset** — confirm this env var is actually set in the deployed
-   environment (it should be a GitHub Actions secret, not something a
-   tester can check via the API itself, but it's worth flagging as a
-   deployment-config check rather than pure API testing).
-3. **Cold-start latency** on Cloud Run (scale-to-zero) can make the first
+2. **Cold-start latency** on Cloud Run or Azure Container Apps (scale-to-zero)
+   can make the first
    request after idle noticeably slow — this is expected, not a bug, but
    worth having a documented performance-smoke threshold for (see
    [api-testing-checklist.md](api-testing-checklist.md)) so it isn't

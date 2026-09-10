@@ -8,7 +8,7 @@ from app.repositories.contracts import AuthRepositoryContract
 
 
 class SettingsService:
-    """Availability, reminder preferences, and the post-session check-in.
+    """Availability and the post-session check-in.
 
     Reuses AuthRepositoryContract (get_student/save_student) rather than a new
     repository class — the same student read/write pair auth already needs.
@@ -29,7 +29,6 @@ class SettingsService:
         free_days: list[int],
         session_length: str,
         day_session_length: dict[int, str],
-        email_reminders_enabled: bool,
     ) -> StudentProfileDTO:
         student = self._get_student_or_404(student_id)
         day_map = {
@@ -42,7 +41,6 @@ class SettingsService:
         student.day_session_length = day_map
         student.free_days = set(day_map) if day_map else {day for day in free_days if 0 <= day <= 6}
         student.session_length = session_length
-        student.email_reminders_enabled = email_reminders_enabled
         self.repository.save_student(student)
         return StudentProfileDTO.from_student(student)
 

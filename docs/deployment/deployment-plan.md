@@ -1,6 +1,13 @@
 # EduFX Deployment Plan
 
-Complete plan to deploy EduFX to Google Cloud Platform via GitHub Actions, plus serving the fine-tuned Qwen model.
+> Azure Container Apps is the current automatic production path. For
+> Groq-first generation with Vertex disabled, Supabase authentication, and
+> GitHub Actions deployment, follow
+> [Groq AI and Azure deployment fallback](groq-azure-fallback.md).
+
+This file preserves the legacy GCP deployment and fine-tuned-model notes for
+manual recovery. It is not triggered automatically while GCP billing is
+unavailable.
 
 GCP project: `responsive-sun-491204-e0` · Region: `asia-northeast1` (Tokyo, closest to Supabase `ap-northeast-1`).
 
@@ -90,46 +97,11 @@ Add these in the repo: **Settings → Secrets and variables → Actions → New 
 | `SUPABASE_KEY` | backend-only key (may be the `sb_secret_…`/service key); used server-side, never sent to the browser | Supabase → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role/secret key used only by the backend | Supabase → Project Settings → API |
 | `SUPABASE_JWT_SECRET` | JWT secret | Supabase → Project Settings → API → JWT Settings |
-| `BACKEND_URL` | optional deployed backend Cloud Run URL override, e.g. `https://edufx-backend-xxxxx-an.a.run.app`; `reminders.yml` can discover the URL from Cloud Run when this is omitted | first successful backend deploy output, or leave blank if `GCP_PROJECT_ID` + `GCP_SA_KEY` are configured |
+| `BACKEND_URL` | optional deployed backend Cloud Run URL override, e.g. `https://edufx-backend-xxxxx-an.a.run.app` | first successful backend deploy output |
 | `FRONTEND_URL` | (blank initially, fill after first deploy) | Cloud Run frontend URL |
-| `RESEND_API_KEY` | Resend API key for real reminder emails | Resend dashboard |
-| `REMINDERS_SHARED_SECRET` | optional GitHub override for the reminder shared secret; the workflow now falls back to Google Secret Manager if this is omitted | only needed when you do not want Actions to read `edufx-reminders-shared-secret` from GCP |
 | `FINETUNED_MODEL_URL` | optional, e.g. `http://<vm-ip>:8080` | vLLM VM URL, only when the GPU model server is running |
 
 These map directly into the Cloud Run service env vars in `.github/workflows/deploy.yml`. Nothing secret lives in the repo — `.env` stays gitignored.
-
-### Reminder secret source of truth
-
-Use **Google Secret Manager** as the single source of truth for scheduled reminder auth. Create one secret named `edufx-reminders-shared-secret`, let the Cloud Run runtime account read it, and let the GitHub deploy/reminder workflows read the same secret through `GCP_SA_KEY`.
-
-```bash
-PROJECT=responsive-sun-491204-e0
-REMINDER_SECRET_NAME=edufx-reminders-shared-secret
-
-openssl rand -base64 32 | tr -d '\n' > reminder-secret.txt
-
-gcloud secrets create $REMINDER_SECRET_NAME \
-  --project=$PROJECT \
-  --replication-policy=automatic
-
-gcloud secrets versions add $REMINDER_SECRET_NAME \
-  --project=$PROJECT \
-  --data-file=reminder-secret.txt
-
-gcloud secrets add-iam-policy-binding $REMINDER_SECRET_NAME \
-  --project=$PROJECT \
-  --member="serviceAccount:edufx-runtime@$PROJECT.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding $REMINDER_SECRET_NAME \
-  --project=$PROJECT \
-  --member="serviceAccount:edufx-deploy@$PROJECT.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-```
-
-The backend deploy uses `--update-secrets REMINDERS_SHARED_SECRET=edufx-reminders-shared-secret:latest`, so future deploys keep the backend and reminder workflow aligned even when the GitHub `REMINDERS_SHARED_SECRET` secret is absent.
-
----
 
 ## Part 3 — Backend Deployment (FastAPI)
 
@@ -179,12 +151,12 @@ The workflow passes the backend's deployed URL into the frontend build automatic
 2. Push to `main` — GitHub Actions runs `deploy.yml` automatically.
 3. Backend builds and deploys → frontend builds (using backend URL) and deploys.
 4. Copy the **backend URL** and **frontend URL** from the Actions log.
-5. Optionally add the backend URL as the `BACKEND_URL` secret or repository variable. If it is omitted, the scheduled `reminders.yml` workflow resolves the backend Cloud Run URL from `GCP_PROJECT_ID`, `GCP_SA_KEY`, service `edufx-backend`, and region `asia-northeast1`.
+5. Optionally add the backend URL as the `BACKEND_URL` secret or repository variable for manual integrations.
 6. Add the frontend URL as the `FRONTEND_URL` secret.
 7. Re-run the workflow (or push again) so the backend picks up `FRONTEND_ORIGIN` and locks CORS to the real frontend.
 8. Visit the frontend URL — the app is live.
 
-The workflow is already committed at `.github/workflows/deploy.yml`. Trigger is `push` to `main` or manual `workflow_dispatch`.
+The legacy workflow is kept at `.github/workflows/deploy.yml` for manual recovery only. Azure production is deployed by `.github/workflows/deploy-azure.yml` on pushes to `main` or manual `workflow_dispatch`.
 
 ---
 
@@ -246,11 +218,7 @@ A GPU VM does **not** scale to zero — it bills continuously while running. For
 - [ ] Supabase schema applied (tables + `content_chunks` + `match_content_chunks` RPC)
 - [ ] RAG notes ingested (55 chunks in `content_chunks`)
 - [ ] First push to `main` succeeds in Actions
-- [ ] `BACKEND_URL` secret or variable added after the first backend deploy, or `GCP_PROJECT_ID` + `GCP_SA_KEY` available so `reminders.yml` can discover the Cloud Run backend URL
 - [ ] `FRONTEND_URL` secret added after first deploy, workflow re-run
-- [ ] `edufx-reminders-shared-secret` created in Google Secret Manager
-- [ ] `edufx-runtime` and `edufx-deploy` have `roles/secretmanager.secretAccessor` on `edufx-reminders-shared-secret`
-- [ ] `REMINDERS_SHARED_SECRET` added in GitHub only if you want to override the Secret Manager value
 - [ ] `edufx-deploy-key.json` deleted from local machine
 - [ ] (Optional) GPU VM + vLLM for the fine-tuned model
 - [ ] (Optional) `FINETUNED_MODEL_URL` secret added only while the vLLM VM is running

@@ -9,7 +9,6 @@ from app.routes.behaviour import router as behaviour_router
 from app.routes.content import router as content_router
 from app.routes.diagnostic import router as diagnostic_router
 from app.routes.explanation import router as explanation_router
-from app.routes.internal import router as internal_router
 from app.routes.progress import router as progress_router
 from app.routes.quiz import router as quiz_router
 from app.routes.results import router as results_router
@@ -29,7 +28,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins,
-        allow_origin_regex=r"https://.*\.run\.app",
+        allow_origin_regex=r"https://.*\.(run\.app|azurecontainerapps\.io)",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -48,12 +47,37 @@ def create_app() -> FastAPI:
     app.include_router(behaviour_router, prefix="/behaviour", tags=["behaviour"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
     app.include_router(settings_router, prefix="/settings", tags=["settings"])
-    app.include_router(internal_router, prefix="/internal", tags=["internal"])
     app.include_router(teacher_router, prefix="/teacher", tags=["teacher"])
 
     @app.get("/")
     def health() -> dict[str, str]:
         return {"message": "EduFX MVC API is running"}
+
+    @app.get("/health/providers")
+    def provider_health() -> dict[str, object]:
+        provider_order: list[str] = []
+        for raw_name in settings.ai_provider_order.split(","):
+            name = raw_name.strip().lower()
+            if name in {"groq", "gemini", "vertex"} and name not in provider_order:
+                provider_order.append(name)
+        if not provider_order:
+            provider_order = ["vertex", "gemini", "groq"]
+        vertex_available = bool(settings.vertex_ai_enabled and settings.google_cloud_project)
+        embedding_provider = (
+            "vertex"
+            if vertex_available
+            else "gemini"
+            if settings.gemini_api_key
+            else "none"
+        )
+        return {
+            "text_provider_order": provider_order,
+            "groq_configured": bool(settings.groq_api_key),
+            "gemini_configured": bool(settings.gemini_api_key),
+            "vertex_enabled": vertex_available,
+            "finetuned_endpoint_configured": bool(settings.finetuned_model_url),
+            "embedding_provider": embedding_provider,
+        }
 
     return app
 

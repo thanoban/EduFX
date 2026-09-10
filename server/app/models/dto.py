@@ -26,7 +26,6 @@ class StudentProfileDTO(BaseModel):
     session_length: Literal["short", "medium", "long"] = "medium"
     day_session_length: dict[int, Literal["short", "medium", "long"]] = {}
     next_expected_date: date | None = None
-    email_reminders_enabled: bool = True
     current_streak: int = 0
     longest_streak: int = 0
     last_study_date: date | None = None
@@ -45,7 +44,6 @@ class StudentProfileDTO(BaseModel):
             session_length=student.session_length,
             day_session_length=dict(student.day_session_length),
             next_expected_date=student.next_expected_date,
-            email_reminders_enabled=student.email_reminders_enabled,
             current_streak=student.current_streak,
             longest_streak=student.longest_streak,
             last_study_date=student.last_study_date,
@@ -59,7 +57,6 @@ class UpdateAvailabilityRequest(BaseModel):
     # truth for which days are free; free_days/session_length above stay for
     # backward compatibility with older clients that only send a single length.
     day_session_length: dict[int, Literal["short", "medium", "long"]] = {}
-    email_reminders_enabled: bool = True
 
 
 NextFreeChoice = Literal["tomorrow", "in_2_days", "this_weekend", "not_sure"]
