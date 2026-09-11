@@ -1,0 +1,509 @@
+<title>EduFX API Test Summary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#f6f7f9;
+    --surface:#ffffff;
+    --surface-2:#eef1f5;
+    --ink:#191d27;
+    --muted:#5c6573;
+    --hair:#dde1e8;
+    --accent:#2f5fd0;
+    --pass:#1c7a45;
+    --pass-bg:#e4f2e9;
+    --blocked:#b84a12;
+    --blocked-bg:#fbebe0;
+    --critical:#c62a2a;
+    --critical-bg:#f9e4e4;
+    --med:#8a6d1a;
+    --med-bg:#f7efdb;
+    --low:#3f6b8a;
+    --low-bg:#e6eef4;
+    --shadow:0 1px 2px rgba(20,26,40,.06),0 8px 24px rgba(20,26,40,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#10131a;
+      --surface:#171b23;
+      --surface-2:#1f2530;
+      --ink:#e7eaf0;
+      --muted:#9aa3b2;
+      --hair:#2b323e;
+      --accent:#7aa2f0;
+      --pass:#57c98a;
+      --pass-bg:#16281f;
+      --blocked:#e8894f;
+      --blocked-bg:#2e1d12;
+      --critical:#ef6a6a;
+      --critical-bg:#331616;
+      --med:#d8b451;
+      --med-bg:#2c2512;
+      --low:#8db6d4;
+      --low-bg:#152430;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#10131a;
+    --surface:#171b23;
+    --surface-2:#1f2530;
+    --ink:#e7eaf0;
+    --muted:#9aa3b2;
+    --hair:#2b323e;
+    --accent:#7aa2f0;
+    --pass:#57c98a;
+    --pass-bg:#16281f;
+    --blocked:#e8894f;
+    --blocked-bg:#2e1d12;
+    --critical:#ef6a6a;
+    --critical-bg:#331616;
+    --med:#d8b451;
+    --med-bg:#2c2512;
+    --low:#8db6d4;
+    --low-bg:#152430;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:clamp(1.2rem,4vw,3rem) clamp(1rem,4vw,2rem) 5rem}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  /* ---- masthead ---- */
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 .8rem;
+  }
+  h1{
+    font-size:clamp(1.8rem,4.6vw,2.7rem);
+    font-weight:700;letter-spacing:-.02em;line-height:1.12;
+    margin:0 0 .6rem;text-wrap:balance;
+  }
+  .sub{color:var(--muted);font-size:1.02rem;margin:0 0 1.6rem;max-width:60ch}
+  .meta{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:.1rem 1.5rem;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+    padding:1rem 0;margin-bottom:2rem;
+  }
+  .meta div{font-size:.86rem;padding:.25rem 0}
+  .meta dt{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .meta dd{margin:.1rem 0 0;word-break:break-word}
+
+  /* ---- status banner ---- */
+  .banner{
+    display:flex;gap:1rem;align-items:flex-start;
+    background:var(--critical-bg);
+    border:1px solid color-mix(in srgb,var(--critical) 35%,transparent);
+    border-left:4px solid var(--critical);
+    border-radius:10px;padding:1.1rem 1.25rem;margin-bottom:2.4rem;
+  }
+  .banner .dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--critical);margin-top:.5rem;flex:none}
+  .banner h2{margin:0 0 .2rem;font-size:1.05rem;font-weight:700}
+  .banner p{margin:0;font-size:.92rem;color:var(--ink)}
+
+  /* ---- stat tiles ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.9rem;margin-bottom:2.6rem}
+  .tile{
+    background:var(--surface);border:1px solid var(--hair);border-radius:10px;
+    padding:1rem 1.1rem;box-shadow:var(--shadow);
+  }
+  .tile .n{font-family:"IBM Plex Mono",monospace;font-size:1.7rem;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .tile .l{font-size:.78rem;color:var(--muted);margin-top:.15rem;line-height:1.35}
+  .tile.crit .n{color:var(--critical)}
+  .tile.block .n{color:var(--blocked)}
+  .tile.pass .n{color:var(--pass)}
+
+  /* ---- sections ---- */
+  section{margin-bottom:2.8rem}
+  h2.sec{
+    font-size:1.28rem;font-weight:700;letter-spacing:-.01em;margin:0 0 .3rem;
+    padding-top:.6rem;
+  }
+  h2.sec .idx{font-family:"IBM Plex Mono",monospace;color:var(--accent);font-size:.9rem;margin-right:.6rem;font-weight:500}
+  .sec-note{color:var(--muted);font-size:.9rem;margin:0 0 1.1rem}
+  p{margin:0 0 1rem}
+  a{color:var(--accent)}
+
+  /* ---- tables ---- */
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--hair);border-radius:10px;box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;font-size:.86rem;background:var(--surface)}
+  th,td{text-align:left;padding:.62rem .8rem;border-bottom:1px solid var(--hair);vertical-align:top}
+  th{
+    font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);background:var(--surface-2);position:sticky;top:0;
+  }
+  tr:last-child td{border-bottom:none}
+  td.mono,th.mono{font-family:"IBM Plex Mono",monospace}
+  td.num{font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace}
+
+  .chip{
+    display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.68rem;font-weight:600;
+    letter-spacing:.04em;text-transform:uppercase;padding:.16rem .5rem;border-radius:5px;white-space:nowrap;
+  }
+  .chip.pass{background:var(--pass-bg);color:var(--pass)}
+  .chip.block{background:var(--blocked-bg);color:var(--blocked)}
+  .chip.partial{background:var(--med-bg);color:var(--med)}
+  .chip.crit{background:var(--critical-bg);color:var(--critical)}
+  .chip.med{background:var(--med-bg);color:var(--med)}
+  .chip.low{background:var(--low-bg);color:var(--low)}
+  .chip.info{background:var(--low-bg);color:var(--low)}
+
+  /* ---- defect cards ---- */
+  .defect{
+    background:var(--surface);border:1px solid var(--hair);border-radius:10px;
+    box-shadow:var(--shadow);margin-bottom:1.1rem;overflow:hidden;
+  }
+  .defect > .head{display:flex;flex-wrap:wrap;gap:.5rem .8rem;align-items:baseline;padding:1rem 1.2rem .5rem;border-left:4px solid var(--hair)}
+  .defect.sev-crit > .head{border-left-color:var(--critical)}
+  .defect.sev-med > .head{border-left-color:var(--med)}
+  .defect.sev-low > .head{border-left-color:var(--low)}
+  .defect .id{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:.9rem}
+  .defect .t{font-weight:600;font-size:1rem;flex:1 1 300px}
+  .defect .body{padding:.4rem 1.2rem 1.15rem;border-left:4px solid transparent}
+  .defect .body p{font-size:.9rem;margin:.5rem 0}
+  .defect dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem .9rem;font-size:.84rem;margin:.4rem 0 .2rem}
+  .defect dt{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:.15rem}
+  .defect dd{margin:0}
+  pre{
+    background:var(--surface-2);border:1px solid var(--hair);border-radius:8px;
+    padding:.75rem .9rem;overflow-x:auto;font-size:.8rem;margin:.6rem 0;
+    font-family:"IBM Plex Mono",monospace;line-height:1.5;
+  }
+  ul,ol{margin:.4rem 0 1rem;padding-left:1.3rem}
+  li{margin:.3rem 0;font-size:.92rem}
+
+  .callout{
+    background:var(--pass-bg);border:1px solid color-mix(in srgb,var(--pass) 30%,transparent);
+    border-radius:10px;padding:1rem 1.2rem;font-size:.9rem;
+  }
+  .callout h3{margin:0 0 .5rem;font-size:.95rem}
+  .callout ul{margin:0;padding-left:1.2rem}
+
+  .rec{
+    background:var(--surface);border:1px solid var(--hair);border-top:3px solid var(--critical);
+    border-radius:10px;padding:1.3rem 1.4rem;box-shadow:var(--shadow);
+  }
+  .rec .verdict{font-weight:700;font-size:1.1rem;color:var(--critical);margin-bottom:.6rem}
+
+  footer{border-top:1px solid var(--hair);padding-top:1.4rem;margin-top:3rem;font-size:.82rem;color:var(--muted)}
+  .signoff{display:grid;grid-template-columns:1fr;gap:.6rem;margin-top:1rem}
+  .signoff div{border:1px dashed var(--hair);border-radius:8px;padding:.7rem .9rem;font-size:.84rem}
+  .signoff span{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:1.4rem}
+
+  @media (prefers-reduced-motion:no-preference){
+    .tile,.defect{transition:transform .15s ease}
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Final API Test Summary · SQA Plan v1.1</p>
+  <h1>EduFX API Testing System — Test Cycle Report</h1>
+  <p class="sub">API-only verification of the EduFX adaptive A-Level Chemistry backend, executed against the live Cloud Run deployment under the agreed two-week reduced scope.</p>
+
+  <dl class="meta">
+    <div><dt>Target</dt><dd class="mono">edufx-backend-148945739572.asia-northeast1.run.app</dd></div>
+    <div><dt>Build surface</dt><dd>FastAPI · OpenAPI 3.1 · 27 published paths</dd></div>
+    <div><dt>Executed (UTC)</dt><dd>2026-08-29 12:59</dd></div>
+    <div><dt>Data backend</dt><dd class="mono">supabase</dd></div>
+    <div><dt>Method</dt><dd>Contract review + scripted HTTP (retry&nbsp;×3)</dd></div>
+    <div><dt>Prepared by</dt><dd>QA Engineer</dd></div>
+  </dl>
+
+  <div class="banner">
+    <span class="dot" aria-hidden="true"></span>
+    <div>
+      <h2>Cycle closed as BLOCKED — not ready for release</h2>
+      <p>The deployed backend cannot resolve its Supabase database host. Every endpoint that reads or writes data returns <span class="mono">HTTP&nbsp;500</span>. 15 of 27 endpoints have no working success path, and the functional, boundary, cross-account-isolation and AI-relevance testing defined in the plan could not be performed.</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="tile"><div class="n">73</div><div class="l">Checks designed (15 areas)</div></div>
+    <div class="tile pass"><div class="n">43</div><div class="l">Executed &amp; passed</div></div>
+    <div class="tile block"><div class="n">30</div><div class="l">Blocked by DEF-001</div></div>
+    <div class="tile crit"><div class="n">1</div><div class="l">Critical defect open</div></div>
+    <div class="tile crit"><div class="n">0<span style="font-size:1rem"> / 27</span></div><div class="l">Endpoints with a verified 2xx path</div></div>
+    <div class="tile"><div class="n">59%</div><div class="l">Planned scope executable</div></div>
+  </div>
+
+  <section>
+    <h2 class="sec"><span class="idx">01</span>Executive summary</h2>
+    <p>The EduFX API service is reachable — the health check, OpenAPI contract and Swagger UI all respond correctly. However <strong>every endpoint that touches the database fails at runtime</strong> with:</p>
+    <pre>{"success": false,
+ "message": "Unexpected error: [Errno -2] Name or service not known",
+ "data": null}</pre>
+    <p>This is a DNS resolution failure (<span class="mono">getaddrinfo</span>) inside the container when the Supabase client opens its connection. Because <span class="mono">data_backend</span> is set to <span class="mono">supabase</span>, there is no in-memory fallback, so 15 endpoints are non-functional and the remaining test scope is blocked behind them.</p>
+    <p><strong>What was verified and passes:</strong> request validation (all <span class="mono">422</span> cases), authentication <em>rejection</em> on protected routes (<span class="mono">401</span>), the internal-reminder shared-secret gate (<span class="mono">403</span>), routing and HTTP-method handling (<span class="mono">404</span>&nbsp;/&nbsp;<span class="mono">405</span>), and contract accuracy against the SQA endpoint list.</p>
+    <p><strong>What could not be verified:</strong> login, diagnostic placement, content delivery, quiz retrieval &amp; AI generation, quiz scoring, progress tracking, behaviour storage, AI teacher chat/report, admin actions, and — critically — student data isolation.</p>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">02</span>Entry-criteria assessment</h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Entry criterion (SQA §9)</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>API documentation available &amp; matches scope</td><td><span class="chip pass">Met</span></td><td>27 OpenAPI paths match SQA §7 exactly</td></tr>
+          <tr><td>Test environment running</td><td><span class="chip partial">Partial</span></td><td>Service up; database dependency unreachable</td></tr>
+          <tr><td>Required endpoints accessible</td><td><span class="chip partial">Partial</span></td><td>All routes resolve; 15/27 fail at runtime</td></tr>
+          <tr><td>Test accounts / tokens prepared</td><td><span class="chip pass">Met</span></td><td><span class="mono">demo:&lt;name&gt;:&lt;email&gt;</span> bearer accepted; admin role needs DB record (unverifiable)</td></tr>
+          <tr><td>Dummy test data available</td><td><span class="chip block">Not met</span></td><td>Backend unreachable — no seed data readable or creatable</td></tr>
+          <tr><td>Test cases reviewed &amp; ready</td><td><span class="chip pass">Met</span></td><td>73 checks across 15 areas</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">03</span>Execution summary by area</h2>
+    <p class="sec-note">"Passed" covers only the layers in front of the database (validation, auth rejection, routing). No business behaviour was confirmed in any area.</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Area</th><th class="num">Pass</th><th class="num">Blocked</th><th>Coverage achieved</th></tr></thead>
+        <tbody>
+          <tr><td>Health / contract</td><td class="num">5</td><td class="num">0</td><td>Full</td></tr>
+          <tr><td>Authentication</td><td class="num">5</td><td class="num">3</td><td>Rejection paths only; login &amp; account check blocked</td></tr>
+          <tr><td>Diagnostic</td><td class="num">4</td><td class="num">2</td><td>Validation only</td></tr>
+          <tr><td>Scheduler — today's plan</td><td class="num">1</td><td class="num">2</td><td>Path validation only</td></tr>
+          <tr><td>Content — subtopics / study content</td><td class="num">1</td><td class="num">3</td><td>Path validation only</td></tr>
+          <tr><td>Quiz — retrieve / AI generate</td><td class="num">3</td><td class="num">2</td><td>Validation only</td></tr>
+          <tr><td>Results — submit / session</td><td class="num">4</td><td class="num">2</td><td>Validation only</td></tr>
+          <tr><td>Explanation</td><td class="num">1</td><td class="num">1</td><td>Path validation only</td></tr>
+          <tr><td>Progress</td><td class="num">2</td><td class="num">2</td><td>Path validation only</td></tr>
+          <tr><td>Behaviour — snapshot / summary / history</td><td class="num">4</td><td class="num">4</td><td>Validation only</td></tr>
+          <tr><td>Settings — availability / next-free</td><td class="num">4</td><td class="num">2</td><td>Validation only</td></tr>
+          <tr><td>Teacher — AI chat / report</td><td class="num">3</td><td class="num">2</td><td>Validation only</td></tr>
+          <tr><td>Admin — RBAC</td><td class="num">4</td><td class="num">2</td><td>Token-absent rejection only</td></tr>
+          <tr><td>Internal — reminders</td><td class="num">2</td><td class="num">0</td><td>Shared-secret gate verified</td></tr>
+          <tr><td>Cross-account isolation</td><td class="num">0</td><td class="num">3</td><td>Not exercised — see DEF-003</td></tr>
+          <tr style="font-weight:600"><td>Total</td><td class="num">43</td><td class="num">30</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">04</span>Requirement traceability — endpoint coverage</h2>
+    <p class="sec-note">
+      <span class="chip pass">verified</span>&nbsp;
+      <span class="chip partial">pre-DB layers only</span>&nbsp;
+      <span class="chip block">blocked — no success path</span>&nbsp;
+      <span class="chip info">design concern</span>
+    </p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="num">#</th><th class="mono">Endpoint</th><th>Checks</th><th>Outcome</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td class="mono">GET /</td><td>H-01, H-05</td><td><span class="chip pass">verified</span> health 200; wrong method 405</td></tr>
+          <tr><td class="num">2</td><td class="mono">POST /auth/google</td><td>A-01…A-04</td><td><span class="chip partial">partial</span> rejects missing/bad token 401 · <span class="chip block">blocked</span> demo login → 500</td></tr>
+          <tr><td class="num">3</td><td class="mono">GET /auth/check</td><td>A-05…A-08</td><td><span class="chip partial">partial</span> header validation 422 · <span class="chip block">blocked</span> lookup → 500</td></tr>
+          <tr><td class="num">4</td><td class="mono">GET /diagnostic/questions</td><td>D-01</td><td><span class="chip block">blocked</span> 500</td></tr>
+          <tr><td class="num">5</td><td class="mono">POST /diagnostic/submit</td><td>D-02…D-06</td><td><span class="chip partial">partial</span> validation 422 (body, student_id, type, rating enum) · <span class="chip block">blocked</span> valid submit → 500</td></tr>
+          <tr><td class="num">6</td><td class="mono">GET /scheduler/todays-plan/{id}</td><td>SC-01…SC-03</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">7</td><td class="mono">GET /content/subtopics</td><td>C-01</td><td><span class="chip block">blocked</span> 500</td></tr>
+          <tr><td class="num">8</td><td class="mono">GET /content/{sub}/{id}</td><td>C-02…C-04</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">9</td><td class="mono">GET /quiz/{sub}/{id}</td><td>Q-01, Q-02</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">10</td><td class="mono">POST /quiz/generate</td><td>Q-03…Q-05</td><td><span class="chip partial">partial</span> validation 422 · <span class="chip block">blocked</span> AI generate → 500</td></tr>
+          <tr><td class="num">11</td><td class="mono">POST /results/submit-quiz</td><td>R-01…R-04</td><td><span class="chip partial">partial</span> validation 422 (body, fields, answers type) · <span class="chip block">blocked</span> valid submit → 500</td></tr>
+          <tr><td class="num">12</td><td class="mono">GET /results/session/{sid}/{id}</td><td>R-05, R-06</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">13</td><td class="mono">GET /explanation/{sid}/{id}</td><td>E-01, E-02</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">14</td><td class="mono">GET /progress/{id}</td><td>P-01, P-02</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">15</td><td class="mono">GET /progress/{id}/{sub}</td><td>P-03, P-04</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">16</td><td class="mono">POST /behaviour/save-snapshot</td><td>B-01…B-03</td><td><span class="chip partial">partial</span> validation 422 · <span class="chip block">blocked</span> valid save → 500</td></tr>
+          <tr><td class="num">17</td><td class="mono">POST /behaviour/save-summary</td><td>B-04, B-05</td><td><span class="chip partial">partial</span> validation 422 · <span class="chip block">blocked</span> valid save → 500</td></tr>
+          <tr><td class="num">18</td><td class="mono">GET /behaviour/session/{sid}</td><td>B-06, B-08</td><td><span class="chip partial">partial</span> non-numeric 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">19</td><td class="mono">GET /behaviour/student/{id}</td><td>B-07</td><td><span class="chip block">blocked</span> 500</td></tr>
+          <tr><td class="num">20</td><td class="mono">PUT /settings/{id}/availability</td><td>ST-01…ST-04</td><td><span class="chip partial">partial</span> validation 422 (body, field, session_length enum) · <span class="chip block">blocked</span> valid update → 500</td></tr>
+          <tr><td class="num">21</td><td class="mono">POST /settings/{id}/next-free</td><td>ST-05, ST-06</td><td><span class="chip partial">partial</span> choice enum 422 · <span class="chip block">blocked</span> valid → 500</td></tr>
+          <tr><td class="num">22</td><td class="mono">POST /teacher/{id}/chat</td><td>T-01…T-04</td><td><span class="chip partial">partial</span> validation 422 (body, message, history role) · <span class="chip block">blocked</span> valid chat → 500</td></tr>
+          <tr><td class="num">23</td><td class="mono">GET /teacher/{id}/report</td><td>T-05</td><td><span class="chip block">blocked</span> 500</td></tr>
+          <tr><td class="num">24</td><td class="mono">GET /admin/students</td><td>AD-01…AD-03</td><td><span class="chip partial">partial</span> no / bad token → 401 · <span class="chip block">blocked</span> non-admin token → 500 instead of 403</td></tr>
+          <tr><td class="num">25</td><td class="mono">GET /admin/students/{id}</td><td>AD-04</td><td><span class="chip partial">partial</span> no token → 401 · authorised path blocked</td></tr>
+          <tr><td class="num">26</td><td class="mono">PATCH /admin/students/{id}/role</td><td>AD-05, AD-06</td><td><span class="chip partial">partial</span> no token → 401 · <span class="chip block">blocked</span> role-enum check unreachable (500)</td></tr>
+          <tr><td class="num">27</td><td class="mono">POST /internal/reminders/run</td><td>IN-01, IN-02</td><td><span class="chip pass">verified</span> missing &amp; wrong secret → 403 (secret configured &amp; enforced)</td></tr>
+          <tr><td class="num">—</td><td class="mono">cross-account isolation</td><td>IS-01…IS-03</td><td><span class="chip info">design</span> <span class="chip block">blocked</span> no auth/ownership control in code; live proof blocked</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">05</span>Defect log</h2>
+
+    <div class="defect sev-crit">
+      <div class="head">
+        <span class="id">DEF-001</span>
+        <span class="t">Backend cannot reach its database; all data endpoints return HTTP 500</span>
+        <span class="chip crit">Critical</span>
+      </div>
+      <div class="body">
+        <dl>
+          <dt>Status</dt><dd>New → Open</dd>
+          <dt>Affected</dt><dd>15 endpoints directly · 30 planned checks blocked · entire functional scope</dd>
+          <dt>Reproducibility</dt><dd>100% — retried 6× over 30s and across the full run</dd>
+        </dl>
+        <p><strong>Steps:</strong> <span class="mono">GET /content/subtopics</span> → <span class="mono">500</span>, body <span class="mono">{"success":false,"message":"Unexpected error: [Errno -2] Name or service not known","data":null}</span>. Identical for <span class="mono">/progress/1</span>, <span class="mono">/diagnostic/questions</span>, <span class="mono">POST /auth/google</span> (valid demo token), <span class="mono">/teacher/1/report</span>, and every other data-backed route.</p>
+        <p><strong>Analysis:</strong> <span class="mono">[Errno -2] Name or service not known</span> is a DNS failure raised when the Supabase client connects. <span class="mono">data_backend=supabase</span> with no in-memory fallback once that mode is selected, so every repository call fails. Health survives because it touches no repository.</p>
+        <p><strong>Cross-check:</strong> the previous backend URL (<span class="mono">edufx-backend-rngcuc5r2a-an.a.run.app</span>) shows the identical failure on the same endpoints. Both deployments are affected → this is a <strong>Supabase project-level outage</strong> (paused / deleted / free-tier auto-pause), not a single bad revision. Fix is on the Supabase side, or switch the deploy to <span class="mono">data_backend=memory</span>.</p>
+        <p><strong>Impact:</strong> students cannot log in, take the diagnostic, load content, take quizzes, view progress, or use the AI teacher; the admin console is non-functional.</p>
+        <p><strong>Retest when fixed:</strong> all 30 blocked checks plus the functional / boundary / isolation / AI-relevance suites never reached.</p>
+      </div>
+    </div>
+
+    <div class="defect sev-med">
+      <div class="head">
+        <span class="id">DEF-002</span>
+        <span class="t">Internal exception details leaked in the 500 response body</span>
+        <span class="chip med">Medium</span>
+      </div>
+      <div class="body">
+        <dl><dt>Status</dt><dd>New → Open</dd><dt>Affected</dt><dd>Global generic exception handler</dd></dl>
+        <p>The catch-all handler returns <span class="mono">f"Unexpected error: {exc}"</span> to the client, exposing the raw OS error string and the fact that the backend depends on an external host. The SQA §14 risk register requires "controlled API error responses" — this control fails. Return a generic message and log detail server-side only.</p>
+      </div>
+    </div>
+
+    <div class="defect sev-med">
+      <div class="head">
+        <span class="id">DEF-003</span>
+        <span class="t">Student data endpoints have no authentication or ownership enforcement</span>
+        <span class="chip med">Medium → Critical if confirmed</span>
+      </div>
+      <div class="body">
+        <dl>
+          <dt>Status</dt><dd>New → Open — behaviour <strong>blocked by DEF-001</strong>; raised from contract + code review</dd>
+          <dt>Affected</dt><dd>scheduler, content, quiz, results, explanation, progress, behaviour, settings, teacher, <span class="mono">auth/check</span></dd>
+        </dl>
+        <p>None of these routes take a bearer token or verify the caller against the <span class="mono">student_id</span> in the path/body/header. IDs are sequential integers, so any client that guesses one could read another student's progress, quiz results, answer explanations, behaviour/proctoring history and settings, and post data or chat as them. Cross-account checks IS-01…IS-03 were designed to prove this but returned <span class="mono">500</span>, so the finding is <strong>unverified against the live API</strong> and must be retested once DEF-001 is fixed. The SQA §14 register scores this scenario Critical.</p>
+      </div>
+    </div>
+
+    <div class="defect sev-low">
+      <div class="head">
+        <span class="id">DEF-004</span>
+        <span class="t">CORS allows credentialed requests from any *.run.app origin</span>
+        <span class="chip low">Low</span>
+      </div>
+      <div class="body">
+        <dl><dt>Status</dt><dd>New → Open</dd></dl>
+        <p><span class="mono">allow_origin_regex = https://.*\.run\.app</span> with <span class="mono">allow_credentials=True</span>. Verified:</p>
+        <pre>OPTIONS /progress/1   Origin: https://attacker-abc123.run.app
+→ 200  access-control-allow-origin: https://attacker-abc123.run.app
+       access-control-allow-credentials: true</pre>
+        <p>Any site deployable to Cloud Run is treated as a trusted browser origin. Tighten the regex to the specific frontend hostname(s). Impact is limited because the API auth token travels in a header, not a cookie.</p>
+      </div>
+    </div>
+
+    <div class="defect sev-low">
+      <div class="head">
+        <span class="id">DEF-005</span>
+        <span class="t">demo: bearer token bypasses authentication and is not flag-gated</span>
+        <span class="chip low">Low</span>
+      </div>
+      <div class="body">
+        <dl><dt>Status</dt><dd>New → Open</dd></dl>
+        <p>Any request with <span class="mono">Authorization: Bearer demo:&lt;name&gt;:&lt;email&gt;</span> is accepted as that identity with no credential check, and the bypass is not guarded by the <span class="mono">demo_mode</span> setting, so it cannot be disabled by configuration. Gate or remove it before storing real user data.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">06</span>Defect summary</h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Severity</th><th class="num">Count</th><th>IDs</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip crit">Critical</span></td><td class="num">1</td><td class="mono">DEF-001</td></tr>
+          <tr><td><span class="chip med">High</span></td><td class="num">0</td><td>—</td></tr>
+          <tr><td><span class="chip med">Medium</span></td><td class="num">2</td><td class="mono">DEF-002, DEF-003</td></tr>
+          <tr><td><span class="chip low">Low</span></td><td class="num">2</td><td class="mono">DEF-004, DEF-005</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sec-note">DEF-003 is scored Medium pending live retest; it becomes Critical if the missing-isolation behaviour is confirmed once DEF-001 is fixed.</p>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">07</span>Positive observations</h2>
+    <div class="callout">
+      <h3>Working correctly — no defect</h3>
+      <ul>
+        <li><strong>Input validation is solid.</strong> All 20 malformed-request checks returned <span class="mono">422</span> with a proper validation body — missing bodies, missing required fields, wrong scalar types, invalid enums (<span class="mono">rating</span>, <span class="mono">session_length</span>, <span class="mono">choice</span>, chat <span class="mono">role</span>), and non-numeric path parameters.</li>
+        <li><strong>Authentication rejection is correct.</strong> <span class="mono">POST /auth/google</span> and every <span class="mono">/admin/*</span> route return <span class="mono">401</span> for missing or malformed <span class="mono">Authorization</span> headers, before any backend work.</li>
+        <li><strong>Internal reminder endpoint is protected.</strong> <span class="mono">POST /internal/reminders/run</span> returns <span class="mono">403</span> for both a missing and an incorrect <span class="mono">x-internal-secret</span>.</li>
+        <li><strong>Routing &amp; method handling are correct.</strong> Unknown routes <span class="mono">404</span>; disallowed methods <span class="mono">405</span>.</li>
+        <li><strong>Contract is published and accurate.</strong> <span class="mono">/openapi.json</span> and <span class="mono">/docs</span> load; the 27 documented paths match the SQA §7 list exactly.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">08</span>Exit-criteria evaluation (SQA §10)</h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Exit criterion</th><th>Met?</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>All planned cases executed or clearly marked blocked</td><td><span class="chip partial">Partial</span></td><td>43 executed · 30 blocked, all traced to DEF-001</td></tr>
+          <tr><td>No critical defects open</td><td><span class="chip crit">No</span></td><td>DEF-001 open</td></tr>
+          <tr><td>No unresolved high-severity defects blocking agreed flows</td><td><span class="chip crit">No</span></td><td>DEF-001 blocks every core flow</td></tr>
+          <tr><td>Final pass rate &gt; 95%</td><td><span class="chip crit">No</span></td><td>59% of planned scope; functional behaviour 0% verified</td></tr>
+          <tr><td>All endpoints &amp; requirements have test coverage</td><td><span class="chip partial">Partial</span></td><td>Every endpoint designed; 0/27 with a verified success path</td></tr>
+          <tr><td>Fixed defects retested + focused regression</td><td><span class="chip partial">N/A</span></td><td>No fixes delivered this cycle</td></tr>
+          <tr><td>Final summary completed &amp; approved</td><td><span class="chip partial">In progress</span></td><td>This document</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:1rem"><strong>Exit criteria are not satisfied. The test cycle closes as BLOCKED.</strong></p>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">09</span>Recommendation</h2>
+    <div class="rec">
+      <div class="verdict">Not ready for release.</div>
+      <ol>
+        <li><strong>Fix DEF-001 first.</strong> Restore the Supabase project / correct <span class="mono">SUPABASE_URL</span> / fix Cloud Run egress. Until a data endpoint returns <span class="mono">2xx</span>, no further functional QA is possible. Interim option: deploy with <span class="mono">data_backend=memory</span> so the API is at least demonstrable.</li>
+        <li><strong>Hand back for a full functional pass.</strong> QA re-runs the 30 blocked checks plus the positive / boundary / business-logic / cross-account / AI-relevance suites never reached — quiz scoring, progress updates, diagnostic level placement, behaviour aggregation, admin RBAC actions, AI chemistry-relevance sampling.</li>
+        <li><strong>Resolve DEF-003 before storing real student data</strong> — highest-impact design gap and a Critical risk in the SQA plan.</li>
+        <li><strong>Fold DEF-002, DEF-004, DEF-005 into the same hardening pass.</strong></li>
+      </ol>
+      <p style="margin-bottom:0"><strong>Estimated QA effort after DEF-001 is fixed:</strong> ~3 days (matches the unused SQA §16 "API test execution" allocation).</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec"><span class="idx">10</span>Deliverables produced this cycle</h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>SQA §11 deliverable</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>API Test Plan / Scenarios / Cases</td><td><span class="chip pass">Done</span> 73 checks · 15 areas</td></tr>
+          <tr><td>Requirement Traceability Matrix</td><td><span class="chip pass">Done</span> §4</td></tr>
+          <tr><td>Bug Reports</td><td><span class="chip pass">Done</span> DEF-001…DEF-005</td></tr>
+          <tr><td>Test execution evidence</td><td><span class="chip pass">Done</span> <span class="mono">test_results.json</span>, <span class="mono">test_log.csv</span></td></tr>
+          <tr><td>Postman collection / environment</td><td><span class="chip pass">In repo</span> <span class="mono">edufx-api.postman_collection.json</span> — update deployed env <span class="mono">base_url</span> to the new URL; this cycle scripted via <span class="mono">run_tests.py</span> for repeatability</td></tr>
+          <tr><td>Final API Test Summary Report</td><td><span class="chip pass">Done</span> this document</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Full 73-row check log: <span class="mono">docs/qa/api-testing/artifacts/test_log.csv</span> · raw responses: <span class="mono">test_results.json</span> · runner: <span class="mono">run_tests.py</span>. Markdown source of this report: <span class="mono">docs/qa/api-testing/EduFX_API_Test_Summary_2026-08-29.md</span>.</p>
+    <div class="signoff">
+      <div><span>QA Engineer — decision: cycle closed, BLOCKED, not ready</span></div>
+      <div><span>Project Supervisor — approval</span></div>
+    </div>
+    <p style="margin-top:1rem">Carried-forward issues: DEF-001 (blocker), DEF-002–005 (hardening backlog). Follow-up: dev resolves DEF-001, then requests functional re-test.</p>
+  </footer>
+
+</div>

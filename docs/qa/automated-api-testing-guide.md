@@ -1,5 +1,8 @@
 # EduFX Automated API Testing Guide
 
+> CI validates the application with an in-memory backend. The active deployed
+> runtime is Azure Container Apps; GCP Cloud Run is manual legacy infrastructure.
+
 How this project's automated test suite is built, how to run it, and how to
 extend it. For the manual/exploratory counterpart, see
 [api-testing-guide.md](api-testing-guide.md).
@@ -155,10 +158,10 @@ def test_my_new_scenario():
 `.github/workflows/test.yml` runs the full backend `pytest` suite and the
 frontend `vitest` suite on every push and pull request (added alongside this
 guide — see the workflow file for the exact steps). This is separate from
-`.github/workflows/deploy.yml`, which builds and deploys to Cloud Run but
-does **not** gate on tests passing first — `test.yml` is the actual quality
-gate; treat a red run there as blocking, the same as you would a failed
-manual smoke test before a release.
+`.github/workflows/deploy-azure.yml`, which builds and deploys to Azure after a
+push to `main`. The deployment workflow performs its own production smoke
+checks; `test.yml` is the unit/integration quality gate and should remain green
+before a release.
 
 ## 6. Automation Coverage Matrix
 

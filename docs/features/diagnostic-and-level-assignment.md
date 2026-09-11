@@ -28,6 +28,8 @@ Frontend routes:
 
 - `/diagnostic`
 - `/diagnostic/results`
+- `/diagnostic/self-assessment`
+- `/diagnostic/availability`
 
 Backend endpoints:
 
@@ -36,14 +38,18 @@ Backend endpoints:
 
 ## What happens
 
-1. EduFX loads 40 diagnostic questions.
-2. The UI shows one question at a time with a question map.
-3. The student answers all questions.
-4. The frontend submits all answers in one request.
-5. The backend scores the diagnostic per subtopic.
-6. EduFX stores assigned levels for the student.
-7. The frontend refreshes the student profile.
-8. The student can now enter the adaptive dashboard.
+1. The student records an initial confidence self-assessment.
+2. EduFX loads 40 authenticated diagnostic questions.
+3. The UI shows one question at a time with a question map.
+4. The student answers all questions.
+5. The frontend submits all answers in one authenticated request.
+6. The backend verifies ownership and scores the diagnostic per subtopic.
+7. EduFX stores assigned levels for the student.
+8. The student reviews results and configures availability.
+9. The frontend refreshes the student profile and opens the adaptive dashboard.
+
+Anonymous access to `GET /diagnostic/questions` returns `401`. This protects the
+assessment bank and confirms the production authorization guard is active.
 
 ## Why it matters
 

@@ -27,7 +27,7 @@ mock landing page or isolated notebook. The repo demonstrates:
 - repository-driven storage abstraction (`memory` and `supabase`)
 - end-to-end adaptive learning flow
 - ML integration beyond LLM prompting
-- production-style deployment through GitHub Actions and Cloud Run
+- production deployment through GitHub Actions and Azure Container Apps
 
 ## Core product flow
 
@@ -72,8 +72,9 @@ invalid answer keys can be filtered or regenerated before students see them.
 ### 3. Explanations and RAG
 
 Wrong-answer explanations are generated with live model calls and chemistry note
-retrieval. EduFX stores embedded note chunks and retrieves relevant context
-before generating the explanation.
+retrieval. EduFX reads chemistry chunks from Supabase and currently ranks them
+lexically in Azure production before generating the explanation. Vector ranking
+remains available when a compatible embedding provider is configured.
 
 ### 4. Teacher agent
 
@@ -175,11 +176,11 @@ EduFX_MVC/
 | Frontend | Next.js 15, React 19, TypeScript |
 | Backend | FastAPI, Python 3.12, Pydantic v2 |
 | Database | Supabase PostgreSQL |
-| Retrieval | pgvector + optional Vertex/Gemini embeddings + lexical fallback |
+| Retrieval | Supabase content chunks + lexical production ranking; optional vector ranking |
 | AI generation | Groq-first Azure path, optional Gemini/Vertex legacy fallback, optional fine-tuned endpoint |
 | Knowledge tracing | BKT, DKT |
 | Browser ML | MediaPipe, TensorFlow Lite |
-| Deployment | GCP Cloud Run or Azure Container Apps, GitHub Actions |
+| Deployment | Azure Container Apps (primary), GCP Cloud Run (manual legacy), GitHub Actions |
 | Tests | Pytest, Vitest |
 
 ## Local development
@@ -249,10 +250,13 @@ python -m app.tools.seed_supabase
 ### Ingest RAG notes
 
 ```powershell
-gcloud auth application-default login
 cd D:\PROJECTS\2ndYearProject\EduFX_MVC\server
 python -m app.rag.ingest
 ```
+
+Vector ingestion needs a configured Vertex or Gemini embedding provider.
+Current Azure production can retrieve already stored chunks lexically without
+calling a Google embedding service.
 
 ## Verification
 
@@ -279,6 +283,7 @@ The repo documentation is organized as a structured library under
 
 Recommended entry points:
 
+- [`docs/current-status-and-roadmap.md`](docs/current-status-and-roadmap.md)
 - [`docs/index.md`](docs/index.md)
 - [`docs/architecture/architecture-reference.md`](docs/architecture/architecture-reference.md)
 - [`docs/getting-started/adaptive-system-learning-guide.md`](docs/getting-started/adaptive-system-learning-guide.md)
@@ -286,11 +291,16 @@ Recommended entry points:
 - [`docs/ml-recommender/recommender-learning-basics.md`](docs/ml-recommender/recommender-learning-basics.md)
 - [`docs/finetuning/finetune-results.md`](docs/finetuning/finetune-results.md)
 - [`docs/deployment/deployment-plan.md`](docs/deployment/deployment-plan.md)
+- [`docs/product/landing-page-plan.md`](docs/product/landing-page-plan.md)
 
 ## Deployment
 
 EduFX now uses GitHub Actions deployment to Azure Container Apps as the primary
 production path, with Google Cloud Run kept as a manual legacy deployment path.
+
+Current production URLs, verified route behavior, known limitations, and the
+prioritized delivery plan are recorded in
+[`docs/current-status-and-roadmap.md`](docs/current-status-and-roadmap.md).
 
 The Azure deployment path includes:
 
@@ -304,6 +314,7 @@ See:
 
 - [`docs/deployment/deployment-plan.md`](docs/deployment/deployment-plan.md)
 - [`docs/deployment/azure-production.md`](docs/deployment/azure-production.md)
+- [`docs/current-status-and-roadmap.md`](docs/current-status-and-roadmap.md)
 - [`.github/workflows/`](.github/workflows)
 
 ## Notes
@@ -311,4 +322,8 @@ See:
 - `DATA_BACKEND=memory` allows the app to run without live Supabase data.
 - The recommender and teacher systems are intentionally separate.
 - The behaviour layer is optional for students and should never block study use.
+- Daily email reminders are removed until a production mail provider, consent,
+  unsubscribe handling, and delivery monitoring are implemented.
+- The trained QLoRA adapter is an available artifact, but its serving endpoint
+  is not configured in current Azure production.
 - Existing scratch files or private local assets are not part of the tracked app.

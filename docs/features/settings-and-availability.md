@@ -41,6 +41,10 @@ Daily email reminders are currently disabled because no production email
 delivery provider is configured. Availability remains active and is used by
 the adaptive scheduler.
 
+The reminder UI, API route, and scheduled GitHub workflow have been removed.
+The legacy database column can remain for schema compatibility but has no
+current product behavior.
+
 It also gives:
 
 - current profile details

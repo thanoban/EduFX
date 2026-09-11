@@ -37,7 +37,11 @@ type RequestOptions = {
 
 const REQUEST_RETRY_DELAYS_MS = [700, 1400, 2200];
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
-const REQUEST_TIMEOUT_MS = 15000;
+// Azure Container Apps may need a few seconds to wake a scaled-to-zero
+// revision, and Supabase-backed dashboard reads can involve several queries.
+// Keep the per-attempt budget generous, while the retry loop still gives up
+// after a bounded amount of time instead of leaving the page spinning forever.
+const REQUEST_TIMEOUT_MS = 30000;
 const AUTH_REQUEST_TIMEOUT_MS = 60000;
 
 function delay(ms: number) {
@@ -105,12 +109,11 @@ async function request<T>(
       break;
     } catch (error) {
       lastNetworkError = error;
-      if (isAbortError(error)) {
-        break;
-      }
       if (attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
         await delay(REQUEST_RETRY_DELAYS_MS[attempt]);
+        continue;
       }
+      break;
     } finally {
       window.clearTimeout(timeoutId);
     }

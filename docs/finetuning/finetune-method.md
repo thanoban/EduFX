@@ -1,5 +1,9 @@
 # Fine-Tune Method
 
+> The training method remains valid, but the adapter is optional in current
+> Azure production. Current text generation uses Groq unless a fine-tuned
+> endpoint is configured.
+
 QLoRA on Qwen2.5-7B-Instruct, Colab Enterprise NVIDIA L4, standard Hugging Face stack. See [finetune-results.md](finetune-results.md) for the measured numbers.
 
 ## What We're Actually Teaching
@@ -57,7 +61,7 @@ Decreasing validation loss confirms the adapter was learning. The validation set
 
 ## Why Task B Was Not Fine-Tuned
 
-Explanation generation depends on the student's specific wrong answer and live RAG context. A static fine-tune cannot capture that variability. Task B stays on live Vertex AI Gemini + RAG; only Task A (quiz generation) uses the fine-tuned adapter.
+Explanation generation depends on the student's specific wrong answer and live RAG context. A static fine-tune cannot capture that variability. Task B stays on the configured runtime provider plus RAG; current Azure uses Groq. Only Task A (quiz generation) uses the fine-tuned adapter when its endpoint is configured.
 
 ## Viva Answers
 

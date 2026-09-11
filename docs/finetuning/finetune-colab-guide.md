@@ -1,5 +1,8 @@
 # EduFX Fine-Tune Guide - Colab Enterprise L4 (Viva Ready)
 
+> Historical training guide. The QLoRA adapter is available, but current Azure
+> production uses Groq because no fine-tuned serving endpoint is configured.
+
 This is the EduFX fine-tuning path that actually worked end to end.
 
 Final working setup:
@@ -474,7 +477,7 @@ Expected output: 15 questions, 5 easy / 5 medium / 5 hard, raw JSON.
 | Task | Model | Reason |
 |------|-------|--------|
 | Task A — quiz generation | Fine-tuned Qwen 2.5 7B | Strict JSON format, consistent MCQ style |
-| Task B — explanations | Vertex AI Gemini (live) | Needs live RAG context and per-student wrong answer |
+| Task B — explanations | Configured runtime text provider (Groq in Azure production) | Needs live RAG context and per-student wrong answer |
 
 ### Deployment option: GCE VM with vLLM
 

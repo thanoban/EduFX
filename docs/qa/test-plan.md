@@ -1,5 +1,10 @@
 # Test Plan
 
+> Current target: Azure Container Apps production. The older Cloud Run
+> references in dated QA evidence are historical and are not the active test
+> environment. See [Current status and roadmap](../current-status-and-roadmap.md)
+> for verified live URLs and route expectations.
+
 ## Objective
 
 Define the QA scope, approach, environments, and completion criteria for the
@@ -9,12 +14,12 @@ application under test.
 
 - Project name: `EduFX` — adaptive A-Level Chemistry study platform
 - Application type: Hybrid — Next.js 15 frontend + FastAPI backend, deployed
-  on GCP Cloud Run, backed by Supabase Postgres
+  on Azure Container Apps, backed by Supabase Postgres
 - Test level: Smoke, functional, exploratory, regression, API (both manual
   and automated — see [api-testing-guide.md](api-testing-guide.md) and
   [automated-api-testing-guide.md](automated-api-testing-guide.md))
 - Build or environment: Local (`memory` or `supabase` data backend) and the
-  deployed Cloud Run backend/frontend — see
+  deployed Azure backend/frontend — see
   [environment guidance](api-testing-guide.md#6-environment-guidance-what-is-and-isnt-safe-to-test-against)
 
 ## Scope

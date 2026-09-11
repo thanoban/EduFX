@@ -35,7 +35,9 @@ Each JSONL line: `{"instruction": "...", "output": "..."}` — no wrapping array
 `data/notes/s_block_notes.csv` with columns `subtopic_id` and `body`. After editing the CSV, run the ingest pipeline:
 
 ```
-write CSV → python -m app.rag.ingest → chunk (~250 words, 30-word overlap) → embed (Vertex AI) → store in content_chunks
+write CSV -> python -m app.rag.ingest -> chunk (~250 words, 30-word overlap) ->
+embed (optional provider) -> store in content_chunks. Current Azure retrieval
+falls back to lexical ranking when no embedding provider is configured.
 ```
 
 ## Current Status

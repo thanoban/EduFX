@@ -1,5 +1,9 @@
 # Fine-Tune Results
 
+> Historical training result. The adapter was trained successfully, but no
+> fine-tuned serving endpoint is configured in current Azure production. See
+> [Current status and roadmap](../current-status-and-roadmap.md).
+
 Successful run completed on Colab Enterprise — Qwen2.5-7B-Instruct with QLoRA, NVIDIA L4, 263 seconds.
 
 ## Environment
@@ -66,7 +70,10 @@ Files produced by `model.save_pretrained()` + `tokenizer.save_pretrained()`:
 
 ## Integration
 
-Task A (quiz generation) routes to the fine-tuned Qwen via vLLM. Task B (explanations) stays on live Vertex AI Gemini. See [finetune-colab-guide.md](finetune-colab-guide.md) §17 for the `_call_finetuned()` integration code.
+Task A (quiz generation) routes to the fine-tuned Qwen via an optional
+OpenAI-compatible endpoint. Task B (explanations) stays on the configured
+runtime provider plus RAG; current Azure production uses Groq. See
+[finetune-colab-guide.md](finetune-colab-guide.md) for the integration code.
 
 ## Viva Statement
 

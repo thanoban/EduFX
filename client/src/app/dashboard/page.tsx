@@ -33,7 +33,15 @@ export default function DashboardPage() {
   }
 
   if (error) {
-    return <PageState tone="error" title="Dashboard could not load" message={error} />;
+    return (
+      <PageState
+        tone="error"
+        title="Dashboard could not load"
+        message={error}
+        actionLabel="Try again"
+        onAction={() => window.location.reload()}
+      />
+    );
   }
 
   return <DashboardScreen plan={data?.plan ?? []} progress={data?.progress ?? []} />;

@@ -1,5 +1,9 @@
 # EduFX API Testing Guide (Manual)
 
+> Current deployed target: Azure Container Apps. The Cloud Run URL mentioned
+> in older dated QA records is historical. Use the deployed environment file or
+> the current URLs in [Current status and roadmap](../current-status-and-roadmap.md).
+
 This is a real, endpoint-by-endpoint testing guide for the EduFX FastAPI
 backend — grounded in the actual routes, request/response models, and auth
 rules in this codebase, not generic placeholder examples. Use it to test the
@@ -14,7 +18,7 @@ For the automated equivalent of this guide (pytest + `TestClient`), see
 | Environment | Base URL | Notes |
 |---|---|---|
 | Local | `http://127.0.0.1:8001` | `cd server && uvicorn app.main:app --reload --port 8001` |
-| Deployed (Cloud Run) | `https://edufx-backend-rngcuc5r2a-an.a.run.app` | Live Supabase-backed data — see [environment guidance](#6-environment-guidance-what-is-and-isnt-safe-to-test-against) before writing test data here |
+| Deployed (Azure) | `https://edufx-backend.victorioussand-12db2490.centralindia.azurecontainerapps.io` | Live Supabase-backed data — see [environment guidance](#6-environment-guidance-what-is-and-isnt-safe-to-test-against) before writing test data here |
 
 Every response is wrapped in the same envelope:
 
@@ -40,7 +44,7 @@ starting with `demo:`, in the form:
 Authorization: Bearer demo:<Display Name>:<email>
 ```
 
-This works identically against the local server *and* the deployed Cloud Run
+This works identically against the local server *and* the deployed Azure
 backend, on both the memory and Supabase data backends, with no real OAuth
 flow involved — it's exactly what the automated integration tests use (see
 `server/tests/integration/test_api_flow.py`). Use a unique email per test
@@ -361,7 +365,7 @@ are specific to how this backend is built:
 - **Local against Supabase** (`DATA_BACKEND=supabase` in `.env`): writes
   real rows to the shared dev database. Use clearly-tagged emails
   (`qa-tester-*@edufx.demo`) so real accounts aren't confused with test data.
-- **Deployed Cloud Run backend**: same live Supabase project as production.
+- **Deployed Azure backend**: same live Supabase project as production.
   Only use `demo:` emails prefixed distinctly (e.g. `qa-*@edufx.demo`) and
   never target real user emails or real student IDs you don't own — this is
   a live system with real (if small-scale) usage.

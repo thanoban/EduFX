@@ -1,5 +1,9 @@
 # EduFX Adaptive System Learning Guide
 
+> This is the learning-oriented explanation. For the deployed configuration,
+> verified behavior, and active roadmap, see
+> [Current status and roadmap](../current-status-and-roadmap.md).
+
 This guide explains the full adaptive-learning part of EduFX from the basics.
 It is written for someone who wants to learn the system through this project,
 not just run it.
@@ -48,7 +52,7 @@ At the same time:
 ```text
 If student has prior sessions on a subtopic
   -> quiz service tries AI quiz generation
-  -> fine-tuned model / Gemini / Groq / Vertex candidate order
+  -> optional fine-tuned model, then configured text-provider order
   -> weak concepts + RAG context are injected into the prompt
 ```
 
@@ -58,7 +62,7 @@ And for explanations:
 Wrong answer
   -> retrieve relevant notes chunks
   -> explanation prompt
-  -> Gemini / Groq / Vertex candidate order
+  -> configured text-provider order (Groq in current Azure production)
   -> short explanation returned
 ```
 
@@ -377,20 +381,20 @@ See:
 
 The quiz generation integration is not "always use one provider".
 
-Current provider order in
-[server/app/services/ai_service.py](../server/app/services/ai_service.py) is:
+Provider selection in `server/app/services/ai_service.py` is configurable.
+Current Azure production uses:
 
 ```text
 Fine-tuned endpoint
-  -> Gemini API key
   -> Groq
-  -> Vertex
+  -> deterministic quiz fallback when supported
 ```
 
 That means:
 
 - if the self-hosted fine-tuned model is live, it is used first
-- if not, the backend falls back automatically
+- the current production endpoint is not configured, so Groq is used
+- if a candidate fails, the backend tries the next configured candidate
 - the feature still works even when the fine-tuned host is offline
 
 The quiz service integration is in
@@ -420,12 +424,11 @@ Reason:
 - explanations need live note context
 - that is better handled by runtime generation plus RAG
 
-Current explanation provider order:
+Current Azure explanation provider order:
 
 ```text
-Gemini API key
-  -> Groq
-  -> Vertex
+Groq
+  -> deterministic explanation fallback when supported
 ```
 
 File:

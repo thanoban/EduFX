@@ -5,6 +5,9 @@ one flat list.
 
 ## Start Here
 
+- [Current status and roadmap](current-status-and-roadmap.md)
+  Authoritative production URLs, verified behavior, working/optional/removed
+  features, known limitations, and the prioritized delivery plan.
 - [Full adaptive-system guide](getting-started/adaptive-system-learning-guide.md)
   Beginner-friendly guide to the whole adaptive system: recommender, agent,
   fine-tune, RAG, metrics, and backend integration.
@@ -28,9 +31,11 @@ one flat list.
 
 ## Plans
 
+- [Current status and roadmap](current-status-and-roadmap.md)
+  The active product, security, reliability, AI, ML, and QA plan.
 - [Recommender implementation plan](plans/recommender-implementation-plan.md)
-  Full knowledge-tracing plan for BKT, DKT, training, inference, and backend
-  rollout.
+  Historical implementation design plus BKT/DKT training detail. The models
+  and backend integration are now implemented.
 
 ## ML Recommender
 
@@ -52,16 +57,17 @@ one flat list.
 - [Fine-tune + RAG plan](finetuning/finetune-rag-data-plan.md)
   Why both fine-tune and RAG are needed.
 - [Vertex tuning plan](finetuning/finetune-vertex-plan.md)
-  Managed-tuning future path.
+  Historical/optional managed-tuning path; not current production.
 - [AWS hosting guide](finetuning/finetune-aws-hosting-guide.md)
-  Hosting the fine-tuned model on AWS EC2.
+  Optional hosting reference; not current production.
 - [Azure hosting guide](finetuning/finetune-azure-hosting-guide.md)
-  Hosting the fine-tuned model on Azure GPU VM.
+  Optional fine-tuned GPU hosting reference; no endpoint is active in current
+  production.
 
 ## Deployment
 
 - [Deployment plan](deployment/deployment-plan.md)
-  Legacy/manual GCP deploy notes, secrets, Cloud Run, and model serving.
+  Archived/manual GCP recovery notes; not the active deployment plan.
 - [Azure production deployment](deployment/azure-production.md)
   Current Groq-first production path, Azure Container Apps setup,
   GitHub OIDC, production secrets, verification, cost controls, and rollback.
@@ -92,6 +98,9 @@ one flat list.
 
 - [UI details](product/ui-details.md)
   UI component map and page-by-page layout.
+- [Landing page plan](product/landing-page-plan.md)
+  From-scratch content, visual direction, image guidance, responsive contract,
+  implementation stages, and acceptance criteria.
 
 ## Feature Guides
 
@@ -110,15 +119,20 @@ one flat list.
 
 ## Recommended Reading Order
 
-1. [getting-started/adaptive-system-learning-guide.md](getting-started/adaptive-system-learning-guide.md)
+1. [current-status-and-roadmap.md](current-status-and-roadmap.md)
 2. [architecture/architecture-reference.md](architecture/architecture-reference.md)
 3. [features/index.md](features/index.md)
-4. [getting-started/behaviouraltracking.md](getting-started/behaviouraltracking.md)
-5. [getting-started/agent-learning-guide.md](getting-started/agent-learning-guide.md)
-6. [ml-recommender/recommender-learning-basics.md](ml-recommender/recommender-learning-basics.md)
-7. [plans/recommender-implementation-plan.md](plans/recommender-implementation-plan.md)
+4. [getting-started/adaptive-system-learning-guide.md](getting-started/adaptive-system-learning-guide.md)
+5. [getting-started/behaviouraltracking.md](getting-started/behaviouraltracking.md)
+6. [getting-started/agent-learning-guide.md](getting-started/agent-learning-guide.md)
+7. [ml-recommender/recommender-learning-basics.md](ml-recommender/recommender-learning-basics.md)
 8. [finetuning/finetune-method.md](finetuning/finetune-method.md)
 9. [finetuning/finetune-results.md](finetuning/finetune-results.md)
 10. [deployment/azure-production.md](deployment/azure-production.md)
-11. [deployment/deployment-plan.md](deployment/deployment-plan.md)
-12. [qa/index.md](qa/index.md)
+11. [qa/index.md](qa/index.md)
+
+## Historical Records
+
+The dated QA summary, Colab notebooks, model-hosting alternatives, and GCP
+deployment plan document what was tested or considered at that time. They are
+valuable evidence, but they do not override the current status page.
