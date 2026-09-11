@@ -29,7 +29,15 @@ export default function ProgressPage() {
   }
 
   if (error) {
-    return <PageState tone="error" title="Progress could not load" message={error} />;
+    return (
+      <PageState
+        tone="error"
+        title="Progress could not load"
+        message={error}
+        actionLabel="Try again"
+        onAction={() => window.location.reload()}
+      />
+    );
   }
 
   return <ProgressScreen progress={progress ?? []} />;

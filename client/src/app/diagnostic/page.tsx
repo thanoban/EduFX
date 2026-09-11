@@ -25,7 +25,15 @@ export default function DiagnosticPage() {
   }
 
   if (error) {
-    return <PageState tone="error" title="Diagnostic could not load" message={error} />;
+    return (
+      <PageState
+        tone="error"
+        title="Diagnostic could not load"
+        message={error}
+        actionLabel="Try again"
+        onAction={() => window.location.reload()}
+      />
+    );
   }
 
   if (!student) {
