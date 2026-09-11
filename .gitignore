@@ -22,3 +22,22 @@ client/*.log
 client/*.err.log
 server/*.log
 server/*.err.log
+
+# Local IDE / generated working files
+.claude/
+.idea/
+tmp/
+
+# Stitch / design export scratch files
+DesignPage.js
+FileFetch.js
+PostMessageClient.js
+PreviewPage.js
+dist-core.js
+stitch-app*.js
+useCodeExport.js
+
+# Generated QA and screenshot artifacts
+openapi.json
+client/landing-*.png
+docs/qa/api-testing/artifacts/
