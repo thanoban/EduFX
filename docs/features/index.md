@@ -2,6 +2,9 @@
 
 This section breaks EduFX into clear feature-level documents.
 
+For deployed/optional/removed status and the active plan, first read
+[Current status and roadmap](../current-status-and-roadmap.md).
+
 Use these pages when you want to understand one part of the system without
 reading the entire project guide.
 

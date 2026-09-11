@@ -47,7 +47,7 @@ The dashboard combines:
 
 EduFX does not just rank topics once.
 
-It tries to build a realistic study plan by combining:
+It builds a realistic study plan by combining:
 
 - weakness
 - overdue pressure
@@ -56,7 +56,11 @@ It tries to build a realistic study plan by combining:
 - reinforcement balance
 - availability and session length
 
-The result is usually described as:
+The ranking path is DKT first, BKT second, and deterministic deadline/cooldown
+rules last. Model scoring is used only when enough interaction history exists.
+The scheduling agent then applies the student's free days and per-day time cap.
+
+For an unconfigured student, the fallback result is usually described as:
 
 - `2 weak + 1 strong`
 
@@ -64,6 +68,10 @@ That means:
 
 - weak topics get priority
 - strong topics still appear for maintenance
+
+Configured students may receive a smaller plan or no plan on a non-free day.
+They cannot freely choose an unrelated topic: study content is gated to the
+active recommendation.
 
 ## Why this feature matters
 

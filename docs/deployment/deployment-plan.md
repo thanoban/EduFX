@@ -1,5 +1,9 @@
 # EduFX Deployment Plan
 
+> Historical/manual GCP recovery plan. Current automatic production uses Azure
+> Container Apps and GitHub Actions; see [Azure production deployment](azure-production.md)
+> and [Current status and roadmap](../current-status-and-roadmap.md).
+
 > Azure Container Apps is the current automatic production path. For
 > Groq-first generation with Vertex disabled, Supabase authentication, and
 > GitHub Actions deployment, follow

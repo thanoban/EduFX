@@ -1,44 +1,134 @@
-# EduFX — Session Handoff
+# EduFX Session Handoff
 
-> Read this at the start of every new session to get full context.
-> Last updated: 2026-06-28
+> Last reconciled with source and production: 2026-09-10.
+> Start with [Current status and roadmap](../current-status-and-roadmap.md).
 
-## What This Project Is
+## Project
 
-**EduFX** — A-Level Chemistry adaptive study platform, S-block unit (10 subtopics).
+EduFX is an adaptive A-Level Chemistry platform for ten S-block subtopics.
 
-| Layer | Tech |
-|-------|------|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v3 |
-| Backend | FastAPI (Python), layered MVC |
-| Database | Supabase (PostgreSQL + pgvector) |
-| Auth | Supabase Google OAuth |
-| AI / LLM | **Vertex AI — Gemini 2.5 Flash** (not Groq, not Gemini REST, not OpenAI) |
-| Embeddings | `gemini-embedding-001` via Vertex AI (384-dim) |
-| Vector store | Supabase `content_chunks` with pgvector |
+| Layer | Current implementation |
+|---|---|
+| Frontend | Next.js 15, React 19, TypeScript |
+| Backend | FastAPI, Python, layered controllers/services/repositories |
+| Database | Supabase PostgreSQL and pgvector-compatible content storage |
+| Authentication | Supabase Google OAuth and email/password |
+| Production text AI | Groq |
+| Production retrieval | Supabase chunks with lexical ranking |
+| Recommendation | DKT, then BKT, then deterministic rules |
+| Hosting | Azure Container Apps and Azure Container Registry |
+| Deployment | GitHub Actions on pushes to `main` |
 
-**Repo:** `https://github.com/thanoban/EduFX.git`
-**Project root:** `D:\PROJECTS\2ndYearProject\EduFX_MVC`
+Repository: `https://github.com/thanoban/EduFX.git`
 
-## Critical Rules
+## Production
 
-1. **Commit as `thanoban` only** — never add `Co-Authored-By: Claude` to any commit message.
-2. **AI = Vertex AI only** — `GOOGLE_CLOUD_PROJECT` env var, `google-cloud-aiplatform` SDK. No Groq, no Gemini REST, no OpenAI.
-3. **`.env` is gitignored** — never commit it.
+- Frontend: `https://edufx-frontend.victorioussand-12db2490.centralindia.azurecontainerapps.io`
+- Backend: `https://edufx-backend.victorioussand-12db2490.centralindia.azurecontainerapps.io`
+- Swagger: `https://edufx-backend.victorioussand-12db2490.centralindia.azurecontainerapps.io/docs`
+- Verified production commit: `b3905a0`
 
-## Architecture
+The Azure workflow uses `AI_PROVIDER_ORDER=groq`, disables Vertex, does not
+inject Gemini, and scales both apps to zero when idle.
 
+## Current User Journey
+
+```text
+sign in
+  -> self-assessment
+  -> diagnostic
+  -> results
+  -> availability
+  -> dashboard recommendation
+  -> study
+  -> optional webcam check
+  -> quiz
+  -> results and explanation
+  -> updated progress and next plan
 ```
-Controller (routes/) → Service (services/) → Repository (repositories/) → Model (models/)
+
+The diagnostic questions endpoint is protected. `401` without a bearer token
+is the intended production result, not a failure.
+
+## Current Feature State
+
+### Working
+
+- Supabase sign-in and callback restoration
+- student-scoped API authorization and ownership checks
+- diagnostic self-assessment, 40 questions, and level assignment
+- availability setup and per-day session length
+- DKT/BKT-backed ranking with deterministic fallback
+- recommendation-gated content and quiz routes
+- Groq text generation with deterministic route fallbacks
+- lexical RAG over Supabase chemistry chunks
+- quiz review and teacher graph orchestration
+- optional browser-side behaviour tracking
+- progress, behaviour history, and admin views
+- Azure deployment and production smoke checks
+
+### Optional
+
+- QLoRA quiz endpoint through `FINETUNED_MODEL_URL`
+- Gemini or Vertex text/embedding providers outside the current Azure workflow
+- in-memory backend for local tests and demonstrations
+
+### Removed
+
+Daily email reminders, their internal API route, and their scheduled GitHub
+workflow were removed. Availability-based scheduling remains.
+
+## Important Rules
+
+1. Never commit `.env`, cloud credentials, Supabase service keys, or AI keys.
+2. Use the Supabase anon/publishable key only in `NEXT_PUBLIC_*` variables.
+3. Keep service-role and JWT secrets backend-only.
+4. Treat GCP, Vertex, AWS, and model-hosting guides as optional or historical.
+5. Do not describe DKT `0.6822` ROC-AUC as real-student accuracy; it came from
+   held-out synthetic sequences.
+6. Do not describe the six-record QLoRA dataset as production-quality training.
+7. Do not restore reminders without consent, unsubscribe, provider, and delivery
+   observability.
+
+## Architecture Boundary
+
+```text
+Route -> Controller -> Service/Agent -> Repository -> Supabase or memory store
 ```
 
-Repository layer has two implementations switchable via `DATA_BACKEND` env var:
-- `memory` — in-memory `DemoDataStore`, no external dependencies
-- `supabase` — real Supabase queries
+- Routes own HTTP parsing and authorization dependencies.
+- Controllers translate API calls into service calls.
+- Services enforce product rules.
+- Agents coordinate multi-step decisions.
+- Repositories own persistence.
+- BKT/DKT rank learning needs; they do not send emails or choose session size.
+- `SchedulingAgent` applies availability and plan-size constraints.
 
-## Environment Variables
+## Key Files
 
-```
+| File | Purpose |
+|---|---|
+| `server/app/core/application.py` | FastAPI routes, middleware, health endpoints |
+| `server/app/core/request_auth.py` | authentication and student ownership checks |
+| `server/app/core/container.py` | dependency wiring |
+| `server/app/services/ai_service.py` | Groq/Gemini/Vertex and optional fine-tune selection |
+| `server/app/ml/recommender_engine.py` | DKT/BKT/rules candidate ranking |
+| `server/app/services/scheduling_agent.py` | availability and daily plan composition |
+| `server/app/rag/retriever.py` | vector or lexical chunk ranking |
+| `server/app/agents/teacher_graph.py` | grounded teacher orchestration |
+| `server/app/agents/quiz_review.py` | generated quiz review loop |
+| `client/src/features/auth/auth-provider.tsx` | browser session lifecycle |
+| `client/src/features/diagnostic/` | onboarding and diagnostic screens |
+| `client/src/features/dashboard/dashboard-screen.tsx` | recommended daily plan |
+| `client/src/features/webcam/` | browser-side behaviour signals |
+| `.github/workflows/test.yml` | backend and frontend CI |
+| `.github/workflows/deploy-azure.yml` | current production deployment |
+
+## Local Environment
+
+Backend essentials:
+
+```dotenv
 DATA_BACKEND=supabase
 DEMO_MODE=false
 FRONTEND_ORIGIN=http://localhost:3000
@@ -46,56 +136,46 @@ SUPABASE_URL=...
 SUPABASE_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_JWT_SECRET=...
-GOOGLE_CLOUD_PROJECT=responsive-sun-491204-e0
-GOOGLE_CLOUD_LOCATION=global
-VERTEX_MODEL=gemini-2.5-flash
-EMBEDDING_MODEL=gemini-embedding-001
-EMBEDDING_DIMENSIONS=384
+AI_PROVIDER_ORDER=groq
+GROQ_API_KEY=...
+GROQ_MODEL=llama-3.3-70b-versatile
+VERTEX_AI_ENABLED=false
 ```
 
-For local Vertex AI: run `gcloud auth application-default login` once.
+Frontend essentials:
 
-## What Is Built and Working
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8001
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_SKIP_LOGIN=false
+```
 
-### Backend
-All 9 controllers, services, and repositories are complete (auth, diagnostic, scheduler, content, quiz, results, explanation, progress, behaviour). Vertex AI quiz generation and RAG-augmented explanation generation both work. 16 unit tests passing.
+## Verification
 
-### Frontend
-All 12 routes complete with professional UI (Inter font, indigo design system): login, dashboard, diagnostic, diagnostic/results, study/[id], quiz/[id], results/[id], progress, behaviour-logs, settings, webcam-check. Zero TypeScript build errors.
+```powershell
+Set-Location D:\PROJECTS\2ndYearProject\EduFX_MVC\server
+python -m pytest tests -v
 
-### RAG Pipeline ✅ (completed 2026-06-28)
-`data/notes/s_block_notes.csv` — all 10 subtopics written and ingested. 55 chunks embedded and stored in Supabase `content_chunks`. `match_content_chunks` RPC verified working.
+Set-Location D:\PROJECTS\2ndYearProject\EduFX_MVC\client
+npx tsc --noEmit
+npx vitest run
+npm run build
+```
 
-### Fine-Tuning ✅
-Qwen2.5-7B-Instruct + QLoRA on Colab Enterprise NVIDIA L4. Adapter saved. See [../finetuning/finetune-results.md](../finetuning/finetune-results.md) for metrics and [../finetuning/finetune-colab-guide.md](../finetuning/finetune-colab-guide.md) for the full notebook.
+The deployment workflow additionally requires:
 
-### Personalized Quiz Generation ✅
-Concept-mastery loop: `questions.concept` column, `select_weak_concepts()`, `level_difficulty_spread()`, weak-aware AI prompt targeting ~65% of questions at weak concepts.
+- frontend `/diagnostic/availability` -> `200`
+- anonymous backend `/diagnostic/questions` -> `401`
+- removed backend `/internal/reminders/run` -> `404`
 
-### Deployment Config ✅ (added 2026-06-28)
-`server/Dockerfile`, `client/Dockerfile`, `.github/workflows/deploy.yml` — Cloud Run deployment via GitHub Actions. See [../deployment/deployment-plan.md](../deployment/deployment-plan.md).
+## Immediate Plan
 
-## Subtopic IDs
+1. Disable `demo:` tokens in production.
+2. Restrict CORS to exact approved origins.
+3. Add authenticated deployed tests and a staging environment.
+4. Add provider latency/error observability.
+5. Evaluate hybrid retrieval and DKT on labelled, real-world data.
 
-| ID | Group | Title |
-|----|-------|-------|
-| 1 | group1 | Group Trends |
-| 2 | group1 | Reactions of Group 1 Elements |
-| 3 | group1 | Thermal Stability of Salts |
-| 4 | group1 | Solubility of Group 1 Salts |
-| 5 | group1 | Flame Test |
-| 6 | group2 | Group Trends |
-| 7 | group2 | Reactions of Group 2 Elements |
-| 8 | group2 | Thermal Stability of Salts |
-| 9 | group2 | Solubility of Group 2 Salts |
-| 10 | group2 | Flame Test |
-
-## Key Files to Read First
-
-| File | Purpose |
-|------|---------|
-| `server/app/core/container.py` | How all services and repos are wired |
-| `server/app/core/store.py` | Demo data structure |
-| `server/app/services/ai_service.py` | Vertex AI integration |
-| `shared/contracts/index.ts` | All TypeScript types |
-| `docs/data/data-format-guide.md` | RAG CSV + fine-tuning JSONL formats |
+The detailed plan and release rules are maintained in
+[Current status and roadmap](../current-status-and-roadmap.md).

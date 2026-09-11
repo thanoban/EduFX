@@ -1,5 +1,8 @@
 # Groq AI and Azure Deployment Fallback
 
+> Azure is now the primary production path, not only a fallback. This page is
+> retained for provider and deployment configuration detail.
+
 This guide keeps EduFX usable when Vertex AI is disabled or the GCP project is
 unavailable. Groq becomes the primary text-generation provider, while Azure
 Container Apps provides a separate, manually triggered hosting path.
