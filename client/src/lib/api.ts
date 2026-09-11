@@ -1,4 +1,5 @@
-import { API_BASE_URL } from "@/lib/constants";
+import { API_BASE_URL, STORAGE_KEYS } from "@/lib/constants";
+import { readStorage } from "@/lib/storage";
 import type {
   AdminStudentDetail,
   AdminStudentSummary,
@@ -61,15 +62,20 @@ function getApiErrorMessage(path: string, response: Response, payload: ApiRespon
   return `Request failed for ${path} (${response.status})`;
 }
 
+function getAccessToken(token?: string | null) {
+  return token ?? readStorage<string | null>(STORAGE_KEYS.token, null);
+}
+
 async function request<T>(
   path: string,
   { method = "GET", token, studentId, body, timeoutMs = REQUEST_TIMEOUT_MS }: RequestOptions = {}
 ): Promise<T> {
+  const accessToken = getAccessToken(token);
   const init: RequestInit = {
     method,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(studentId ? { "X-Student-Id": String(studentId) } : {})
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -250,9 +256,6 @@ export const progressApi = {
 };
 
 export const adminApi = {
-  // Admin routes are gated server-side by a real bearer token (require_admin
-  // in routes/admin.py), unlike most other routes here which just trust the
-  // student_id path param — so these calls need the actual token, not just an id.
   listStudents(token: string) {
     return request<AdminStudentSummary[]>("/admin/students", { token });
   },
