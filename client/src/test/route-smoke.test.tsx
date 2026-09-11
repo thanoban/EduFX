@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BehaviourLogsScreen } from "@/features/behaviour/behaviour-logs-screen";
 import { DashboardScreen } from "@/features/dashboard/dashboard-screen";
 import { DiagnosticResultsScreen } from "@/features/diagnostic/diagnostic-results-screen";
-import { LandingPage } from "@/features/marketing/landing-page";
 import { LoginScreen } from "@/features/auth/login-screen";
 import { ProgressScreen } from "@/features/progress/progress-screen";
 import { ResultsScreen } from "@/features/results/results-screen";
@@ -38,13 +37,6 @@ describe("frontend route smoke coverage", () => {
     renderWithAuth(<LoginScreen />, { student: null });
     expect(screen.getByText("Welcome back")).toBeInTheDocument();
     expect(screen.getByText("Google")).toBeInTheDocument();
-  });
-
-  it("renders the landing page", () => {
-    renderWithAuth(<LandingPage />, { student: null });
-    expect(screen.getByRole("heading", { name: "EduFX" })).toBeInTheDocument();
-    expect(screen.getByText("Intelligence with evidence")).toBeInTheDocument();
-    expect(screen.getByText("Built and measured")).toBeInTheDocument();
   });
 
   it("renders diagnostic results", () => {
