@@ -89,14 +89,15 @@ export function useWebcamTracker() {
   const stop = useCallback(
     async (studentId: number, sessionId: number, subtopicId: number, enabled: boolean) => {
       const tracker = trackerRef.current;
-      // Persist a final snapshot so very short sessions still have data to aggregate.
-      if (tracker && enabled) {
+      // Persist fresh samples so very short sessions and submit-time events are still counted.
+      if (tracker && enabled && tracker.isReady()) {
+        await tracker.flushSamples(tracker.hasSnapshots() ? 1 : 3);
         const snapshot = tracker.takeSnapshot();
         await behaviourApi.saveSnapshot(snapshot).catch(() => undefined);
       }
       releaseHardware();
 
-      if (!enabled || !tracker) {
+      if (!enabled || !tracker || !tracker.hasSnapshots()) {
         return behaviourApi.saveSummary({
           student_id: studentId,
           session_id: sessionId,

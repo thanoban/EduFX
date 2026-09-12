@@ -76,6 +76,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export type TrackerRealtimeState = {
   faceDetected: boolean;
   lookingAway: boolean;
@@ -246,6 +250,25 @@ export class BrowserBehaviourTracker {
     return this.latestState;
   }
 
+  isReady() {
+    return this.latestState.ready;
+  }
+
+  async flushSamples(minSamples = 2, timeoutMs = 1_800) {
+    const deadline = Date.now() + timeoutMs;
+    let completed = 0;
+
+    while (completed < minSamples && Date.now() < deadline) {
+      const sampled = await this.sampleFrame().catch(() => false);
+      if (sampled) {
+        completed += 1;
+      }
+      if (completed < minSamples) {
+        await sleep(160);
+      }
+    }
+  }
+
   takeSnapshot(): BehaviourSnapshotPayload {
     // Consume (and reset) the accumulated window rather than reading the
     // instantaneous live state, so a violation that already cleared by the
@@ -307,7 +330,7 @@ export class BrowserBehaviourTracker {
 
   private async sampleFrame() {
     if (!this.video || this.video.readyState < 2) {
-      return;
+      return false;
     }
 
     const quality = this.qualityAnalyzer.analyze(this.video);
@@ -403,6 +426,7 @@ export class BrowserBehaviourTracker {
       warning: this.resolveWarning(quality, gatedFace)
     };
     this.onUpdate?.(this.latestState);
+    return true;
   }
 
   private applyQualityGate(face: FaceAnalysis, quality: FrameQuality): FaceAnalysis {
