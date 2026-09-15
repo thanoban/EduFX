@@ -11,7 +11,7 @@ import {
 } from "react";
 
 import { authApi } from "@/lib/api";
-import { IDLE_SESSION_TIMEOUT_MS, STORAGE_KEYS } from "@/lib/constants";
+import { AUTH_EXPIRED_EVENT, IDLE_SESSION_TIMEOUT_MS, STORAGE_KEYS } from "@/lib/constants";
 import { readStorage, removeStorage, writeStorage } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import type { StudentProfile } from "@/types/contracts";
@@ -55,6 +55,10 @@ async function getSessionWithTimeout(timeoutMs: number) {
       window.setTimeout(() => reject(new Error("Supabase session bootstrap timed out")), timeoutMs);
     })
   ]);
+}
+
+function isDemoToken(token: string | null) {
+  return token?.startsWith("demo:") ?? false;
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -184,7 +188,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const storedStudent = readStorage<StudentProfile | null>(STORAGE_KEYS.student, null);
     const storedToken = readStorage<string | null>(STORAGE_KEYS.token, null);
-    if (storedStudent && storedToken) {
+    if (storedStudent && isDemoToken(storedToken)) {
       setAuthError(null);
       setStudent(storedStudent);
       setToken(storedToken);
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    if (AUTO_BOOTSTRAP_DEMO) {
+    if (AUTO_BOOTSTRAP_DEMO && !supabase) {
       void bootstrapDemoStudent().finally(() => setLoading(false));
       return;
     }
@@ -252,12 +256,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         if (!result?.data.session) {
+          clearSessionState();
           setLoading(false);
         }
       })
       .catch(() => setLoading(false));
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      void finishSignOut("expired");
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
   useEffect(() => {

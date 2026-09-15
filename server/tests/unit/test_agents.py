@@ -85,6 +85,13 @@ def test_teacher_graph_report_runs_and_synthesises(monkeypatch):
     assert out["answer"].strip()
 
 
+def test_single_teacher_answer_avoids_multi_call_graph(monkeypatch):
+    monkeypatch.setattr(ai_service, "generate_text", lambda prompt, **kw: "Focus on reactions next.")
+    assert teacher_graph.generate_teacher_answer(
+        context="Reactions level intermediate.", mode="chat", question="What next?"
+    ) == "Focus on reactions next."
+
+
 # --- quiz self-check -----------------------------------------------------
 
 def test_quiz_selfcheck_drops_wrong_answer_question(monkeypatch):

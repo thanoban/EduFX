@@ -158,3 +158,28 @@ def get_teacher_graph():
     if _TEACHER_GRAPH is None:
         _TEACHER_GRAPH = build_teacher_graph()
     return _TEACHER_GRAPH
+
+
+def generate_teacher_answer(*, context: str, mode: str, question: str = "", history: str = "") -> str:
+    """Generate one bounded teacher response for the live API path.
+
+    The full graph remains available for experiments and tests, but chaining a
+    router, three specialists, synthesis, and grounding can exceed a web
+    request timeout when a provider is cold or rate-limited. A single grounded
+    synthesis is faster and is sufficient for the student-facing teacher page.
+    """
+    system = prompts.SYNTHESIS_REPORT_PROMPT if mode == "report" else prompts.SYNTHESIS_CHAT_PROMPT
+    parts = [system, "\n\nStudent data snapshot:\n", context]
+    if history:
+        parts.append("\n\nConversation so far:\n" + history)
+    if question:
+        parts.append("\n\nThe student's question: " + question)
+    state: TeacherState = {
+        "context": context,
+        "mode": mode,
+        "question": question,
+        "history": history,
+        "answer": ai_service.generate_text("".join(parts), temperature=0.4, max_tokens=700),
+    }
+    grounded = _ground(state)
+    return (grounded.get("answer") or state["answer"] or "").strip()

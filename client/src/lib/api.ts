@@ -1,5 +1,5 @@
-import { API_BASE_URL, STORAGE_KEYS } from "@/lib/constants";
-import { readStorage } from "@/lib/storage";
+import { API_BASE_URL, AUTH_EXPIRED_EVENT, STORAGE_KEYS } from "@/lib/constants";
+import { readStorage, removeStorage } from "@/lib/storage";
 import type {
   AdminStudentDetail,
   AdminStudentSummary,
@@ -68,6 +68,19 @@ function getApiErrorMessage(path: string, response: Response, payload: ApiRespon
 
 function getAccessToken(token?: string | null) {
   return token ?? readStorage<string | null>(STORAGE_KEYS.token, null);
+}
+
+function isAuthExpired(response: Response, message: string) {
+  return response.status === 401 && /auth|token|signature|expired/i.test(message);
+}
+
+function clearCachedAuth() {
+  Object.values(STORAGE_KEYS).forEach(removeStorage);
+}
+
+function notifyAuthExpired() {
+  clearCachedAuth();
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 }
 
 async function request<T>(
@@ -142,7 +155,12 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(path, response, payload, raw));
+    const message = getApiErrorMessage(path, response, payload, raw);
+    if (isAuthExpired(response, message)) {
+      notifyAuthExpired();
+      throw new Error("Your sign-in expired. Please sign in again.");
+    }
+    throw new Error(message);
   }
 
   if (!payload || !payload.success || payload.data === null) {
